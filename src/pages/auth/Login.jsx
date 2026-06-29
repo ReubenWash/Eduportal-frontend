@@ -33,9 +33,14 @@ export default function LoginPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!email || !password) { setError('Please fill in all fields.'); return; }
+    // Trim and lowercase email before validation
+    const sanitizedEmail = email.trim().toLowerCase();
+    if (!sanitizedEmail || !password) {
+      setError('Please fill in all fields.');
+      return;
+    }
     setLoading(true);
-    await doLogin({ email, password });
+    await doLogin({ email: sanitizedEmail, password });
     setLoading(false);
   };
 
