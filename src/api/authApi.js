@@ -16,9 +16,9 @@ export const login = async (credentials) => {
     throw { response: { data: errorData } };
   }
 
-  const data = await response.json();
-  console.log('✅ Login successful:', data);
-  return data;
+  const result = await response.json();
+  console.log('✅ Login successful:', result);
+  return result.data; // ✅ unwrap to { accessToken, user }
 };
 
 export const forgotPassword = async (email) => {
