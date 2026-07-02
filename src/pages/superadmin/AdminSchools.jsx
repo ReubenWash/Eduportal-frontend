@@ -49,7 +49,7 @@ export default function AdminSchools() {
         setSchools(fetchedSchools);
       })
       .catch(err => {
-        console.warn("Backend offline, falling back to mock schools");
+        console.warn("Schools fetch/parse error:", err);
       })
       .finally(() => setLoading(false));
   }, []);
