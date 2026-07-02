@@ -8,7 +8,7 @@ import Modal from '../../components/ui/Modal';
 import { useToast } from '../../context/ToastContext';
 import { getAllSchools, updateSchoolStatus as apiUpdateSchoolStatus } from '../../api/schoolApi';
 
-// Mock school data
+// Mock school data (fallback only, used when the API call genuinely fails)
 const MOCK_SCHOOLS = [
   { id: '1', name: 'Sunshine Academy',      email: 'admin@sunshine.edu.gh',    phone: '+233 24 111 1111', location: 'Accra, Greater Accra',   students: 842,  status: 'ACTIVE',   registeredAt: '2024-01-15', plan: 'Premium' },
   { id: '2', name: 'Hilltop School',        email: 'admin@hilltop.edu.gh',      phone: '+233 20 222 2222', location: 'Kumasi, Ashanti',          students: 0,    status: 'PENDING',  registeredAt: '2024-06-22', plan: 'Basic'   },
@@ -30,8 +30,11 @@ const statusIcon = {
 
 export default function AdminSchools() {
   const { addToast } = useToast();
-  const [schools, setSchools] = useState(MOCK_SCHOOLS);
+  // Start empty, not with mock data — mock data should only ever be an
+  // explicit fallback, never the default state while real data is loading.
+  const [schools, setSchools] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [keyword, setKeyword] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [viewSchool, setViewSchool] = useState(null);
@@ -39,17 +42,33 @@ export default function AdminSchools() {
 
   useEffect(() => {
     getAllSchools()
-      .then(data => {
-        const fetchedSchools = (data.data || data).map(s => ({
+      .then(res => {
+        // Backend actually returns:
+        // { success, message, data: { data: [...schools], pagination: {...} } }
+        // getAllSchools() returns res.data from axios, i.e. the whole
+        // { success, message, data: { data, pagination } } object.
+        const list = Array.isArray(res)
+          ? res                          // already a plain array (e.g. mock fallback)
+          : Array.isArray(res?.data)
+            ? res.data                   // shape: { data: [...] }
+            : Array.isArray(res?.data?.data)
+              ? res.data.data           // shape: { data: { data: [...], pagination } } <- current backend shape
+              : [];
+
+        const fetchedSchools = list.map(s => ({
           ...s,
           location: s.district && s.region ? `${s.district}, ${s.region}` : s.address || 'Unknown',
           students: s._count?.students || 0,
-          registeredAt: s.createdAt || new Date().toISOString()
+          registeredAt: s.createdAt || new Date().toISOString(),
         }));
         setSchools(fetchedSchools);
+        setLoadError(false);
       })
       .catch(err => {
-        console.error("Schools fetch/parse error:", err);
+        // Log the real error instead of silently assuming "offline"
+        console.error('Schools fetch error:', err);
+        setLoadError(true);
+        setSchools(MOCK_SCHOOLS);
       })
       .finally(() => setLoading(false));
   }, []);
@@ -74,9 +93,8 @@ export default function AdminSchools() {
       setSchools(prev => prev.map(s => s.id === school.id ? { ...s, status: newStatus } : s));
       addToast(`${school.name} status updated successfully`, 'success');
     } catch (err) {
-      console.warn("Backend update failed, applying locally", err);
-      setSchools(prev => prev.map(s => s.id === school.id ? { ...s, status: newStatus } : s));
-      addToast(`(Mock) ${school.name} status updated`, 'success');
+      console.error('School status update failed:', err);
+      addToast(`Failed to update ${school.name}. Please try again.`, 'error');
     } finally {
       setConfirmAction(null);
       setViewSchool(null);
@@ -92,6 +110,12 @@ export default function AdminSchools() {
         <h1 className="text-2xl font-bold text-gray-900 tracking-tight">School Management</h1>
         <p className="text-sm text-gray-500 mt-1">Review registrations, approve or reject schools, and manage their access.</p>
       </div>
+
+      {loadError && (
+        <div className="rounded-lg bg-amber-50 border border-amber-200 px-4 py-3 text-sm text-amber-800">
+          Couldn't reach the server — showing sample data. Check the console for details.
+        </div>
+      )}
 
       {/* Tabs */}
       <div className="flex items-center gap-1 bg-gray-100 p-1 rounded-xl w-fit flex-wrap">
@@ -140,7 +164,11 @@ export default function AdminSchools() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {filtered.length === 0 ? (
+              {loading ? (
+                <tr>
+                  <td colSpan={7} className="py-16 text-center text-sm text-gray-400">Loading schools…</td>
+                </tr>
+              ) : filtered.length === 0 ? (
                 <tr>
                   <td colSpan={7} className="py-16 text-center text-sm text-gray-400">No schools match your search.</td>
                 </tr>
