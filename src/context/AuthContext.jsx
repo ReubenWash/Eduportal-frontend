@@ -3,12 +3,27 @@ import { login, register, forgotPassword, resetPassword, verifyEmail } from '../
 
 const AuthContext = createContext();
 
+// Safely read a JSON value from sessionStorage without ever throwing
+function safeGetJSON(key) {
+  const raw = sessionStorage.getItem(key);
+  if (!raw || raw === 'undefined' || raw === 'null') return null;
+  try {
+    return JSON.parse(raw);
+  } catch {
+    sessionStorage.removeItem(key); // clear corrupted data so this never loops
+    return null;
+  }
+}
+
+// Safely read a plain string value from sessionStorage
+function safeGetString(key) {
+  const raw = sessionStorage.getItem(key);
+  return raw && raw !== 'undefined' && raw !== 'null' ? raw : null;
+}
+
 export function AuthProvider({ children }) {
-  const [accessToken, setAccessToken] = useState(() => sessionStorage.getItem('accessToken'));
-  const [user, setUser] = useState(() => {
-    const u = sessionStorage.getItem('user');
-    return u ? JSON.parse(u) : null;
-  });
+  const [accessToken, setAccessToken] = useState(() => safeGetString('accessToken'));
+  const [user, setUser] = useState(() => safeGetJSON('user'));
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -18,6 +33,12 @@ export function AuthProvider({ children }) {
     setError(null);
     try {
       const data = await login(credentials);
+
+      // Guard against malformed/unexpected API responses
+      if (!data?.accessToken || !data?.user) {
+        throw new Error('Malformed login response from server');
+      }
+
       setAccessToken(data.accessToken);
       setUser(data.user);
       // Persist to sessionStorage
@@ -45,9 +66,15 @@ export function AuthProvider({ children }) {
     setError(null);
     try {
       const data = await register(userData);
-      setAccessToken(data.accessToken);
-      setUser(data.user);
-      // (Optional – you may want to add sessionStorage here too)
+
+      if (data?.accessToken) {
+        setAccessToken(data.accessToken);
+        sessionStorage.setItem('accessToken', data.accessToken);
+      }
+      if (data?.user) {
+        setUser(data.user);
+        sessionStorage.setItem('user', JSON.stringify(data.user));
+      }
     } catch (err) {
       setError(err.response?.data?.message || 'Registration failed');
       throw err;
