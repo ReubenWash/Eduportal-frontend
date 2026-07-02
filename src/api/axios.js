@@ -10,10 +10,13 @@ const api = axios.create({
   },
 });
 
+// Always attach the current token from sessionStorage on every request.
+// (Previously relied on config._accessToken, which was never set on normal
+// calls, so the Authorization header was silently missing every time.)
 api.interceptors.request.use(
   (config) => {
-    const accessToken = config._accessToken;
-    if (accessToken) {
+    const accessToken = sessionStorage.getItem('accessToken');
+    if (accessToken && accessToken !== 'undefined' && accessToken !== 'null') {
       config.headers.Authorization = `Bearer ${accessToken}`;
     }
     return config;
@@ -45,12 +48,21 @@ api.interceptors.response.use(
         );
 
         const newAccessToken = response.data.accessToken;
-        originalRequest._accessToken = newAccessToken;
+
+        // Persist the refreshed token so every future request picks it up
+        // automatically via the request interceptor above.
+        sessionStorage.setItem('accessToken', newAccessToken);
+
         originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
 
         return api(originalRequest);
       } catch (refreshError) {
-        if (refreshError.response && refreshError.response.status === 401) {
+        // Refresh failed (expired/missing/blocked cookie) — clear stale
+        // session data and send the user back to login.
+        sessionStorage.removeItem('accessToken');
+        sessionStorage.removeItem('user');
+
+        if (window.location.pathname !== '/login') {
           window.location.href = '/login';
         }
       }
