@@ -10,9 +10,27 @@ const api = axios.create({
   },
 });
 
+// ── Response unwrapping helpers ─────────────────────────────────
+// Backend envelope is always { success, message, data }.
+// List endpoints additionally nest as { data: { data: [...], pagination } }.
+// These helpers mean every api/*.js file (and every page) gets clean,
+// predictable data regardless of which shape a given endpoint uses —
+// this is the fix for the recurring "x.filter/map is not a function"
+// crashes that were happening across Schools, Classes, etc.
+
+export function unwrapList(body) {
+  if (Array.isArray(body)) return body;
+  if (body && Array.isArray(body.data)) return body.data;
+  if (body && body.data && Array.isArray(body.data.data)) return body.data.data;
+  return [];
+}
+
+export function unwrapItem(body) {
+  if (body && typeof body === 'object' && 'data' in body) return body.data;
+  return body;
+}
+
 // Always attach the current token from sessionStorage on every request.
-// (Previously relied on config._accessToken, which was never set on normal
-// calls, so the Authorization header was silently missing every time.)
 api.interceptors.request.use(
   (config) => {
     const accessToken = sessionStorage.getItem('accessToken');
@@ -29,14 +47,6 @@ api.interceptors.response.use(
   async (error) => {
     const originalRequest = error.config;
 
-    // Fallback for when backend is not running (Development Mode)
-    if (error.code === 'ERR_NETWORK' || error.message === 'Network Error') {
-      console.warn('Backend is unreachable. Using fallback mock response for:', originalRequest.url);
-      return Promise.resolve({
-        data: originalRequest.method === 'get' ? [] : { id: Date.now(), success: true }
-      });
-    }
-
     if (error.response && error.response.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true;
 
@@ -48,17 +58,11 @@ api.interceptors.response.use(
         );
 
         const newAccessToken = response.data.accessToken;
-
-        // Persist the refreshed token so every future request picks it up
-        // automatically via the request interceptor above.
         sessionStorage.setItem('accessToken', newAccessToken);
-
         originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
 
         return api(originalRequest);
       } catch (refreshError) {
-        // Refresh failed (expired/missing/blocked cookie) — clear stale
-        // session data and send the user back to login.
         sessionStorage.removeItem('accessToken');
         sessionStorage.removeItem('user');
 

@@ -8,23 +8,24 @@ import { Building2, Mail, Phone, MapPin, Upload, CheckCircle, ExternalLink, Grad
 
 export default function Settings() {
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [form, setForm] = useState({ name: '', email: '', phone: '', address: '', logo: null });
+  const [form, setForm] = useState({ name: '', email: '', phone: '', address: '', logo: null, plan: '' });
   const [preview, setPreview] = useState('');
   const { addToast } = useToast();
 
   useEffect(() => {
     getSchool()
       .then((data) => {
-        setForm({ name: data.name || '', email: data.email || '', phone: data.phone || '', address: data.address || '', logo: null });
-        setPreview(data.logo || '');
-        setLoading(false);
+        setForm({ name: data?.name || '', email: data?.email || '', phone: data?.phone || '', address: data?.address || '', logo: null, plan: data?.plan || '' });
+        setPreview(data?.logoUrl || '');
+        setLoadError(false);
       })
-      .catch(() => {
-        // Use mock data if API fails
-        setForm({ name: 'Greenfield Academy', email: 'admin@greenfield.edu.gh', phone: '+233 20 000 0000', address: 'P.O. Box 123, Accra, Ghana', logo: null });
-        setLoading(false);
-      });
+      .catch((err) => {
+        console.error('School profile fetch error:', err);
+        setLoadError(true);
+      })
+      .finally(() => setLoading(false));
   }, []);
 
   const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value });
@@ -42,7 +43,8 @@ export default function Settings() {
     try {
       await updateSchool(form);
       addToast('School settings updated successfully', 'success');
-    } catch {
+    } catch (err) {
+      console.error('School settings update error:', err);
       addToast('Failed to update settings', 'error');
     } finally {
       setSaving(false);
@@ -56,6 +58,12 @@ export default function Settings() {
         subtitle="Manage your school profile and preferences"
         breadcrumb="System"
       />
+
+      {loadError && (
+        <div className="rounded-lg bg-amber-50 border border-amber-200 px-4 py-3 text-sm text-amber-800 mb-5">
+          Couldn't load school settings from the server. Check the console for details.
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Form */}
@@ -91,7 +99,7 @@ export default function Settings() {
               <div className="text-right flex-shrink-0">
                 <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200">
                   <span className="h-1.5 w-1.5 rounded-full bg-indigo-600" />
-                  Pro Plan
+                  {form.plan || 'Plan'}
                 </span>
                 <a href="#" className="flex items-center gap-1 text-xs text-gray-400 hover:text-indigo-600 mt-1.5 transition-colors justify-end">
                   Upgrade <ExternalLink className="h-3 w-3" />
@@ -154,29 +162,6 @@ export default function Settings() {
 
         {/* Right sidebar */}
         <div className="space-y-5">
-          {/* Quick stats */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
-            <h3 className="text-sm font-semibold text-gray-900 mb-4">Account Overview</h3>
-            <div className="space-y-3">
-              {[
-                { label: 'Plan', value: 'Pro', pill: true },
-                { label: 'Students', value: '1,234' },
-                { label: 'Staff', value: '45' },
-                { label: 'Storage', value: '2.4 GB / 10 GB' },
-                { label: 'Member since', value: 'Jan 2024' },
-              ].map(s => (
-                <div key={s.label} className="flex items-center justify-between text-sm">
-                  <span className="text-gray-500">{s.label}</span>
-                  {s.pill ? (
-                    <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-indigo-50 text-indigo-700">{s.value}</span>
-                  ) : (
-                    <span className="font-medium text-gray-900">{s.value}</span>
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-
           {/* Danger zone */}
           <div className="bg-white rounded-xl shadow-sm border border-red-200 p-5">
             <h3 className="text-sm font-semibold text-red-700 mb-1">Danger Zone</h3>

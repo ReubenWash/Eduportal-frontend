@@ -2,20 +2,13 @@ import { useState, useEffect } from 'react';
 import StatCard from '../components/common/StatCard';
 import PageHeader from '../components/common/PageHeader';
 import { useAuth } from '../context/AuthContext';
+import { getDashboardStats } from '../api/schoolApi';
 import {
   Users, GraduationCap, BookOpen, CalendarDays,
   ArrowRight, UserPlus, BookPlus, FileBarChart, TrendingUp,
   Clock, CheckCircle2, AlertCircle, Activity
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
-
-const recentActivity = [
-  { id: 1, type: 'enrollment', icon: GraduationCap, color: 'indigo', title: 'New student enrolled', desc: 'John Doe was admitted to JHS1 A', time: '2 hours ago' },
-  { id: 2, type: 'score', icon: CheckCircle2, color: 'green', title: 'Scores submitted', desc: 'Mathematics scores for JHS2 B by Mr. Adu', time: '4 hours ago' },
-  { id: 3, type: 'alert', icon: AlertCircle, color: 'amber', title: 'Low attendance alert', desc: 'JHS3 A attendance dropped below 75%', time: '6 hours ago' },
-  { id: 4, type: 'report', icon: FileBarChart, color: 'blue', title: 'Reports generated', desc: 'Term 1 reports for SS2 A ready for review', time: 'Yesterday' },
-  { id: 5, type: 'enrollment', icon: GraduationCap, color: 'indigo', title: 'New student enrolled', desc: 'Mary Asante was admitted to JHS1 B', time: 'Yesterday' },
-];
 
 const quickLinks = [
   { label: 'Admit Student', icon: UserPlus, href: '/students', color: 'indigo' },
@@ -34,21 +27,36 @@ const colorMap = {
 
 export default function Dashboard() {
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const { user } = useAuth();
   const [stats, setStats] = useState({});
 
   useEffect(() => {
-    setTimeout(() => {
-      setStats({ students: 1234, staff: 45, classes: 28, term: { name: 'Term 1, 2025', status: 'ACTIVE', endDate: '15 Dec 2025' } });
-      setLoading(false);
-    }, 800);
+    getDashboardStats()
+      .then((data) => {
+        setStats(data || {});
+        setLoadError(false);
+      })
+      .catch((err) => {
+        console.error('Dashboard stats fetch error:', err);
+        setLoadError(true);
+      })
+      .finally(() => setLoading(false));
   }, []);
 
+  const termLabel = stats.activeTerm
+    ? `${stats.activeTerm.academicYear} · Term ${stats.activeTerm.termNumber}`
+    : 'No Active Term';
+
+  const termEndDate = stats.activeTerm?.endDate
+    ? new Date(stats.activeTerm.endDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+    : '—';
+
   const statsCards = [
-    { title: 'Total Students', value: stats.students ? new Intl.NumberFormat().format(stats.students) : '—', icon: GraduationCap, trend: 3.2, trendLabel: 'vs last term', color: 'indigo' },
-    { title: 'Total Staff', value: stats.staff ? new Intl.NumberFormat().format(stats.staff) : '—', icon: Users, trend: 1.1, trendLabel: 'vs last month', color: 'blue' },
-    { title: 'Active Classes', value: stats.classes ? new Intl.NumberFormat().format(stats.classes) : '—', icon: BookOpen, trend: 0, trendLabel: 'no change', color: 'amber' },
-    { title: 'Current Term', value: loading ? '—' : (stats.term?.name || 'No Active Term'), icon: CalendarDays, color: 'green' },
+    { title: 'Total Students', value: stats.totalStudents != null ? new Intl.NumberFormat().format(stats.totalStudents) : '—', icon: GraduationCap, color: 'indigo' },
+    { title: 'Total Staff', value: stats.totalStaff != null ? new Intl.NumberFormat().format(stats.totalStaff) : '—', icon: Users, color: 'blue' },
+    { title: 'Active Classes', value: stats.totalClasses != null ? new Intl.NumberFormat().format(stats.totalClasses) : '—', icon: BookOpen, color: 'amber' },
+    { title: 'Pass Rate', value: stats.passRate != null ? `${stats.passRate}%` : '—', icon: CalendarDays, color: 'green' },
   ];
 
   return (
@@ -57,6 +65,12 @@ export default function Dashboard() {
         title={`Good morning${user?.name ? `, ${user.name.split(' ')[0]}` : ''}!`}
         subtitle="Here's what's happening at your school today."
       />
+
+      {loadError && (
+        <div className="rounded-lg bg-amber-50 border border-amber-200 px-4 py-3 text-sm text-amber-800 mb-5">
+          Couldn't load dashboard stats from the server. Check the console for details.
+        </div>
+      )}
 
       {/* Stats Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5 mb-7">
@@ -69,7 +83,7 @@ export default function Dashboard() {
               </div>
             ))
           : statsCards.map((s, i) => (
-              <StatCard key={i} icon={s.icon} title={s.title} value={s.value} trend={s.trend} trendLabel={s.trendLabel} color={s.color} />
+              <StatCard key={i} icon={s.icon} title={s.title} value={s.value} color={s.color} />
             ))
         }
       </div>
@@ -87,25 +101,8 @@ export default function Dashboard() {
               View all <ArrowRight className="h-3 w-3" />
             </Link>
           </div>
-          <div className="divide-y divide-gray-50">
-            {recentActivity.map((item) => {
-              const c = colorMap[item.color] || colorMap.indigo;
-              return (
-                <div key={item.id} className="flex items-start gap-4 px-6 py-4 hover:bg-gray-50/60 transition-colors">
-                  <div className={`flex-shrink-0 mt-0.5 h-8 w-8 rounded-full ${c.bg} flex items-center justify-center`}>
-                    <item.icon className={`h-4 w-4 ${c.text}`} />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-gray-900">{item.title}</p>
-                    <p className="text-xs text-gray-500 mt-0.5 truncate">{item.desc}</p>
-                  </div>
-                  <div className="flex items-center gap-1 flex-shrink-0">
-                    <Clock className="h-3 w-3 text-gray-400" />
-                    <span className="text-xs text-gray-400 whitespace-nowrap">{item.time}</span>
-                  </div>
-                </div>
-              );
-            })}
+          <div className="px-6 py-10 text-center text-sm text-gray-400">
+            See the Notifications page for your full activity feed.
           </div>
         </div>
 
@@ -116,7 +113,7 @@ export default function Dashboard() {
             <div className="bg-gradient-to-br from-indigo-600 to-indigo-700 px-5 py-4">
               <p className="text-indigo-200 text-xs font-medium uppercase tracking-wider mb-1">Current Term</p>
               <p className="text-white font-semibold text-lg leading-tight">
-                {loading ? 'Loading...' : (stats.term?.name || 'No Active Term')}
+                {loading ? 'Loading...' : termLabel}
               </p>
             </div>
             <div className="px-5 py-4 space-y-3">
@@ -124,21 +121,12 @@ export default function Dashboard() {
                 <span className="text-xs text-gray-500">Status</span>
                 <span className="inline-flex items-center gap-1.5 text-xs font-medium text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full">
                   <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-                  {stats.term?.status || 'ACTIVE'}
+                  {stats.activeTerm ? 'ACTIVE' : '—'}
                 </span>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-xs text-gray-500">End Date</span>
-                <span className="text-xs font-medium text-gray-900">{stats.term?.endDate || '—'}</span>
-              </div>
-              <div className="pt-1">
-                <div className="flex items-center justify-between mb-1.5">
-                  <span className="text-xs text-gray-500">Progress</span>
-                  <span className="text-xs font-medium text-gray-700">65%</span>
-                </div>
-                <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                  <div className="h-full bg-indigo-600 rounded-full w-[65%] transition-all duration-500" />
-                </div>
+                <span className="text-xs font-medium text-gray-900">{termEndDate}</span>
               </div>
             </div>
           </div>

@@ -1,24 +1,12 @@
 import { useState, useMemo, useEffect } from 'react';
 import {
   Search, CheckCircle, XCircle, Clock, Eye, School,
-  MapPin, Mail, Phone, Users, CalendarDays, ChevronDown, Filter,
+  MapPin, Mail, Phone, Users, CalendarDays,
 } from 'lucide-react';
 import Badge from '../../components/ui/Badge';
 import Modal from '../../components/ui/Modal';
 import { useToast } from '../../context/ToastContext';
 import { getAllSchools, updateSchoolStatus as apiUpdateSchoolStatus } from '../../api/schoolApi';
-
-// Mock school data (fallback only, used when the API call genuinely fails)
-const MOCK_SCHOOLS = [
-  { id: '1', name: 'Sunshine Academy',      email: 'admin@sunshine.edu.gh',    phone: '+233 24 111 1111', location: 'Accra, Greater Accra',   students: 842,  status: 'ACTIVE',   registeredAt: '2024-01-15', plan: 'Premium' },
-  { id: '2', name: 'Hilltop School',        email: 'admin@hilltop.edu.gh',      phone: '+233 20 222 2222', location: 'Kumasi, Ashanti',          students: 0,    status: 'PENDING',  registeredAt: '2024-06-22', plan: 'Basic'   },
-  { id: '3', name: 'East Bay College',      email: 'info@eastbay.edu.gh',       phone: '+233 27 333 3333', location: 'Takoradi, Western',        students: 0,    status: 'REJECTED', registeredAt: '2024-06-18', plan: 'Basic'   },
-  { id: '4', name: 'Riverside JHS',         email: 'admin@riverside.edu.gh',    phone: '+233 26 444 4444', location: 'Tamale, Northern',         students: 512,  status: 'ACTIVE',   registeredAt: '2024-03-01', plan: 'Standard'},
-  { id: '5', name: 'Lakewood Academy',      email: 'contact@lakewood.edu.gh',   phone: '+233 55 555 5555', location: 'Cape Coast, Central',      students: 0,    status: 'PENDING',  registeredAt: '2024-06-21', plan: 'Premium' },
-  { id: '6', name: 'Golden Gate School',    email: 'info@goldengate.edu.gh',    phone: '+233 24 666 6666', location: 'Accra, Greater Accra',     students: 1203, status: 'ACTIVE',   registeredAt: '2023-09-10', plan: 'Premium' },
-  { id: '7', name: 'Star of the Sea Academy',email: 'admin@startsea.edu.gh',   phone: '+233 20 777 7777', location: 'Tema, Greater Accra',      students: 389,  status: 'ACTIVE',   registeredAt: '2024-02-14', plan: 'Standard'},
-  { id: '8', name: 'Crystal Springs JHS',   email: 'crystal@springs.edu.gh',    phone: '+233 27 888 8888', location: 'Sunyani, Bono',            students: 0,    status: 'PENDING',  registeredAt: '2024-06-20', plan: 'Basic'   },
-];
 
 const statusVariant = { ACTIVE: 'success', PENDING: 'warning', REJECTED: 'danger', SUSPENDED: 'danger' };
 const statusIcon = {
@@ -30,8 +18,6 @@ const statusIcon = {
 
 export default function AdminSchools() {
   const { addToast } = useToast();
-  // Start empty, not with mock data — mock data should only ever be an
-  // explicit fallback, never the default state while real data is loading.
   const [schools, setSchools] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
@@ -40,22 +26,11 @@ export default function AdminSchools() {
   const [viewSchool, setViewSchool] = useState(null);
   const [confirmAction, setConfirmAction] = useState(null);
 
-  useEffect(() => {
+  const load = () => {
+    setLoading(true);
     getAllSchools()
-      .then(res => {
-        // Backend actually returns:
-        // { success, message, data: { data: [...schools], pagination: {...} } }
-        // getAllSchools() returns res.data from axios, i.e. the whole
-        // { success, message, data: { data, pagination } } object.
-        const list = Array.isArray(res)
-          ? res                          // already a plain array (e.g. mock fallback)
-          : Array.isArray(res?.data)
-            ? res.data                   // shape: { data: [...] }
-            : Array.isArray(res?.data?.data)
-              ? res.data.data           // shape: { data: { data: [...], pagination } } <- current backend shape
-              : [];
-
-        const fetchedSchools = list.map(s => ({
+      .then(list => {
+        const fetchedSchools = (Array.isArray(list) ? list : []).map(s => ({
           ...s,
           location: s.district && s.region ? `${s.district}, ${s.region}` : s.address || 'Unknown',
           students: s._count?.students || 0,
@@ -65,13 +40,14 @@ export default function AdminSchools() {
         setLoadError(false);
       })
       .catch(err => {
-        // Log the real error instead of silently assuming "offline"
         console.error('Schools fetch error:', err);
         setLoadError(true);
-        setSchools(MOCK_SCHOOLS);
+        setSchools([]);
       })
       .finally(() => setLoading(false));
-  }, []);
+  };
+
+  useEffect(() => { load(); }, []);
 
   const filtered = useMemo(() => schools.filter(s => {
     if (keyword && !s.name.toLowerCase().includes(keyword.toLowerCase()) && !s.email.toLowerCase().includes(keyword.toLowerCase())) return false;
@@ -112,8 +88,8 @@ export default function AdminSchools() {
       </div>
 
       {loadError && (
-        <div className="rounded-lg bg-amber-50 border border-amber-200 px-4 py-3 text-sm text-amber-800">
-          Couldn't reach the server — showing sample data. Check the console for details.
+        <div className="rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-800">
+          Couldn't reach the server to load schools. Check the console for details, or refresh to try again.
         </div>
       )}
 
@@ -188,8 +164,8 @@ export default function AdminSchools() {
                   <td className="px-5 py-4 whitespace-nowrap text-sm text-gray-600">{school.location}</td>
                   <td className="px-5 py-4 whitespace-nowrap">
                     <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
-                      school.plan === 'Premium' ? 'bg-indigo-50 text-indigo-700' :
-                      school.plan === 'Standard' ? 'bg-violet-50 text-violet-700' :
+                      school.plan === 'PREMIUM' ? 'bg-indigo-50 text-indigo-700' :
+                      school.plan === 'STANDARD' ? 'bg-violet-50 text-violet-700' :
                       'bg-gray-100 text-gray-600'
                     }`}>{school.plan}</span>
                   </td>

@@ -2,23 +2,15 @@ import { useState, useEffect } from 'react';
 import PageHeader from '../../components/common/PageHeader';
 import Button from '../../components/ui/Button';
 import Select from '../../components/ui/Select';
-import Badge from '../../components/ui/Badge';
 import Avatar from '../../components/ui/Avatar';
 import { useToast } from '../../context/ToastContext';
 import { getClasses } from '../../api/classesApi';
+import { getStudents } from '../../api/studentsApi';
+import { bulkMarkAttendance } from '../../api/attendanceApi';
 import { CheckCircle2, XCircle, Clock, Users, Save, BarChart2 } from 'lucide-react';
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
 } from 'recharts';
-
-const mockStudents = [
-  { id: '1', name: 'Ama Mensah', studentNo: 'STU/001', photo: '' },
-  { id: '2', name: 'Kofi Boateng', studentNo: 'STU/002', photo: '' },
-  { id: '3', name: 'Akua Sarpong', studentNo: 'STU/003', photo: '' },
-  { id: '4', name: 'Kwame Asante', studentNo: 'STU/004', photo: '' },
-  { id: '5', name: 'Abena Osei', studentNo: 'STU/005', photo: '' },
-  { id: '6', name: 'Yaw Darko', studentNo: 'STU/006', photo: '' },
-];
 
 const STATUS = { PRESENT: 'PRESENT', ABSENT: 'ABSENT', LATE: 'LATE' };
 const statusConfig = {
@@ -37,13 +29,34 @@ export default function Attendance() {
   const [classes, setClasses] = useState([]);
   const [selectedClass, setSelectedClass] = useState('');
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
-  const [records, setRecords] = useState(mockStudents.map(s => ({ ...s, status: STATUS.PRESENT, notes: '' })));
+  const [records, setRecords] = useState([]);
+  const [loadingStudents, setLoadingStudents] = useState(false);
   const [saving, setSaving] = useState(false);
   const { addToast } = useToast();
 
   useEffect(() => {
-    getClasses().then(d => setClasses(d)).catch(() => {});
+    getClasses()
+      .then(d => setClasses(Array.isArray(d) ? d : []))
+      .catch(err => console.error('Classes fetch error:', err));
   }, []);
+
+  useEffect(() => {
+    if (!selectedClass) {
+      setRecords([]);
+      return;
+    }
+    setLoadingStudents(true);
+    getStudents({ classId: selectedClass })
+      .then(students => {
+        const list = Array.isArray(students) ? students : [];
+        setRecords(list.map(s => ({ id: s.id, name: s.name, studentNo: s.studentNo, photo: s.photo, status: STATUS.PRESENT, notes: '' })));
+      })
+      .catch(err => {
+        console.error('Students fetch error:', err);
+        setRecords([]);
+      })
+      .finally(() => setLoadingStudents(false));
+  }, [selectedClass]);
 
   const setStatus = (id, status) => {
     setRecords(prev => prev.map(r => r.id === id ? { ...r, status } : r));
@@ -59,10 +72,24 @@ export default function Attendance() {
   };
 
   const handleSave = async () => {
+    if (!selectedClass) {
+      addToast('Please select a class first', 'error');
+      return;
+    }
     setSaving(true);
-    await new Promise(r => setTimeout(r, 800));
-    setSaving(false);
-    addToast('Attendance saved successfully', 'success');
+    try {
+      await bulkMarkAttendance({
+        classId: selectedClass,
+        date,
+        records: records.map(r => ({ studentId: r.id, status: r.status, notes: r.notes })),
+      });
+      addToast('Attendance saved successfully', 'success');
+    } catch (err) {
+      console.error('Attendance save error:', err);
+      addToast('Failed to save attendance', 'error');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const summary = {
@@ -78,8 +105,8 @@ export default function Attendance() {
         subtitle="Track and record daily student attendance"
         action={
           <div className="flex items-center gap-2">
-            <Button variant="secondary" onClick={markAllPresent}>Mark All Present</Button>
-            <Button icon={Save} loading={saving} onClick={handleSave}>Save Attendance</Button>
+            <Button variant="secondary" onClick={markAllPresent} disabled={records.length === 0}>Mark All Present</Button>
+            <Button icon={Save} loading={saving} onClick={handleSave} disabled={records.length === 0}>Save Attendance</Button>
           </div>
         }
       />
@@ -128,44 +155,52 @@ export default function Attendance() {
             <h3 className="text-sm font-semibold text-gray-900">Student Attendance</h3>
             <span className="ml-auto text-xs text-gray-500">{records.length} students</span>
           </div>
-          <div className="divide-y divide-gray-100">
-            {records.map((row) => (
-              <div key={row.id} className="flex items-center gap-4 px-5 py-3.5 hover:bg-gray-50/60 transition-colors">
-                <Avatar src={row.photo} name={row.name} size="sm" />
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-gray-900 truncate">{row.name}</p>
-                  <p className="text-xs text-gray-500">{row.studentNo}</p>
+          {!selectedClass ? (
+            <div className="py-16 text-center text-sm text-gray-400">Select a class to load its student roster.</div>
+          ) : loadingStudents ? (
+            <div className="py-16 text-center text-sm text-gray-400">Loading students…</div>
+          ) : records.length === 0 ? (
+            <div className="py-16 text-center text-sm text-gray-400">No students enrolled in this class yet.</div>
+          ) : (
+            <div className="divide-y divide-gray-100">
+              {records.map((row) => (
+                <div key={row.id} className="flex items-center gap-4 px-5 py-3.5 hover:bg-gray-50/60 transition-colors">
+                  <Avatar src={row.photo} name={row.name} size="sm" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-gray-900 truncate">{row.name}</p>
+                    <p className="text-xs text-gray-500">{row.studentNo}</p>
+                  </div>
+                  {/* Status toggles */}
+                  <div className="flex items-center gap-1">
+                    {Object.entries(STATUS).map(([key, val]) => {
+                      const cfg = statusConfig[val];
+                      const isActive = row.status === val;
+                      return (
+                        <button
+                          key={key}
+                          onClick={() => setStatus(row.id, val)}
+                          className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg border text-xs font-medium transition-all ${
+                            isActive ? `${cfg.bg} ${cfg.color}` : 'bg-gray-50 border-gray-200 text-gray-400 hover:border-gray-300'
+                          }`}
+                        >
+                          <cfg.icon className="h-3 w-3" />
+                          {cfg.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  {/* Notes */}
+                  <input
+                    type="text"
+                    value={row.notes}
+                    onChange={e => setNote(row.id, e.target.value)}
+                    placeholder="Notes..."
+                    className="w-28 text-xs border border-gray-200 rounded-md px-2 py-1.5 text-gray-700 placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-indigo-300"
+                  />
                 </div>
-                {/* Status toggles */}
-                <div className="flex items-center gap-1">
-                  {Object.entries(STATUS).map(([key, val]) => {
-                    const cfg = statusConfig[val];
-                    const isActive = row.status === val;
-                    return (
-                      <button
-                        key={key}
-                        onClick={() => setStatus(row.id, val)}
-                        className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg border text-xs font-medium transition-all ${
-                          isActive ? `${cfg.bg} ${cfg.color}` : 'bg-gray-50 border-gray-200 text-gray-400 hover:border-gray-300'
-                        }`}
-                      >
-                        <cfg.icon className="h-3 w-3" />
-                        {cfg.label}
-                      </button>
-                    );
-                  })}
-                </div>
-                {/* Notes */}
-                <input
-                  type="text"
-                  value={row.notes}
-                  onChange={e => setNote(row.id, e.target.value)}
-                  placeholder="Notes..."
-                  className="w-28 text-xs border border-gray-200 rounded-md px-2 py-1.5 text-gray-700 placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-indigo-300"
-                />
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Trend chart */}
@@ -190,21 +225,6 @@ export default function Attendance() {
               <Area type="monotone" dataKey="rate" name="%" stroke="#4F46E5" strokeWidth={2} fill="url(#attendTrend)" dot={false} />
             </AreaChart>
           </ResponsiveContainer>
-          {/* Summary stats */}
-          <div className="mt-4 pt-4 border-t border-gray-100 space-y-2.5">
-            <div className="flex items-center justify-between text-sm">
-              <span className="text-gray-500">Average rate</span>
-              <span className="font-semibold text-gray-900">92.4%</span>
-            </div>
-            <div className="flex items-center justify-between text-sm">
-              <span className="text-gray-500">Total absences</span>
-              <span className="font-semibold text-red-600">8</span>
-            </div>
-            <div className="flex items-center justify-between text-sm">
-              <span className="text-gray-500">At risk students</span>
-              <span className="font-semibold text-amber-600">2</span>
-            </div>
-          </div>
         </div>
       </div>
     </div>

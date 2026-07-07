@@ -2,45 +2,65 @@ import { useState, useEffect } from 'react';
 import PageHeader from '../../components/common/PageHeader';
 import Button from '../../components/ui/Button';
 import { useToast } from '../../context/ToastContext';
-import { getNotifications } from '../../api/notificationsApi';
-import { Bell, BellOff, CheckCheck, GraduationCap, Users, BarChart2, AlertCircle, Info, CheckCircle2 } from 'lucide-react';
-
-const mockNotifications = [
-  { id: 1, type: 'success', icon: GraduationCap, title: 'New student admitted', message: 'John Doe has been successfully admitted to JHS1 A.', time: '2 hours ago', read: false },
-  { id: 2, type: 'warning', icon: AlertCircle, title: 'Low attendance alert', message: 'JHS3 A class attendance dropped to 68% this week — below the 75% threshold.', time: '4 hours ago', read: false },
-  { id: 3, type: 'info', icon: BarChart2, title: 'Scores submitted', message: 'Mr. Kofi Adu submitted Mathematics scores for JHS2 B.', time: '6 hours ago', read: false },
-  { id: 4, type: 'success', icon: CheckCircle2, title: 'Reports approved', message: 'Term 1 reports for SS2 A have been approved and are ready for release.', time: '1 day ago', read: true },
-  { id: 5, type: 'info', icon: Users, title: 'New staff member added', message: 'Mrs. Abena Mensah has been added as a Subject Teacher.', time: '2 days ago', read: true },
-  { id: 6, type: 'warning', icon: AlertCircle, title: 'Term ending soon', message: 'Term 1 ends in 12 days. Ensure all reports are submitted and approved before then.', time: '3 days ago', read: true },
-  { id: 7, type: 'info', icon: Info, title: 'System maintenance', message: 'Scheduled maintenance on 25 Jun 2025 from 2:00 AM – 4:00 AM. The portal will be unavailable.', time: '5 days ago', read: true },
-];
+import { getNotifications, markNotificationRead } from '../../api/notificationsApi';
+import { Bell, BellOff, CheckCheck, AlertCircle, Info, CheckCircle2, XCircle } from 'lucide-react';
 
 const typeConfig = {
-  success: { bg: 'bg-emerald-50', iconBg: 'bg-emerald-100', iconColor: 'text-emerald-600', border: 'border-emerald-200' },
-  warning: { bg: 'bg-amber-50', iconBg: 'bg-amber-100', iconColor: 'text-amber-600', border: 'border-amber-200' },
-  info: { bg: 'bg-blue-50', iconBg: 'bg-blue-100', iconColor: 'text-blue-600', border: 'border-blue-200' },
-  error: { bg: 'bg-red-50', iconBg: 'bg-red-100', iconColor: 'text-red-600', border: 'border-red-200' },
+  success: { iconBg: 'bg-emerald-100', iconColor: 'text-emerald-600', icon: CheckCircle2 },
+  warning: { iconBg: 'bg-amber-100', iconColor: 'text-amber-600', icon: AlertCircle },
+  info: { iconBg: 'bg-blue-100', iconColor: 'text-blue-600', icon: Info },
+  error: { iconBg: 'bg-red-100', iconColor: 'text-red-600', icon: XCircle },
 };
+
+function timeAgo(dateStr) {
+  if (!dateStr) return '';
+  const diffMs = Date.now() - new Date(dateStr).getTime();
+  const mins = Math.floor(diffMs / 60000);
+  if (mins < 1) return 'just now';
+  if (mins < 60) return `${mins} min ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs} hr${hrs !== 1 ? 's' : ''} ago`;
+  const days = Math.floor(hrs / 24);
+  return `${days} day${days !== 1 ? 's' : ''} ago`;
+}
 
 export default function Notifications() {
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const { addToast } = useToast();
 
   useEffect(() => {
-    setTimeout(() => {
-      setNotifications(mockNotifications);
-      setLoading(false);
-    }, 500);
+    getNotifications()
+      .then((data) => {
+        setNotifications(Array.isArray(data) ? data : []);
+        setLoadError(false);
+      })
+      .catch((err) => {
+        console.error('Notifications fetch error:', err);
+        setLoadError(true);
+      })
+      .finally(() => setLoading(false));
   }, []);
 
-  const markAsRead = (id) => {
+  const markAsRead = async (id) => {
     setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
+    try {
+      await markNotificationRead(id);
+    } catch (err) {
+      console.error('Failed to mark notification read:', err);
+    }
   };
 
-  const markAllRead = () => {
+  const markAllRead = async () => {
+    const unreadIds = notifications.filter(n => !n.read).map(n => n.id);
     setNotifications(prev => prev.map(n => ({ ...n, read: true })));
     addToast('All notifications marked as read', 'success');
+    try {
+      await Promise.all(unreadIds.map(id => markNotificationRead(id)));
+    } catch (err) {
+      console.error('Failed to mark all notifications read:', err);
+    }
   };
 
   const unread = notifications.filter(n => !n.read).length;
@@ -78,6 +98,12 @@ export default function Notifications() {
         }
       />
 
+      {loadError && (
+        <div className="rounded-lg bg-amber-50 border border-amber-200 px-4 py-3 text-sm text-amber-800 mb-5">
+          Couldn't reach the server to load notifications. Check the console for details.
+        </div>
+      )}
+
       {notifications.length === 0 ? (
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-16 text-center">
           <div className="h-14 w-14 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -88,27 +114,20 @@ export default function Notifications() {
         </div>
       ) : (
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-          {/* Filter tabs */}
-          <div className="flex items-center gap-1 p-3 border-b border-gray-200">
-            <button className="px-3 py-1.5 rounded-lg text-sm font-medium bg-indigo-600 text-white">All</button>
-            <button className="px-3 py-1.5 rounded-lg text-sm font-medium text-gray-500 hover:text-gray-700 hover:bg-gray-100 transition-colors">Unread ({unread})</button>
-          </div>
-
           <div className="divide-y divide-gray-100">
             {notifications.map((n) => {
               const cfg = typeConfig[n.type] || typeConfig.info;
+              const Icon = cfg.icon;
               return (
                 <div
                   key={n.id}
                   onClick={() => markAsRead(n.id)}
                   className={`flex items-start gap-4 px-5 py-4 cursor-pointer hover:bg-gray-50/60 transition-colors group ${!n.read ? 'bg-indigo-50/30' : ''}`}
                 >
-                  {/* Icon */}
                   <div className={`flex-shrink-0 mt-0.5 h-10 w-10 rounded-full ${cfg.iconBg} flex items-center justify-center`}>
-                    <n.icon className={`h-5 w-5 ${cfg.iconColor}`} />
+                    <Icon className={`h-5 w-5 ${cfg.iconColor}`} />
                   </div>
 
-                  {/* Content */}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-start justify-between gap-2">
                       <p className={`text-sm font-semibold leading-tight ${n.read ? 'text-gray-700' : 'text-gray-900'}`}>
@@ -119,7 +138,7 @@ export default function Notifications() {
                       )}
                     </div>
                     <p className="text-sm text-gray-500 mt-0.5 leading-relaxed">{n.message}</p>
-                    <p className="text-xs text-gray-400 mt-1.5">{n.time}</p>
+                    <p className="text-xs text-gray-400 mt-1.5">{timeAgo(n.createdAt)}</p>
                   </div>
                 </div>
               );
