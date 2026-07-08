@@ -28,6 +28,8 @@ import {
   CreditCard,
   Database,
   LifeBuoy,
+  Home,
+  ClipboardCheck,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import Avatar from '../components/ui/Avatar';
@@ -91,47 +93,80 @@ const superAdminNav = [
   },
 ];
 
+// Staff/admin nav — School Admin, Class Teacher, Subject Teacher.
+// Each item's `roles` list matches section 5 of the Project Documentation.
 const navGroups = [
   {
     label: 'Overview',
     items: [
-      { path: '/dashboard', icon: LayoutDashboard, label: 'Dashboard', roles: ['SUPER_ADMIN', 'SCHOOL_ADMIN', 'CLASS_TEACHER', 'SUBJECT_TEACHER'] },
+      { path: '/dashboard', icon: LayoutDashboard, label: 'Dashboard', roles: ['SCHOOL_ADMIN', 'CLASS_TEACHER', 'SUBJECT_TEACHER'] },
     ],
   },
   {
     label: 'Academic',
     items: [
-      { path: '/classes', icon: BookOpen, label: 'Classes', roles: ['SUPER_ADMIN', 'SCHOOL_ADMIN', 'CLASS_TEACHER', 'PARENT'] },
-      { path: '/subjects', icon: Library, label: 'Subjects', roles: ['SUPER_ADMIN', 'SCHOOL_ADMIN', 'CLASS_TEACHER', 'PARENT'] },
-      { path: '/enrollments', icon: ClipboardList, label: 'Enrollments', roles: ['SUPER_ADMIN', 'SCHOOL_ADMIN', 'CLASS_TEACHER', 'PARENT'] },
-      { path: '/terms', icon: CalendarDays, label: 'Terms', roles: ['SUPER_ADMIN', 'SCHOOL_ADMIN', 'CLASS_TEACHER', 'PARENT'] },
+      { path: '/classes', icon: BookOpen, label: 'Classes', roles: ['SCHOOL_ADMIN', 'CLASS_TEACHER'] },
+      { path: '/subjects', icon: Library, label: 'Subjects', roles: ['SCHOOL_ADMIN', 'CLASS_TEACHER', 'SUBJECT_TEACHER'] },
+      { path: '/enrollments', icon: ClipboardList, label: 'Enrollments', roles: ['SCHOOL_ADMIN', 'CLASS_TEACHER'] },
+      { path: '/terms', icon: CalendarDays, label: 'Terms', roles: ['SCHOOL_ADMIN', 'CLASS_TEACHER', 'SUBJECT_TEACHER'] },
     ],
   },
   {
     label: 'People',
     items: [
-      { path: '/staff', icon: Users, label: 'Staff', roles: ['SUPER_ADMIN', 'SCHOOL_ADMIN'] },
-      { path: '/students', icon: GraduationCap, label: 'Students', roles: ['SUPER_ADMIN', 'SCHOOL_ADMIN', 'CLASS_TEACHER', 'PARENT'] },
-      { path: '/guardians', icon: UserCheck, label: 'Guardians', roles: ['SUPER_ADMIN', 'SCHOOL_ADMIN', 'PARENT'] },
+      { path: '/staff', icon: Users, label: 'Staff', roles: ['SCHOOL_ADMIN'] },
+      { path: '/students', icon: GraduationCap, label: 'Students', roles: ['SCHOOL_ADMIN', 'CLASS_TEACHER'] },
+      { path: '/guardians', icon: UserCheck, label: 'Guardians', roles: ['SCHOOL_ADMIN'] },
     ],
   },
   {
     label: 'Assessment',
     items: [
-      { path: '/scores', icon: BarChart2, label: 'Scores', roles: ['SUPER_ADMIN', 'SCHOOL_ADMIN', 'CLASS_TEACHER', 'SUBJECT_TEACHER', 'PARENT'] },
-      { path: '/attendance', icon: CheckSquare, label: 'Attendance', roles: ['SUPER_ADMIN', 'SCHOOL_ADMIN', 'CLASS_TEACHER', 'SUBJECT_TEACHER', 'PARENT'] },
-      { path: '/reports', icon: FileText, label: 'Reports', roles: ['SUPER_ADMIN', 'SCHOOL_ADMIN', 'PARENT'] },
+      { path: '/scores', icon: BarChart2, label: 'Scores', roles: ['SCHOOL_ADMIN', 'CLASS_TEACHER', 'SUBJECT_TEACHER'] },
+      { path: '/attendance', icon: CheckSquare, label: 'Attendance', roles: ['SCHOOL_ADMIN', 'CLASS_TEACHER', 'SUBJECT_TEACHER'] },
+      { path: '/reports', icon: FileText, label: 'Reports', roles: ['SCHOOL_ADMIN'] },
     ],
   },
   {
     label: 'System',
     items: [
-      { path: '/analytics', icon: TrendingUp, label: 'Analytics', roles: ['SUPER_ADMIN', 'SCHOOL_ADMIN', 'PARENT'] },
-      { path: '/notifications', icon: Bell, label: 'Notifications', roles: ['SUPER_ADMIN', 'SCHOOL_ADMIN', 'CLASS_TEACHER', 'SUBJECT_TEACHER', 'PARENT', 'STUDENT'] },
-      { path: '/settings', icon: Settings, label: 'School Settings', roles: ['SUPER_ADMIN', 'SCHOOL_ADMIN'] },
+      { path: '/analytics', icon: TrendingUp, label: 'Analytics', roles: ['SCHOOL_ADMIN'] },
+      { path: '/notifications', icon: Bell, label: 'Notifications', roles: ['SCHOOL_ADMIN', 'CLASS_TEACHER', 'SUBJECT_TEACHER'] },
+      { path: '/settings', icon: Settings, label: 'School Settings', roles: ['SCHOOL_ADMIN'] },
     ],
   },
 ];
+
+// Parent — read-only per section 5, Role 5
+const parentNav = [
+  {
+    label: 'My Account',
+    items: [
+      { path: '/parent', icon: Home, label: 'Parent Portal', roles: ['PARENT'] },
+      { path: '/notifications', icon: Bell, label: 'Notifications', roles: ['PARENT'] },
+    ],
+  },
+];
+
+// Student — read-only per section 5, Role 6
+const studentNav = [
+  {
+    label: 'My Account',
+    items: [
+      { path: '/student', icon: Home, label: 'Student Portal', roles: ['STUDENT'] },
+      { path: '/notifications', icon: Bell, label: 'Notifications', roles: ['STUDENT'] },
+    ],
+  },
+];
+
+const roleLabels = {
+  SUPER_ADMIN: 'Super Admin',
+  SCHOOL_ADMIN: 'School Admin',
+  CLASS_TEACHER: 'Class Teacher',
+  SUBJECT_TEACHER: 'Subject Teacher',
+  PARENT: 'Parent',
+  STUDENT: 'Student',
+};
 
 export default function AppLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -139,21 +174,29 @@ export default function AppLayout() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
 
-  const userRole = user?.role || 'SCHOOL_ADMIN';
+  // No silent fallback to SCHOOL_ADMIN — an unrecognized/missing role gets
+  // an empty nav rather than being shown admin navigation it doesn't have.
+  const userRole = user?.role;
 
-  const filteredNav = userRole === 'SUPER_ADMIN'
-    ? superAdminNav
-    : navGroups
-        .map((group) => ({
-          ...group,
-          items: group.items.filter((item) => item.roles.includes(userRole)),
-        }))
-        .filter((group) => group.items.length > 0);
+  const baseNav =
+    userRole === 'SUPER_ADMIN' ? superAdminNav :
+    userRole === 'PARENT' ? parentNav :
+    userRole === 'STUDENT' ? studentNav :
+    navGroups;
+
+  const filteredNav = baseNav
+    .map((group) => ({
+      ...group,
+      items: group.items.filter((item) => item.roles.includes(userRole)),
+    }))
+    .filter((group) => group.items.length > 0);
 
   const handleLogout = () => {
     logout();
     navigate('/login');
   };
+
+  const roleLabel = roleLabels[userRole] || userRole?.replace(/_/g, ' ') || 'User';
 
   return (
     <div className="min-h-screen bg-[#F8F9FB] flex">
@@ -228,13 +271,13 @@ export default function AppLayout() {
           <div className="flex items-center gap-3 px-2 py-2 rounded-lg hover:bg-white/5 transition-colors cursor-pointer group">
             <Avatar name={user?.name || 'User'} size="sm" />
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-white truncate">{user?.name || 'Admin User'}</p>
+              <p className="text-sm font-medium text-white truncate">{user?.name || 'User'}</p>
               {userRole === 'SUPER_ADMIN' ? (
                 <span className="inline-flex items-center gap-1 mt-0.5 px-1.5 py-0.5 rounded text-[9px] font-bold bg-indigo-500/30 text-indigo-300 uppercase tracking-wider">
                   <ShieldCheck className="h-2.5 w-2.5" /> Super Admin
                 </span>
               ) : (
-                <p className="text-[11px] text-gray-500 truncate">{user?.role?.replace(/_/g, ' ') || 'School Admin'}</p>
+                <p className="text-[11px] text-gray-500 truncate">{roleLabel}</p>
               )}
             </div>
             <button
@@ -292,8 +335,8 @@ export default function AppLayout() {
               >
                 <Avatar name={user?.name || 'User'} size="sm" />
                 <div className="hidden sm:block text-left">
-                  <p className="text-sm font-medium text-gray-900 leading-none">{user?.name || 'Admin'}</p>
-                  <p className="text-[11px] text-gray-500 mt-0.5 leading-none">{user?.role?.replace(/_/g, ' ') || 'School Admin'}</p>
+                  <p className="text-sm font-medium text-gray-900 leading-none">{user?.name || 'User'}</p>
+                  <p className="text-[11px] text-gray-500 mt-0.5 leading-none">{roleLabel}</p>
                 </div>
                 <ChevronDown className="h-3.5 w-3.5 text-gray-400" />
               </button>
@@ -302,18 +345,20 @@ export default function AppLayout() {
                   <div className="fixed inset-0" onClick={() => setProfileOpen(false)} />
                   <div className="absolute right-0 top-full mt-2 w-52 bg-white rounded-xl shadow-lg shadow-black/10 border border-gray-200 py-1 z-50">
                     <div className="px-4 py-3 border-b border-gray-100">
-                      <p className="text-sm font-semibold text-gray-900">{user?.name || 'Admin User'}</p>
-                      <p className="text-xs text-gray-500 mt-0.5">{user?.email || 'admin@school.com'}</p>
+                      <p className="text-sm font-semibold text-gray-900">{user?.name || 'User'}</p>
+                      <p className="text-xs text-gray-500 mt-0.5">{user?.email || ''}</p>
                     </div>
                     <div className="py-1">
-                      <Link
-                        to="/settings"
-                        onClick={() => setProfileOpen(false)}
-                        className="flex items-center gap-2.5 w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
-                      >
-                        <Settings className="h-4 w-4 text-gray-400" />
-                        Settings
-                      </Link>
+                      {(userRole === 'SCHOOL_ADMIN' || userRole === 'SUPER_ADMIN') && (
+                        <Link
+                          to="/settings"
+                          onClick={() => setProfileOpen(false)}
+                          className="flex items-center gap-2.5 w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                        >
+                          <Settings className="h-4 w-4 text-gray-400" />
+                          Settings
+                        </Link>
+                      )}
                       <button
                         onClick={handleLogout}
                         className="flex items-center gap-2.5 w-full px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors"

@@ -10,13 +10,21 @@ import ConfirmDialog from '../../components/ui/ConfirmDialog';
 import Badge from '../../components/ui/Badge';
 import Avatar from '../../components/ui/Avatar';
 import FileUpload from '../../components/common/FileUpload';
+import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
 import { getStudents, createStudent, updateStudent, deleteStudent } from '../../api/studentsApi';
 import { getClasses } from '../../api/classesApi';
-import { Search, UserPlus, FileDown, MoreHorizontal, Eye, Edit2, Trash2 } from 'lucide-react';
+import { Search, UserPlus, FileDown, Eye, Edit2, Trash2 } from 'lucide-react';
 
 export default function Students() {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  // Per the Project Documentation, Class Teacher can view and update
+  // student profiles in their class, but only School/Super Admin can
+  // admit new students or delete existing ones.
+  const canAdmitOrDelete = user?.role === 'SCHOOL_ADMIN' || user?.role === 'SUPER_ADMIN';
+  const canEdit = canAdmitOrDelete || user?.role === 'CLASS_TEACHER';
+
   const [data, setData] = useState([]);
   const [classes, setClasses] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -30,9 +38,9 @@ export default function Students() {
   const [photo, setPhoto] = useState(null);
   const { addToast } = useToast();
 
-  const load = () => getStudents().then(d => { setData(d); setLoading(false); }).catch(() => setLoading(false));
+  const load = () => getStudents().then(d => { setData(Array.isArray(d) ? d : []); setLoading(false); }).catch(err => { console.error('Students fetch error:', err); setLoading(false); });
   useEffect(() => { load(); }, []);
-  useEffect(() => { getClasses().then(d => setClasses(d)).catch(() => {}); }, []);
+  useEffect(() => { getClasses().then(d => setClasses(Array.isArray(d) ? d : [])).catch(err => console.error('Classes fetch error:', err)); }, []);
 
   const filtered = useMemo(() => {
     return data.filter(s => {
@@ -109,7 +117,7 @@ export default function Students() {
         action={
           <div className="flex items-center gap-2">
             <Button variant="secondary" icon={FileDown} className="hidden sm:flex">Export</Button>
-            <Button onClick={openCreate} icon={UserPlus}>Admit Student</Button>
+            {canAdmitOrDelete && <Button onClick={openCreate} icon={UserPlus}>Admit Student</Button>}
           </div>
         }
       />
@@ -155,20 +163,24 @@ export default function Students() {
               >
                 <Eye className="h-4 w-4" />
               </button>
-              <button
-                onClick={(e) => { e.stopPropagation(); openEdit(row); }}
-                className="p-1.5 text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-md transition-colors"
-                title="Edit Student"
-              >
-                <Edit2 className="h-4 w-4" />
-              </button>
-              <button
-                onClick={(e) => { e.stopPropagation(); setDeleteDialog(row); }}
-                className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors"
-                title="Delete Student"
-              >
-                <Trash2 className="h-4 w-4" />
-              </button>
+              {canEdit && (
+                <button
+                  onClick={(e) => { e.stopPropagation(); openEdit(row); }}
+                  className="p-1.5 text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-md transition-colors"
+                  title="Edit Student"
+                >
+                  <Edit2 className="h-4 w-4" />
+                </button>
+              )}
+              {canAdmitOrDelete && (
+                <button
+                  onClick={(e) => { e.stopPropagation(); setDeleteDialog(row); }}
+                  className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors"
+                  title="Delete Student"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </button>
+              )}
             </div>
           )}
         />
@@ -183,7 +195,7 @@ export default function Students() {
       >
         <form onSubmit={handleSave} className="space-y-5">
           <FileUpload label="Passport Photo" onFileSelect={handleFile} preview={preview} accept="image/*" />
-          
+
           <div className="space-y-4 pt-2 border-t border-gray-100">
             <Input label="Full Name" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} required placeholder="e.g. Ama Mensah" />
             <div className="grid grid-cols-2 gap-4">
@@ -194,7 +206,7 @@ export default function Students() {
               <Select label="Class" value={form.classId} onChange={e => setForm({ ...form, classId: e.target.value })} options={classes.map(c => ({ value: c.id, label: c.name }))} required placeholder="Select class..." />
               <Input label="Date of Birth" type="date" value={form.dob} onChange={e => setForm({ ...form, dob: e.target.value })} required />
             </div>
-            {editing && (
+            {editing && canAdmitOrDelete && (
               <Select
                 label="Status"
                 value={form.status}
@@ -203,7 +215,7 @@ export default function Students() {
               />
             )}
           </div>
-          
+
           <div className="pt-6 mt-6 border-t border-gray-100 flex gap-3 justify-end">
             <Button variant="secondary" onClick={() => setDrawerOpen(false)}>Cancel</Button>
             <Button type="submit">{editing ? 'Save Changes' : 'Admit Student'}</Button>

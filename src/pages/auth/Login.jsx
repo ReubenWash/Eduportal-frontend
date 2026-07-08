@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
+import { roleHome } from '../../routes/ProtectedRoute';
 import AuthLayout from '../../layouts/AuthLayout';
 import { Eye, EyeOff, AlertCircle } from 'lucide-react';
 
@@ -16,14 +17,17 @@ export default function LoginPage() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const from = location.state?.from?.pathname || '/dashboard';
+  const from = location.state?.from?.pathname || '';
 
   const doLogin = async (creds) => {
     setError('');
     try {
       await login(creds, (user) => {
         addToast(`Signed in as ${user.name}`, 'success');
-        const destination = user.role === 'SUPER_ADMIN' ? '/admin' : (from === '/login' ? '/dashboard' : from);
+        // Send each role to its own home. If they were redirected here from
+        // a specific page they're allowed to see, honor that instead.
+        const home = roleHome(user.role);
+        const destination = from && from !== '/login' ? from : home;
         navigate(destination, { replace: true });
       });
     } catch (err) {
@@ -33,7 +37,6 @@ export default function LoginPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    // Trim and lowercase email before validation
     const sanitizedEmail = email.trim().toLowerCase();
     if (!sanitizedEmail || !password) {
       setError('Please fill in all fields.');

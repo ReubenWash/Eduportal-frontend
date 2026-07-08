@@ -2,11 +2,9 @@ import { lazy, Suspense } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { ToastProvider } from './context/ToastContext';
 import { AuthProvider } from './context/AuthContext';
-import ProtectedRoute from './routes/ProtectedRoute';
-import AuthLayout from './layouts/AuthLayout';
-import AppLayout from './layouts/AppLayout';
+import ProtectedRoute, { roleHome } from './routes/ProtectedRoute';
+import { useAuth } from './context/AuthContext';
 import ToastContainer from './components/ui/Toast';
-import { getInitials } from './utils/helpers';
 
 const LandingPage = lazy(() => import('./pages/Landing'));
 const LoginPage = lazy(() => import('./pages/auth/Login'));
@@ -29,6 +27,8 @@ const Attendance = lazy(() => import('./pages/attendance/Attendance'));
 const Reports = lazy(() => import('./pages/reports/Reports'));
 const Analytics = lazy(() => import('./pages/analytics/Analytics'));
 const Notifications = lazy(() => import('./pages/notifications/Notifications'));
+const ParentPortal = lazy(() => import('./pages/parent/ParentPortal'));
+const StudentPortal = lazy(() => import('./pages/student/StudentPortal'));
 const SuperAdminDashboard = lazy(() => import('./pages/superadmin/SuperAdminDashboard'));
 const AdminSchools = lazy(() => import('./pages/superadmin/AdminSchools'));
 const AdminUsers = lazy(() => import('./pages/superadmin/AdminUsers'));
@@ -45,11 +45,24 @@ const AdminMonitoring = lazy(() => import('./pages/superadmin/AdminMonitoring'))
 const AdminAuditLogs = lazy(() => import('./pages/superadmin/AdminAuditLogs'));
 const AdminSettings = lazy(() => import('./pages/superadmin/AdminSettings'));
 
+// Kept for backward compatibility with lazy imports elsewhere
+import AppLayout from './layouts/AppLayout';
+
+function CatchAll() {
+  const { user } = useAuth();
+  return <Navigate to={user ? roleHome(user.role) : '/login'} replace />;
+}
+
 const LoadingFallback = () => (
   <div className="flex items-center justify-center h-64">
     <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600" />
   </div>
 );
+
+// Role groups, matching EduTrack JHS Project Documentation section 5
+const ADMIN_ROLES = ['SUPER_ADMIN', 'SCHOOL_ADMIN'];
+const STAFF_ROLES = ['SUPER_ADMIN', 'SCHOOL_ADMIN', 'CLASS_TEACHER', 'SUBJECT_TEACHER'];
+const CLASS_TEACHER_ROLES = ['SUPER_ADMIN', 'SCHOOL_ADMIN', 'CLASS_TEACHER'];
 
 export default function App() {
   return (
@@ -66,21 +79,35 @@ export default function App() {
             <Route path="/verify-email/:token" element={<VerifyEmailPage />} />
 
             <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
-              <Route path="/dashboard" element={<Dashboard />} />
-              <Route path="/settings" element={<ProtectedRoute allowedRoles={['SUPER_ADMIN', 'SCHOOL_ADMIN']}><Settings /></ProtectedRoute>} />
-              <Route path="/terms" element={<ProtectedRoute allowedRoles={['SUPER_ADMIN', 'SCHOOL_ADMIN', 'CLASS_TEACHER', 'PARENT']}><Terms /></ProtectedRoute>} />
-              <Route path="/staff" element={<ProtectedRoute allowedRoles={['SUPER_ADMIN', 'SCHOOL_ADMIN']}><Staff /></ProtectedRoute>} />
-              <Route path="/students" element={<ProtectedRoute allowedRoles={['SUPER_ADMIN', 'SCHOOL_ADMIN', 'CLASS_TEACHER', 'PARENT']}><Students /></ProtectedRoute>} />
-              <Route path="/students/:id" element={<ProtectedRoute allowedRoles={['SUPER_ADMIN', 'SCHOOL_ADMIN', 'CLASS_TEACHER', 'PARENT']}><StudentDetail /></ProtectedRoute>} />
-              <Route path="/guardians" element={<ProtectedRoute allowedRoles={['SUPER_ADMIN', 'SCHOOL_ADMIN', 'PARENT']}><Guardians /></ProtectedRoute>} />
-              <Route path="/classes" element={<ProtectedRoute allowedRoles={['SUPER_ADMIN', 'SCHOOL_ADMIN', 'CLASS_TEACHER', 'PARENT']}><Classes /></ProtectedRoute>} />
-              <Route path="/subjects" element={<ProtectedRoute allowedRoles={['SUPER_ADMIN', 'SCHOOL_ADMIN', 'CLASS_TEACHER', 'PARENT']}><Subjects /></ProtectedRoute>} />
-              <Route path="/enrollments" element={<ProtectedRoute allowedRoles={['SUPER_ADMIN', 'SCHOOL_ADMIN', 'CLASS_TEACHER', 'PARENT']}><Enrollments /></ProtectedRoute>} />
-              <Route path="/scores" element={<ProtectedRoute allowedRoles={['SUPER_ADMIN', 'SCHOOL_ADMIN', 'CLASS_TEACHER', 'SUBJECT_TEACHER', 'PARENT']}><Scores /></ProtectedRoute>} />
-              <Route path="/attendance" element={<ProtectedRoute allowedRoles={['SUPER_ADMIN', 'SCHOOL_ADMIN', 'CLASS_TEACHER', 'SUBJECT_TEACHER', 'PARENT']}><Attendance /></ProtectedRoute>} />
-              <Route path="/reports" element={<ProtectedRoute allowedRoles={['SUPER_ADMIN', 'SCHOOL_ADMIN', 'PARENT']}><Reports /></ProtectedRoute>} />
-              <Route path="/analytics" element={<ProtectedRoute allowedRoles={['SUPER_ADMIN', 'SCHOOL_ADMIN', 'PARENT']}><Analytics /></ProtectedRoute>} />
-              <Route path="/notifications" element={<ProtectedRoute><Notifications /></ProtectedRoute>} />
+              <Route path="/dashboard" element={<ProtectedRoute allowedRoles={STAFF_ROLES}><Dashboard /></ProtectedRoute>} />
+              <Route path="/settings" element={<ProtectedRoute allowedRoles={ADMIN_ROLES}><Settings /></ProtectedRoute>} />
+              <Route path="/terms" element={<ProtectedRoute allowedRoles={STAFF_ROLES}><Terms /></ProtectedRoute>} />
+              <Route path="/staff" element={<ProtectedRoute allowedRoles={ADMIN_ROLES}><Staff /></ProtectedRoute>} />
+
+              {/* Student profiles: Class Teacher can view/edit their class; only admins admit/delete (enforced in-page too) */}
+              <Route path="/students" element={<ProtectedRoute allowedRoles={CLASS_TEACHER_ROLES}><Students /></ProtectedRoute>} />
+              <Route path="/students/:id" element={<ProtectedRoute allowedRoles={CLASS_TEACHER_ROLES}><StudentDetail /></ProtectedRoute>} />
+
+              {/* Guardian directory management is an admin function, not the parent's own view */}
+              <Route path="/guardians" element={<ProtectedRoute allowedRoles={ADMIN_ROLES}><Guardians /></ProtectedRoute>} />
+
+              <Route path="/classes" element={<ProtectedRoute allowedRoles={CLASS_TEACHER_ROLES}><Classes /></ProtectedRoute>} />
+              <Route path="/subjects" element={<ProtectedRoute allowedRoles={STAFF_ROLES}><Subjects /></ProtectedRoute>} />
+              <Route path="/enrollments" element={<ProtectedRoute allowedRoles={CLASS_TEACHER_ROLES}><Enrollments /></ProtectedRoute>} />
+
+              {/* Score entry is a teacher function, not a parent-facing one */}
+              <Route path="/scores" element={<ProtectedRoute allowedRoles={STAFF_ROLES}><Scores /></ProtectedRoute>} />
+              <Route path="/attendance" element={<ProtectedRoute allowedRoles={STAFF_ROLES}><Attendance /></ProtectedRoute>} />
+
+              {/* Report approval/generation is admin-only per doc 5.2 */}
+              <Route path="/reports" element={<ProtectedRoute allowedRoles={ADMIN_ROLES}><Reports /></ProtectedRoute>} />
+              <Route path="/analytics" element={<ProtectedRoute allowedRoles={ADMIN_ROLES}><Analytics /></ProtectedRoute>} />
+
+              <Route path="/notifications" element={<Notifications />} />
+
+              {/* Parent / Student read-only portals */}
+              <Route path="/parent" element={<ProtectedRoute allowedRoles={['PARENT']}><ParentPortal /></ProtectedRoute>} />
+              <Route path="/student" element={<ProtectedRoute allowedRoles={['STUDENT']}><StudentPortal /></ProtectedRoute>} />
 
               {/* Super Admin Only */}
               <Route path="/admin" element={<ProtectedRoute allowedRoles={['SUPER_ADMIN']}><SuperAdminDashboard /></ProtectedRoute>} />
@@ -100,7 +127,7 @@ export default function App() {
               <Route path="/admin/support" element={<ProtectedRoute allowedRoles={['SUPER_ADMIN']}><AdminSupport /></ProtectedRoute>} />
             </Route>
 
-            <Route path="*" element={<Navigate to="/dashboard" replace />} />
+            <Route path="*" element={<CatchAll />} />
           </Routes>
         </Suspense>
       </ToastProvider>
