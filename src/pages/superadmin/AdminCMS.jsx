@@ -92,6 +92,36 @@ export default function AdminCMS() {
             <p className="text-sm">Configuration options for {activeSection} will appear here.</p>
           </div>
         );
+      case 'Public Pages':
+        return (
+          <div className="space-y-4 pt-2">
+            <p className="text-sm text-gray-500 mb-4">Edit the content of the generic public pages linked in the footer.</p>
+            <div className="space-y-4 max-h-96 overflow-y-auto pr-2">
+              {['Team', 'Changelog', 'Roadmap', 'Privacy Policy', 'Terms of Service', 'Data Processing'].map(page => (
+                <div key={page} className="border border-gray-200 rounded-lg p-4 bg-gray-50">
+                  <div className="flex items-center justify-between mb-3">
+                    <h4 className="font-semibold text-gray-900">{page}</h4>
+                    <span className="text-xs font-medium text-indigo-600 bg-indigo-50 px-2 py-1 rounded">/{page.toLowerCase().replace(/ /g, '-')}</span>
+                  </div>
+                  <div className="space-y-3">
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 mb-1">Page Title</label>
+                      <input type="text" className="w-full border border-gray-200 rounded px-3 py-1.5 text-sm" defaultValue={page} />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 mb-1">Page Subtitle</label>
+                      <input type="text" className="w-full border border-gray-200 rounded px-3 py-1.5 text-sm" defaultValue={`Information regarding ${page}`} />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 mb-1">Page Content (HTML/Markdown)</label>
+                      <textarea className="w-full border border-gray-200 rounded px-3 py-2 text-sm font-mono h-24" defaultValue="<p>Content goes here...</p>" />
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
       default: return null;
     }
   };
@@ -117,6 +147,7 @@ export default function AdminCMS() {
             { id: 'Pricing Section', desc: 'Edit pricing cards, add new plans, and manage feature lists.' },
             { id: 'Testimonials & FAQ', desc: 'Add or remove testimonials and frequently asked questions.' },
             { id: 'Footer & Theme', desc: 'Manage social links, brand colors, fonts, and button styles.' },
+            { id: 'Public Pages', desc: 'Edit the content for Team, Privacy, Roadmap, and other text-heavy pages.' },
           ].map(section => (
             <div 
               key={section.id} 

@@ -90,6 +90,7 @@ export default function App() {
             {/* Public Footer Links */}
             <Route path="/changelog" element={<GenericPage />} />
             <Route path="/roadmap" element={<GenericPage />} />
+            <Route path="/team" element={<GenericPage />} />
             <Route path="/docs" element={<GenericPage />} />
             <Route path="/contact" element={<GenericPage />} />
             <Route path="/status" element={<GenericPage />} />

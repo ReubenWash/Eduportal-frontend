@@ -435,6 +435,7 @@ export default function LandingPage() {
                 <li><a href="#plans">Pricing</a></li>
                 <li><Link to="/changelog">Changelog</Link></li>
                 <li><Link to="/roadmap">Roadmap</Link></li>
+                <li><Link to="/team">Team</Link></li>
               </ul>
             </div>
             <div>

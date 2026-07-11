@@ -3,6 +3,7 @@ import { Link, useLocation } from 'react-router-dom';
 const contentMap = {
   '/changelog': { title: 'Changelog', subtitle: 'See what\'s new in EduPortal.' },
   '/roadmap': { title: 'Roadmap', subtitle: 'Our planned features and upcoming releases.' },
+  '/team': { title: 'Our Team', subtitle: 'Meet the people building EduPortal.' },
   '/docs': { title: 'Documentation', subtitle: 'Guides and tutorials for using EduPortal.' },
   '/contact': { title: 'Contact Us', subtitle: 'Get in touch with our support team.' },
   '/status': { title: 'System Status', subtitle: 'All systems are fully operational.' },
