@@ -18,7 +18,7 @@ export default function Subjects() {
   const [form, setForm] = useState({ name: '', code: '', type: 'CORE' });
   const { addToast } = useToast();
 
-  const load = () => getSubjects().then(d => { setData(d); setLoading(false); }).catch(() => setLoading(false));
+  const load = () => getSubjects().then(d => { setData(Array.isArray(d) ? d : []); setLoading(false); }).catch(() => setLoading(false));
   useEffect(() => { load(); }, []);
 
   const openCreate = () => { setEditing(null); setForm({ name: '', code: '', type: 'CORE' }); setModalOpen(true); };

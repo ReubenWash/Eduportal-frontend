@@ -23,7 +23,7 @@ export default function Guardians() {
   const [form, setForm] = useState({ name: '', email: '', phone: '', address: '' });
   const { addToast } = useToast();
 
-  const load = () => getGuardians().then(d => { setData(d); setLoading(false); }).catch(() => setLoading(false));
+  const load = () => getGuardians().then(d => { setData(Array.isArray(d) ? d : []); setLoading(false); }).catch(() => setLoading(false));
   useEffect(() => { load(); }, []);
 
   const filtered = data.filter(g => !keyword || g.name?.toLowerCase().includes(keyword.toLowerCase()) || g.email?.toLowerCase().includes(keyword.toLowerCase()));

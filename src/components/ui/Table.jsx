@@ -64,7 +64,12 @@ export default function Table({ columns = [], data = [], loading = false, emptyM
                 >
                   {columns.map((col, colIndex) => (
                     <td key={colIndex} className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
-                      {col.render ? col.render(row[col.key], row) : row[col.key]}
+                      {col.render
+                        ? col.render(row[col.key], row)
+                        : (row[col.key] !== null && typeof row[col.key] === 'object'
+                            ? JSON.stringify(row[col.key])
+                            : row[col.key])
+                      }
                     </td>
                   ))}
                   {rowActions && (

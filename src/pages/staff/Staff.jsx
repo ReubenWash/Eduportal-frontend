@@ -29,7 +29,7 @@ export default function Staff() {
   const [form, setForm] = useState({ name: '', email: '', role: 'SUBJECT_TEACHER', phone: '' });
   const { addToast } = useToast();
 
-  const load = () => getStaff().then(d => { setData(d); setLoading(false); }).catch(() => setLoading(false));
+  const load = () => getStaff().then(d => { setData(Array.isArray(d) ? d : []); setLoading(false); }).catch(() => setLoading(false));
   useEffect(() => { load(); }, []);
 
   const filtered = useMemo(() => {

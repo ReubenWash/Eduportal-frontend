@@ -23,11 +23,16 @@ export default function Enrollments() {
   const { addToast } = useToast();
 
   const load = () => Promise.all([getEnrollments(), getClasses(), getStudents()])
-    .then(([d, c, s]) => { setData(d); setClasses(c); setStudents(s); setLoading(false); })
+    .then(([d, c, s]) => {
+      setData(Array.isArray(d) ? d : []);
+      setClasses(Array.isArray(c) ? c : []);
+      setStudents(Array.isArray(s) ? s : []);
+      setLoading(false);
+    })
     .catch(() => setLoading(false));
   useEffect(() => { load(); }, []);
 
-  const filtered = classFilter ? data.filter(e => e.classId === classFilter) : data;
+  const filtered = classFilter ? data.filter(e => e.classId === classFilter || e.class?.id === classFilter) : data;
 
   const openEnroll = () => {
     setForm({ studentId: '', classId: '' });
@@ -65,11 +70,11 @@ export default function Enrollments() {
           data={filtered}
           emptyMessage="No enrollments found"
           columns={[
-            { header: 'Student', key: 'studentName', render: v => <span className="font-medium text-gray-900">{v}</span> },
-            { header: 'Class', key: 'className' },
-            { header: 'Term', key: 'termName' },
+            { header: 'Student', key: 'studentName', render: (v, row) => <span className="font-medium text-gray-900">{v || row.student?.name || '—'}</span> },
+            { header: 'Class', key: 'className', render: (v, row) => <span className="text-gray-600">{typeof v === 'string' ? v : row.class?.name || '—'}</span> },
+            { header: 'Term', key: 'termName', render: (v, row) => <span className="text-gray-600">{typeof v === 'string' ? v : row.term?.name || '—'}</span> },
             { header: 'Status', key: 'status', render: v => <Badge variant={v === 'ACTIVE' ? 'success' : 'default'}>{v}</Badge> },
-            { header: 'Enrolled', key: 'enrollmentDate', render: v => new Date(v).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) },
+            { header: 'Enrolled', key: 'enrollmentDate', render: v => v ? new Date(v).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—' },
           ]}
           rowActions={(row) => (
             <button

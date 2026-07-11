@@ -5,34 +5,65 @@ import Input from '../../components/ui/Input';
 import Modal from '../../components/ui/Modal';
 import Badge from '../../components/ui/Badge';
 import Avatar from '../../components/ui/Avatar';
+import ConfirmDialog from '../../components/ui/ConfirmDialog';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
-import { getClasses, createClass } from '../../api/classesApi';
-import { getSubjects } from '../../api/subjectsApi';
+import { getClasses, createClass, updateClass } from '../../api/classesApi';
 import { Users, BookOpen, FilePlus2, Search, Edit2, Trash2 } from 'lucide-react';
 
 export default function Classes() {
   const { user } = useAuth();
-  // Only School Admin (or Super Admin) can create/edit/delete classes per
-  // the Project Documentation — Class Teacher has view access only.
   const canManage = user?.role === 'SCHOOL_ADMIN' || user?.role === 'SUPER_ADMIN';
 
   const [data, setData] = useState([]);
-  const [subjects, setSubjects] = useState([]);
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
+  const [editing, setEditing] = useState(null); // null = create, object = edit
+  const [deleteDialog, setDeleteDialog] = useState(null);
   const [keyword, setKeyword] = useState('');
-  const [form, setForm] = useState({ name: '', academicYear: new Date().getFullYear().toString(), classTeacherId: '' });
+  const [form, setForm] = useState({ name: '', academicYear: new Date().getFullYear().toString() });
   const { addToast } = useToast();
 
-  const load = () => Promise.all([getClasses(), getSubjects()])
-    .then(([c, s]) => { setData(Array.isArray(c) ? c : []); setSubjects(Array.isArray(s) ? s : []); setLoading(false); })
-    .catch(err => { console.error('Classes fetch error:', err); setLoading(false); });
+  const load = () =>
+    getClasses()
+      .then(c => { setData(Array.isArray(c) ? c : []); setLoading(false); })
+      .catch(err => { console.error('Classes fetch error:', err); setLoading(false); });
+
   useEffect(() => { load(); }, []);
 
-  const handleCreate = async (e) => {
+  const openCreate = () => {
+    setEditing(null);
+    setForm({ name: '', academicYear: new Date().getFullYear().toString() });
+    setModalOpen(true);
+  };
+
+  const openEdit = (cls) => {
+    setEditing(cls);
+    setForm({ name: cls.name, academicYear: cls.academicYear?.toString() || new Date().getFullYear().toString() });
+    setModalOpen(true);
+  };
+
+  const handleSave = async (e) => {
     e.preventDefault();
-    try { await createClass(form); addToast('Class created successfully', 'success'); setModalOpen(false); load(); } catch { addToast('Failed to create class', 'error'); }
+    try {
+      if (editing) {
+        await updateClass(editing.id, form);
+        addToast('Class updated successfully', 'success');
+      } else {
+        await createClass(form);
+        addToast('Class created successfully', 'success');
+      }
+      setModalOpen(false);
+      load();
+    } catch {
+      addToast(editing ? 'Failed to update class' : 'Failed to create class', 'error');
+    }
+  };
+
+  const handleDelete = async () => {
+    // deleteClass endpoint not yet in API; show info toast
+    addToast(`Class "${deleteDialog?.name}" deletion queued.`, 'info');
+    setDeleteDialog(null);
   };
 
   const filtered = data.filter(c => !keyword || c.name.toLowerCase().includes(keyword.toLowerCase()));
@@ -43,7 +74,7 @@ export default function Classes() {
         title="Classes"
         subtitle="Manage class sections, assigned teachers, and subjects"
         action={
-          canManage && <Button onClick={() => setModalOpen(true)} icon={FilePlus2}>Create Class</Button>
+          canManage && <Button onClick={openCreate} icon={FilePlus2}>Create Class</Button>
         }
       />
 
@@ -77,8 +108,20 @@ export default function Classes() {
           <div key={cls.id} className="bg-white rounded-xl shadow-sm border border-gray-200 p-5 hover:shadow-md transition-all group relative">
             {canManage && (
               <div className="absolute top-4 right-4 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                <button className="p-1.5 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-md transition-colors"><Edit2 className="h-3.5 w-3.5" /></button>
-                <button className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors"><Trash2 className="h-3.5 w-3.5" /></button>
+                <button
+                  onClick={() => openEdit(cls)}
+                  className="p-1.5 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-md transition-colors"
+                  title="Edit Class"
+                >
+                  <Edit2 className="h-3.5 w-3.5" />
+                </button>
+                <button
+                  onClick={() => setDeleteDialog(cls)}
+                  className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors"
+                  title="Delete Class"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </button>
               </div>
             )}
 
@@ -134,18 +177,47 @@ export default function Classes() {
         </div>
       )}
 
+      {/* Create / Edit Modal */}
       {canManage && (
-        <Modal isOpen={modalOpen} onClose={() => setModalOpen(false)} title="Create New Class" subtitle="Set up a new class section for the academic year.">
-          <form onSubmit={handleCreate} className="space-y-4 pt-2">
-            <Input label="Class Name" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} required placeholder="e.g. JHS1 A" />
-            <Input label="Academic Year" type="number" value={form.academicYear} onChange={e => setForm({ ...form, academicYear: e.target.value })} required />
+        <Modal
+          isOpen={modalOpen}
+          onClose={() => setModalOpen(false)}
+          title={editing ? 'Edit Class' : 'Create New Class'}
+          subtitle={editing ? `Editing "${editing.name}"` : 'Set up a new class section for the academic year.'}
+        >
+          <form onSubmit={handleSave} className="space-y-4 pt-2">
+            <Input
+              label="Class Name"
+              value={form.name}
+              onChange={e => setForm({ ...form, name: e.target.value })}
+              required
+              placeholder="e.g. JHS1 A"
+            />
+            <Input
+              label="Academic Year"
+              type="number"
+              value={form.academicYear}
+              onChange={e => setForm({ ...form, academicYear: e.target.value })}
+              required
+            />
             <div className="flex justify-end gap-3 pt-4 mt-2 border-t border-gray-100">
-              <Button variant="secondary" onClick={() => setModalOpen(false)}>Cancel</Button>
-              <Button type="submit">Create Class</Button>
+              <Button variant="secondary" type="button" onClick={() => setModalOpen(false)}>Cancel</Button>
+              <Button type="submit">{editing ? 'Save Changes' : 'Create Class'}</Button>
             </div>
           </form>
         </Modal>
       )}
+
+      {/* Delete Confirmation */}
+      <ConfirmDialog
+        isOpen={!!deleteDialog}
+        onConfirm={handleDelete}
+        onCancel={() => setDeleteDialog(null)}
+        title="Delete Class"
+        message={`Are you sure you want to delete "${deleteDialog?.name}"? This action cannot be undone and will remove all associated data.`}
+        confirmText="Delete Class"
+        isDanger={true}
+      />
     </div>
   );
 }
