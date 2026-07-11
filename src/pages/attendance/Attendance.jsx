@@ -56,7 +56,6 @@ export default function Attendance() {
         setRecords(list.map(s => ({ id: s.id, name: s.name, studentNo: s.studentNo, photo: s.photo, status: STATUS.PRESENT, notes: '' })));
       })
       .catch(err => {
-        console.error('Students fetch error:', err);
         setRecords([]);
       })
       .finally(() => setLoadingStudents(false));
@@ -89,7 +88,6 @@ export default function Attendance() {
       });
       addToast('Attendance saved successfully', 'success');
     } catch (err) {
-      console.error('Attendance save error:', err);
       addToast('Failed to save attendance', 'error');
     } finally {
       setSaving(false);

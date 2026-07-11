@@ -373,7 +373,6 @@ export default function StudentPortal() {
     getMyProfile()
       .then(p => { setProfile(p); setLoadError(false); })
       .catch(err => {
-        console.error('Student self-profile fetch error:', err);
         setProfile(mockProfile); // Fallback to mock
         setLoadError(false);
       })

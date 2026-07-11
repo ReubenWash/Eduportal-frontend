@@ -38,7 +38,7 @@ export default function Students() {
   const [photo, setPhoto] = useState(null);
   const { addToast } = useToast();
 
-  const load = () => getStudents().then(d => { setData(Array.isArray(d) ? d : []); setLoading(false); }).catch(err => { console.error('Students fetch error:', err); setLoading(false); });
+  const load = () => getStudents().then(d => { setData(Array.isArray(d) ? d : []); setLoading(false); }).catch(err => { setLoading(false); });
   useEffect(() => { load(); }, []);
   useEffect(() => { getClasses().then(d => setClasses(Array.isArray(d) ? d : [])).catch(err => console.error('Classes fetch error:', err)); }, []);
 

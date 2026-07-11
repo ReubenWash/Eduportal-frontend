@@ -4,7 +4,6 @@ import api from './axios';
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://eduportal-backend-rorj.onrender.com/api/v1';
 
 export const login = async (credentials) => {
-  console.log('🔐 Login attempt with:', credentials);
   const response = await fetch(`${API_BASE_URL}/auth/login`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -17,7 +16,6 @@ export const login = async (credentials) => {
   }
 
   const result = await response.json();
-  console.log('✅ Login successful:', result);
   return result.data; // ✅ unwrap to { accessToken, user }
 };
 

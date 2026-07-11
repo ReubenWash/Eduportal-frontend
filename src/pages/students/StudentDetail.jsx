@@ -24,7 +24,6 @@ export default function StudentDetail() {
         setLoadError(false);
       })
       .catch((err) => {
-        console.error('Student fetch error:', err);
         setLoadError(true);
       })
       .finally(() => setLoading(false));

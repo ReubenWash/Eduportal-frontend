@@ -408,7 +408,7 @@ export default function Dashboard() {
   useEffect(() => {
     getDashboardStats()
       .then((data) => { setStats(data || {}); setLoadError(false); })
-      .catch((err) => { console.error('Dashboard stats fetch error:', err); setLoadError(true); })
+      .catch((err) => { setLoadError(true); })
       .finally(() => setLoading(false));
   }, []);
 

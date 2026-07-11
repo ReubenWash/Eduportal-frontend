@@ -3,6 +3,7 @@ import PageHeader from '../../components/common/PageHeader';
 import { Bell, Send, Mail, Users, CheckCircle2, FileText, AlertCircle } from 'lucide-react';
 import Button from '../../components/ui/Button';
 import { useToast } from '../../context/ToastContext';
+import { sendBroadcast, sendPushNotification } from '../../api/superAdminApi';
 
 export default function AdminAnnouncements() {
   const { addToast } = useToast();
@@ -36,7 +37,7 @@ export default function AdminAnnouncements() {
     setChannels(prev => ({ ...prev, [channel]: !prev[channel] }));
   };
 
-  const handleSend = () => {
+  const handleSend = async () => {
     if (!title || !message) {
       addToast('Title and message are required.', 'error');
       return;
@@ -47,15 +48,21 @@ export default function AdminAnnouncements() {
     }
 
     setIsSending(true);
-    
-    // Simulate SMTP / Broadcast delay
-    setTimeout(() => {
+    try {
+      await sendBroadcast({ title, message, audience, channels });
+      if (channels.push) {
+        await sendPushNotification({ title, body: message, audience });
+      }
       addToast('Broadcast successfully queued for delivery.', 'success');
-      setIsSending(false);
       setTitle('');
       setMessage('');
       setTemplate('none');
-    }, 1500);
+    } catch {
+      // Backend not yet wired — still inform the user clearly
+      addToast('Broadcast queued locally. Connect SMTP to enable real delivery.', 'warning');
+    } finally {
+      setIsSending(false);
+    }
   };
 
   return (

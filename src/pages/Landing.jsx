@@ -1,6 +1,30 @@
 import { Link } from 'react-router-dom';
+import { useState, useEffect } from 'react';
 
 export default function LandingPage() {
+  const [deferredPrompt, setDeferredPrompt] = useState(null);
+
+  useEffect(() => {
+    const handleBeforeInstallPrompt = (e) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+    };
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    return () => window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+  }, []);
+
+  const handleInstallClick = async () => {
+    if (deferredPrompt) {
+      deferredPrompt.prompt();
+      const { outcome } = await deferredPrompt.userChoice;
+      if (outcome === 'accepted') {
+        setDeferredPrompt(null);
+      }
+    } else {
+      alert('Install prompt not available. You may have already installed the app, or your browser does not support it.');
+    }
+  };
+
   return (
     <div className="landing-page min-h-screen bg-white">
       {/* NAV */}
@@ -427,6 +451,18 @@ export default function LandingPage() {
                 <span className="logo-name">EduPortal</span>
               </Link>
               <p className="footer-tagline">A school management platform built specifically for schools in Ghana and across West Africa.</p>
+              <button 
+                onClick={handleInstallClick}
+                className="mt-6 flex items-center justify-center gap-2 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 transition-colors px-4 py-2 rounded-lg font-medium text-sm w-full sm:w-auto"
+                style={{ border: '1px solid #e0e7ff', cursor: 'pointer' }}
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                  <polyline points="7 10 12 15 17 10"></polyline>
+                  <line x1="12" y1="15" x2="12" y2="3"></line>
+                </svg>
+                Install Web App
+              </button>
             </div>
             <div>
               <div className="footer-col-title">Product</div>

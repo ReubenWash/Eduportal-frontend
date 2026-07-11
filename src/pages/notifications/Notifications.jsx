@@ -37,7 +37,6 @@ export default function Notifications() {
         setLoadError(false);
       })
       .catch((err) => {
-        console.error('Notifications fetch error:', err);
         setLoadError(true);
       })
       .finally(() => setLoading(false));
@@ -48,8 +47,7 @@ export default function Notifications() {
     try {
       await markNotificationRead(id);
     } catch (err) {
-      console.error('Failed to mark notification read:', err);
-    }
+      }
   };
 
   const markAllRead = async () => {
@@ -59,8 +57,7 @@ export default function Notifications() {
     try {
       await Promise.all(unreadIds.map(id => markNotificationRead(id)));
     } catch (err) {
-      console.error('Failed to mark all notifications read:', err);
-    }
+      }
   };
 
   const unread = notifications.filter(n => !n.read).length;

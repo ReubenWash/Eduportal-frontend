@@ -22,7 +22,6 @@ export default function Settings() {
         setLoadError(false);
       })
       .catch((err) => {
-        console.error('School profile fetch error:', err);
         setLoadError(true);
       })
       .finally(() => setLoading(false));
@@ -44,7 +43,6 @@ export default function Settings() {
       await updateSchool(form);
       addToast('School settings updated successfully', 'success');
     } catch (err) {
-      console.error('School settings update error:', err);
       addToast('Failed to update settings', 'error');
     } finally {
       setSaving(false);

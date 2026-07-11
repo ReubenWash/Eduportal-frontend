@@ -27,7 +27,7 @@ export default function Classes() {
   const load = () =>
     getClasses()
       .then(c => { setData(Array.isArray(c) ? c : []); setLoading(false); })
-      .catch(err => { console.error('Classes fetch error:', err); setLoading(false); });
+      .catch(err => { setLoading(false); });
 
   useEffect(() => { load(); }, []);
 
