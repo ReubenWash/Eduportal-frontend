@@ -70,11 +70,11 @@ export default function Enrollments() {
           data={filtered}
           emptyMessage="No enrollments found"
           columns={[
-            { header: 'Student', key: 'studentName', render: (v, row) => <span className="font-medium text-gray-900">{v || row.student?.name || '—'}</span> },
-            { header: 'Class', key: 'className', render: (v, row) => <span className="text-gray-600">{typeof v === 'string' ? v : row.class?.name || '—'}</span> },
-            { header: 'Term', key: 'termName', render: (v, row) => <span className="text-gray-600">{typeof v === 'string' ? v : row.term?.name || '—'}</span> },
-            { header: 'Status', key: 'status', render: v => <Badge variant={v === 'ACTIVE' ? 'success' : 'default'}>{v}</Badge> },
-            { header: 'Enrolled', key: 'enrollmentDate', render: v => v ? new Date(v).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—' },
+            { header: 'Student', key: 'studentName', render: (v, row) => <span className="font-medium text-gray-900">{typeof v === 'string' ? v : v?.label || v?.name || row.student?.name || '—'}</span> },
+            { header: 'Class', key: 'className', render: (v, row) => <span className="text-gray-600">{typeof v === 'string' ? v : v?.label || v?.name || row.class?.name || '—'}</span> },
+            { header: 'Term', key: 'termName', render: (v, row) => <span className="text-gray-600">{typeof v === 'string' ? v : v?.label || v?.name || row.term?.name || '—'}</span> },
+            { header: 'Status', key: 'status', render: v => <Badge variant={(typeof v === 'string' ? v : v?.value) === 'ACTIVE' ? 'success' : 'default'}>{typeof v === 'string' ? v : v?.label || v?.value || '—'}</Badge> },
+            { header: 'Enrolled', key: 'enrollmentDate', render: v => v ? new Date(typeof v === 'string' ? v : v?.value || v).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—' },
           ]}
           rowActions={(row) => (
             <button
