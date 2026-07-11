@@ -5,6 +5,7 @@ import Select from '../../components/ui/Select';
 import Tabs from '../../components/ui/Tabs';
 import Badge from '../../components/ui/Badge';
 import { useToast } from '../../context/ToastContext';
+import { useAuth } from '../../context/AuthContext';
 import { getClasses } from '../../api/classesApi';
 import { Calculator, Save, CheckCircle2 } from 'lucide-react';
 
@@ -208,26 +209,42 @@ export default function Scores() {
   const [selectedTerm, setSelectedTerm] = useState('');
   const [selectedSubject, setSelectedSubject] = useState('');
   const { addToast } = useToast();
+  const { user } = useAuth();
+  const role = user?.role;
 
   useEffect(() => {
     getClasses().then(d => setClasses(d)).catch(() => {});
   }, []);
 
-  const tabs = [
-    { label: 'Score Entry', content: <ScoreEntry /> },
-    { label: 'Class Summary', content: <ClassSummary /> },
-    { label: 'Submission Status', content: <SubmissionStatus /> },
+  // Role-based tab configuration:
+  // SUBJECT_TEACHER → Score Entry (primary), no Submission Status
+  // CLASS_TEACHER → Class Summary (read-only), Submission Status
+  // SCHOOL_ADMIN → all three tabs + Compute Grades button
+  const allTabs = [
+    { label: 'Score Entry', content: <ScoreEntry />, roles: ['SUBJECT_TEACHER', 'SCHOOL_ADMIN'] },
+    { label: 'Class Summary', content: <ClassSummary />, roles: ['SCHOOL_ADMIN', 'CLASS_TEACHER', 'SUBJECT_TEACHER'] },
+    { label: 'Submission Status', content: <SubmissionStatus />, roles: ['SCHOOL_ADMIN', 'CLASS_TEACHER'] },
   ];
+
+  const tabs = allTabs.filter(t => !role || t.roles.includes(role));
+
+  const subtitleMap = {
+    SUBJECT_TEACHER: 'Enter scores for your assigned classes and subjects',
+    CLASS_TEACHER: 'View class scores and submission status',
+    SCHOOL_ADMIN: 'Enter and manage student scores and grades',
+  };
 
   return (
     <div>
       <PageHeader
         title="Scores"
-        subtitle="Enter and manage student scores and grades"
+        subtitle={subtitleMap[role] || 'Enter and manage student scores and grades'}
         action={
-          <Button variant="secondary" icon={Calculator} onClick={() => addToast('Grades computed successfully', 'success')}>
-            Compute Grades
-          </Button>
+          role === 'SCHOOL_ADMIN' ? (
+            <Button variant="secondary" icon={Calculator} onClick={() => addToast('Grades computed successfully', 'success')}>
+              Compute Grades
+            </Button>
+          ) : null
         }
       />
       <div className="bg-white rounded-xl shadow-sm border border-gray-200">

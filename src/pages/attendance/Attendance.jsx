@@ -4,6 +4,7 @@ import Button from '../../components/ui/Button';
 import Select from '../../components/ui/Select';
 import Avatar from '../../components/ui/Avatar';
 import { useToast } from '../../context/ToastContext';
+import { useAuth } from '../../context/AuthContext';
 import { getClasses } from '../../api/classesApi';
 import { getStudents } from '../../api/studentsApi';
 import { bulkMarkAttendance } from '../../api/attendanceApi';
@@ -33,6 +34,9 @@ export default function Attendance() {
   const [loadingStudents, setLoadingStudents] = useState(false);
   const [saving, setSaving] = useState(false);
   const { addToast } = useToast();
+  const { user } = useAuth();
+  const role = user?.role;
+  const canEdit = role === 'SCHOOL_ADMIN' || role === 'CLASS_TEACHER';
 
   useEffect(() => {
     getClasses()
@@ -102,12 +106,20 @@ export default function Attendance() {
     <div>
       <PageHeader
         title="Attendance"
-        subtitle="Track and record daily student attendance"
+        subtitle={
+          role === 'CLASS_TEACHER'
+            ? 'Mark and track daily attendance for your class'
+            : role === 'SUBJECT_TEACHER'
+            ? 'View attendance records (read-only for subject teachers)'
+            : 'Track and record daily student attendance'
+        }
         action={
-          <div className="flex items-center gap-2">
-            <Button variant="secondary" onClick={markAllPresent} disabled={records.length === 0}>Mark All Present</Button>
-            <Button icon={Save} loading={saving} onClick={handleSave} disabled={records.length === 0}>Save Attendance</Button>
-          </div>
+          canEdit ? (
+            <div className="flex items-center gap-2">
+              <Button variant="secondary" onClick={markAllPresent} disabled={records.length === 0}>Mark All Present</Button>
+              <Button icon={Save} loading={saving} onClick={handleSave} disabled={records.length === 0}>Save Attendance</Button>
+            </div>
+          ) : null
         }
       />
 

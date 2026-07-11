@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import { Key, Eye, EyeOff, RefreshCw, CheckCircle, XCircle, Copy, ToggleLeft, ToggleRight, ChevronDown, ChevronRight } from 'lucide-react';
+import { Key, Eye, EyeOff, RefreshCw, CheckCircle, XCircle, Copy, ToggleLeft, ToggleRight, X } from 'lucide-react';
 import { useToast } from '../../context/ToastContext';
+import Button from '../../components/ui/Button';
 
 const INTEGRATIONS = [
   {
@@ -44,74 +45,100 @@ const INTEGRATIONS = [
 ];
 
 function IntegrationCard({ item, onToggle, onTest, onCopy }) {
-  const [expanded, setExpanded] = useState(false);
+  const [modalOpen, setModalOpen] = useState(false);
   const [revealed, setRevealed] = useState({});
   const [saving, setSaving] = useState(false);
   const [values, setValues] = useState(item.keys.reduce((acc, k) => ({ ...acc, [k.label]: k.value }), {}));
 
   const handleSave = () => {
     setSaving(true);
-    setTimeout(() => { setSaving(false); onTest(item.id, 'save'); }, 800);
+    setTimeout(() => { 
+      setSaving(false); 
+      onTest(item.id, 'save'); 
+      setModalOpen(false);
+    }, 800);
   };
 
   return (
-    <div className={`bg-white rounded-xl border transition-all ${item.enabled ? 'border-gray-200 shadow-sm' : 'border-dashed border-gray-200 opacity-70'}`}>
-      <div className="flex items-center justify-between p-4">
-        <div className="flex items-center gap-3">
-          <span className="text-2xl">{item.icon}</span>
-          <div>
-            <p className="text-sm font-semibold text-gray-900">{item.name}</p>
-            <div className="flex items-center gap-1.5 mt-0.5">
-              {item.enabled
-                ? <><CheckCircle className="h-3 w-3 text-emerald-500" /><span className="text-[11px] text-emerald-600 font-medium">Active</span></>
-                : <><XCircle className="h-3 w-3 text-gray-400" /><span className="text-[11px] text-gray-400">Disabled</span></>}
-            </div>
-          </div>
-        </div>
-        <div className="flex items-center gap-2">
-          <button onClick={() => onToggle(item.id)} title={item.enabled ? 'Disable' : 'Enable'} className={`transition-colors ${item.enabled ? 'text-emerald-500 hover:text-gray-400' : 'text-gray-300 hover:text-emerald-500'}`}>
-            {item.enabled ? <ToggleRight className="h-7 w-7" /> : <ToggleLeft className="h-7 w-7" />}
-          </button>
-          <button onClick={() => setExpanded(!expanded)} className="p-1.5 text-gray-400 hover:text-gray-600 rounded-md transition-colors">
-            {expanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-          </button>
-        </div>
-      </div>
-      {expanded && (
-        <div className="border-t border-gray-100 p-4 space-y-3">
-          {item.keys.map(k => (
-            <div key={k.label}>
-              <label className="block text-xs font-semibold text-gray-500 mb-1">{k.label}</label>
-              <div className="flex gap-2">
-                <input
-                  type={k.type === 'password' && !revealed[k.label] ? 'password' : 'text'}
-                  value={values[k.label]}
-                  onChange={e => setValues(prev => ({ ...prev, [k.label]: e.target.value }))}
-                  className="flex-1 text-sm border border-gray-200 rounded-lg px-3 py-2 font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 bg-gray-50 transition-all"
-                  placeholder={`Enter ${k.label.toLowerCase()}...`}
-                />
-                {k.type === 'password' && (
-                  <button onClick={() => setRevealed(p => ({ ...p, [k.label]: !p[k.label] }))} className="p-2 text-gray-400 hover:text-gray-600 border border-gray-200 rounded-lg transition-colors">
-                    {revealed[k.label] ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                  </button>
-                )}
-                <button onClick={() => onCopy(values[k.label])} className="p-2 text-gray-400 hover:text-gray-600 border border-gray-200 rounded-lg transition-colors">
-                  <Copy className="h-4 w-4" />
-                </button>
+    <>
+      <div className={`bg-white rounded-xl border transition-all p-5 flex flex-col justify-between h-full gap-4 ${item.enabled ? 'border-gray-200 shadow-sm' : 'border-dashed border-gray-200 opacity-70'}`}>
+        <div className="flex items-start justify-between">
+          <div className="flex items-center gap-3">
+            <span className="text-3xl">{item.icon}</span>
+            <div>
+              <p className="text-base font-bold text-gray-900">{item.name}</p>
+              <div className="flex items-center gap-1.5 mt-0.5">
+                {item.enabled
+                  ? <><CheckCircle className="h-4 w-4 text-emerald-500" /><span className="text-xs text-emerald-600 font-medium">Active</span></>
+                  : <><XCircle className="h-4 w-4 text-gray-400" /><span className="text-xs text-gray-400">Disabled</span></>}
               </div>
             </div>
-          ))}
-          <div className="flex gap-2 pt-2">
-            <button onClick={() => onTest(item.id, 'test')} className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-indigo-600 bg-indigo-50 hover:bg-indigo-100 rounded-lg transition-colors">
-              <RefreshCw className="h-3.5 w-3.5" /> Test Connection
-            </button>
-            <button onClick={handleSave} disabled={saving} className="flex items-center gap-1.5 px-4 py-1.5 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-500 rounded-lg transition-colors disabled:opacity-60">
-              {saving ? 'Saving...' : 'Save Keys'}
-            </button>
+          </div>
+          <button onClick={() => onToggle(item.id)} title={item.enabled ? 'Disable' : 'Enable'} className={`transition-colors ${item.enabled ? 'text-emerald-500 hover:text-gray-400' : 'text-gray-300 hover:text-emerald-500'}`}>
+            {item.enabled ? <ToggleRight className="h-8 w-8" /> : <ToggleLeft className="h-8 w-8" />}
+          </button>
+        </div>
+        <div className="pt-3 border-t border-gray-100 flex gap-3">
+           <Button variant="outline" className="flex-1" onClick={() => setModalOpen(true)}>Configure</Button>
+        </div>
+      </div>
+
+      {modalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden">
+            <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+              <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+                <span className="text-2xl">{item.icon}</span> Configure {item.name}
+              </h2>
+              <button onClick={() => setModalOpen(false)} className="text-gray-400 hover:text-gray-600">
+                <X className="h-6 w-6" />
+              </button>
+            </div>
+            <div className="p-6 space-y-4 bg-gray-50">
+              <div className="flex items-center justify-between p-3 bg-white border border-gray-200 rounded-lg">
+                <div>
+                  <p className="text-sm font-semibold text-gray-900">Integration Status</p>
+                  <p className="text-xs text-gray-500">Enable or disable this integration</p>
+                </div>
+                <button onClick={() => onToggle(item.id)} className={`transition-colors ${item.enabled ? 'text-emerald-500' : 'text-gray-300'}`}>
+                  {item.enabled ? <ToggleRight className="h-8 w-8" /> : <ToggleLeft className="h-8 w-8" />}
+                </button>
+              </div>
+
+              {item.keys.map(k => (
+                <div key={k.label}>
+                  <label className="block text-sm font-semibold text-gray-700 mb-1">{k.label}</label>
+                  <div className="flex gap-2">
+                    <input
+                      type={k.type === 'password' && !revealed[k.label] ? 'password' : 'text'}
+                      value={values[k.label]}
+                      onChange={e => setValues(prev => ({ ...prev, [k.label]: e.target.value }))}
+                      className="flex-1 text-sm border border-gray-300 rounded-lg px-3 py-2 font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 bg-white transition-all"
+                      placeholder={`Enter ${k.label.toLowerCase()}...`}
+                    />
+                    {k.type === 'password' && (
+                      <button onClick={() => setRevealed(p => ({ ...p, [k.label]: !p[k.label] }))} className="p-2 text-gray-500 hover:text-gray-700 border border-gray-300 rounded-lg bg-white transition-colors">
+                        {revealed[k.label] ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </button>
+                    )}
+                    <button onClick={() => onCopy(values[k.label])} className="p-2 text-gray-500 hover:text-gray-700 border border-gray-300 rounded-lg bg-white transition-colors">
+                      <Copy className="h-4 w-4" />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="px-6 py-4 border-t border-gray-200 flex justify-between bg-white">
+              <Button variant="outline" onClick={() => onTest(item.id, 'test')} icon={RefreshCw}>Test Connection</Button>
+              <div className="flex gap-2">
+                <Button variant="outline" onClick={() => setModalOpen(false)}>Cancel</Button>
+                <Button onClick={handleSave} loading={saving}>Save Config</Button>
+              </div>
+            </div>
           </div>
         </div>
       )}
-    </div>
+    </>
   );
 }
 
@@ -128,7 +155,7 @@ export default function AdminIntegrations() {
 
   const handleTest = (id, action) => {
     if (action === 'test') addToast('Connection test passed successfully!', 'success');
-    else addToast('API keys saved.', 'success');
+    else addToast('Configuration saved.', 'success');
   };
 
   const handleCopy = (value) => {
@@ -139,12 +166,12 @@ export default function AdminIntegrations() {
     <div className="space-y-8">
       <div>
         <h1 className="text-2xl font-bold text-gray-900 tracking-tight">API & Integrations</h1>
-        <p className="text-sm text-gray-500 mt-1">Manage all third-party service credentials, enable/disable integrations, and test connections.</p>
+        <p className="text-sm text-gray-500 mt-1">Manage all third-party service credentials, enable/disable integrations, and configure settings.</p>
       </div>
       {integrations.map(group => (
         <div key={group.group} className="space-y-3">
-          <h2 className="text-sm font-bold text-gray-700 uppercase tracking-wider border-b border-gray-100 pb-2">{group.group}</h2>
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+          <h2 className="text-sm font-bold text-gray-700 uppercase tracking-wider border-b border-gray-200 pb-2">{group.group}</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {group.items.map(item => (
               <IntegrationCard key={item.id} item={item} onToggle={toggle} onTest={handleTest} onCopy={handleCopy} />
             ))}

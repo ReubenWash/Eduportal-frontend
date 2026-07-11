@@ -30,6 +30,13 @@ import {
   LifeBuoy,
   Home,
   ClipboardCheck,
+  Monitor,
+  Image,
+  Mail,
+  Smartphone,
+  Cpu,
+  Code,
+  Scale,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import Avatar from '../components/ui/Avatar';
@@ -39,56 +46,68 @@ const superAdminNav = [
     label: 'Overview',
     items: [
       { path: '/admin',         icon: LayoutDashboard, label: 'Dashboard',       roles: ['SUPER_ADMIN'] },
-      { path: '/admin/schools', icon: Building2,       label: 'Schools',         roles: ['SUPER_ADMIN'] },
     ],
   },
   {
     label: 'Schools',
     items: [
       { path: '/admin/schools',      icon: Building2,  label: 'Schools',             roles: ['SUPER_ADMIN'] },
-      { path: '/admin/applications', icon: FileText,   label: 'School Applications',  roles: ['SUPER_ADMIN'] },
-      { path: '/admin/subscriptions',icon: CreditCard, label: 'Subscriptions',        roles: ['SUPER_ADMIN'] },
+      { path: '/admin/applications', icon: FileText,   label: 'Applications',        roles: ['SUPER_ADMIN'] },
+      { path: '/admin/subscriptions',icon: CreditCard, label: 'Subscriptions',       roles: ['SUPER_ADMIN'] },
     ],
   },
   {
     label: 'Users',
     items: [
       { path: '/admin/users',        icon: Users,      label: 'User Management',     roles: ['SUPER_ADMIN'] },
-      { path: '/admin/roles',        icon: ShieldAlert,label: 'Roles & Permissions',  roles: ['SUPER_ADMIN'] },
+      { path: '/admin/roles',        icon: ShieldAlert,label: 'Roles & Permissions', roles: ['SUPER_ADMIN'] },
     ],
   },
   {
-    label: 'Integrations',
+    label: 'Notifications',
     items: [
-      { path: '/admin/integrations', icon: Key,        label: 'API Keys',            roles: ['SUPER_ADMIN'] },
-      { path: '/admin/integrations', icon: CreditCard, label: 'Payment Gateways',     roles: ['SUPER_ADMIN'] },
-      { path: '/admin/notifications-center', icon: Bell,label: 'Notifications',       roles: ['SUPER_ADMIN'] },
+      { path: '/admin/notifications-center', icon: Bell, label: 'Announcements',    roles: ['SUPER_ADMIN'] },
     ],
   },
   {
     label: 'Analytics',
     items: [
-      { path: '/admin/analytics',    icon: FileText,   label: 'Reports',             roles: ['SUPER_ADMIN'] },
-      { path: '/admin/subscriptions',icon: TrendingUp, label: 'Revenue Analytics',   roles: ['SUPER_ADMIN'] },
-      { path: '/admin/analytics',    icon: BarChart2,  label: 'Platform Analytics',  roles: ['SUPER_ADMIN'] },
+      { path: '/admin/analytics',    icon: BarChart2,  label: 'Platform Analytics', roles: ['SUPER_ADMIN'] },
+      { path: '/admin/subscriptions',icon: TrendingUp, label: 'Revenue',            roles: ['SUPER_ADMIN'] },
+    ],
+  },
+  {
+    label: 'Platform CMS',
+    items: [
+      { path: '/admin/cms',          icon: Monitor,    label: 'Website CMS',        roles: ['SUPER_ADMIN'] },
+      { path: '/admin/media',        icon: Image,      label: 'File & Media',       roles: ['SUPER_ADMIN'] },
+      { path: '/admin/legal',        icon: Scale,      label: 'Legal & Compliance', roles: ['SUPER_ADMIN'] },
+    ],
+  },
+  {
+    label: 'Configurations',
+    items: [
+      { path: '/admin/integrations', icon: Key,        label: 'Integrations',       roles: ['SUPER_ADMIN'] },
+      { path: '/admin/email-templates', icon: Mail,    label: 'Email Templates',    roles: ['SUPER_ADMIN'] },
+      { path: '/admin/mobile-app',   icon: Smartphone, label: 'Mobile App',         roles: ['SUPER_ADMIN'] },
+      { path: '/admin/ai-config',    icon: Cpu,        label: 'AI Configuration',   roles: ['SUPER_ADMIN'] },
     ],
   },
   {
     label: 'System',
     items: [
-      { path: '/admin/settings',     icon: Settings,   label: 'Settings',            roles: ['SUPER_ADMIN'] },
-      { path: '/admin/security',     icon: ShieldCheck,label: 'Security',            roles: ['SUPER_ADMIN'] },
-      { path: '/admin/audit-logs',   icon: FileText,   label: 'Audit Logs',          roles: ['SUPER_ADMIN'] },
-      { path: '/admin/backups',      icon: Database,   label: 'Backups',             roles: ['SUPER_ADMIN'] },
-      { path: '/admin/monitoring',   icon: Activity,   label: 'Monitoring',          roles: ['SUPER_ADMIN'] },
+      { path: '/admin/settings',     icon: Settings,   label: 'System Settings',    roles: ['SUPER_ADMIN'] },
+      { path: '/admin/security',     icon: ShieldCheck,label: 'Security Center',    roles: ['SUPER_ADMIN'] },
+      { path: '/admin/audit-logs',   icon: FileText,   label: 'Audit Logs',         roles: ['SUPER_ADMIN'] },
+      { path: '/admin/backups',      icon: Database,   label: 'Backup & Restore',   roles: ['SUPER_ADMIN'] },
+      { path: '/admin/monitoring',   icon: Activity,   label: 'Monitoring & Health',roles: ['SUPER_ADMIN'] },
+      { path: '/admin/developer-tools', icon: Code,    label: 'Developer Tools',    roles: ['SUPER_ADMIN'] },
     ],
   },
   {
     label: 'Support',
     items: [
-      { path: '/admin/support',      icon: LifeBuoy,   label: 'Help Desk',           roles: ['SUPER_ADMIN'] },
-      { path: '/admin/support',      icon: LifeBuoy,   label: 'Feedback',            roles: ['SUPER_ADMIN'] },
-      { path: '/admin/support',      icon: Bell,       label: 'Announcements',       roles: ['SUPER_ADMIN'] },
+      { path: '/admin/support',      icon: LifeBuoy,   label: 'Support Center',     roles: ['SUPER_ADMIN'] },
     ],
   },
 ];
@@ -137,23 +156,41 @@ const navGroups = [
   },
 ];
 
-// Parent — read-only per section 5, Role 5
+// Parent — read-only per section 5, Role 6
 const parentNav = [
   {
-    label: 'My Account',
+    label: 'My Family Portal',
     items: [
-      { path: '/parent', icon: Home, label: 'Parent Portal', roles: ['PARENT'] },
+      { path: '/parent', icon: Home,          label: 'Dashboard',      roles: ['PARENT'] },
+      { path: '/parent', icon: BarChart2,     label: 'Scores',         roles: ['PARENT'] },
+      { path: '/parent', icon: CheckSquare,   label: 'Attendance',     roles: ['PARENT'] },
+      { path: '/parent', icon: FileText,      label: 'Report Cards',   roles: ['PARENT'] },
+      { path: '/parent', icon: ClipboardCheck,label: 'My Profile',     roles: ['PARENT'] },
+    ],
+  },
+  {
+    label: 'Alerts',
+    items: [
       { path: '/notifications', icon: Bell, label: 'Notifications', roles: ['PARENT'] },
     ],
   },
 ];
 
-// Student — read-only per section 5, Role 6
+// Student — read-only per section 5, Role 5
 const studentNav = [
   {
-    label: 'My Account',
+    label: 'My Student Portal',
     items: [
-      { path: '/student', icon: Home, label: 'Student Portal', roles: ['STUDENT'] },
+      { path: '/student', icon: Home,          label: 'Dashboard',      roles: ['STUDENT'] },
+      { path: '/student', icon: BarChart2,     label: 'My Scores',      roles: ['STUDENT'] },
+      { path: '/student', icon: CheckSquare,   label: 'My Attendance',  roles: ['STUDENT'] },
+      { path: '/student', icon: FileText,      label: 'My Reports',     roles: ['STUDENT'] },
+      { path: '/student', icon: ClipboardCheck,label: 'My Profile',     roles: ['STUDENT'] },
+    ],
+  },
+  {
+    label: 'Alerts',
+    items: [
       { path: '/notifications', icon: Bell, label: 'Notifications', roles: ['STUDENT'] },
     ],
   },
@@ -349,7 +386,7 @@ export default function AppLayout() {
                       <p className="text-xs text-gray-500 mt-0.5">{user?.email || ''}</p>
                     </div>
                     <div className="py-1">
-                      {(userRole === 'SCHOOL_ADMIN' || userRole === 'SUPER_ADMIN') && (
+                      {userRole === 'SCHOOL_ADMIN' && (
                         <Link
                           to="/settings"
                           onClick={() => setProfileOpen(false)}
@@ -357,6 +394,16 @@ export default function AppLayout() {
                         >
                           <Settings className="h-4 w-4 text-gray-400" />
                           Settings
+                        </Link>
+                      )}
+                      {userRole === 'SUPER_ADMIN' && (
+                        <Link
+                          to="/admin/settings"
+                          onClick={() => setProfileOpen(false)}
+                          className="flex items-center gap-2.5 w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                        >
+                          <Settings className="h-4 w-4 text-gray-400" />
+                          Admin Settings
                         </Link>
                       )}
                       <button

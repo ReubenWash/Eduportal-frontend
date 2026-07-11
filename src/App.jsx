@@ -44,6 +44,14 @@ const AdminSupport = lazy(() => import('./pages/superadmin/AdminSupport'));
 const AdminMonitoring = lazy(() => import('./pages/superadmin/AdminMonitoring'));
 const AdminAuditLogs = lazy(() => import('./pages/superadmin/AdminAuditLogs'));
 const AdminSettings = lazy(() => import('./pages/superadmin/AdminSettings'));
+const AdminCMS = lazy(() => import('./pages/superadmin/AdminCMS'));
+const AdminMedia = lazy(() => import('./pages/superadmin/AdminMedia'));
+const AdminEmailTemplates = lazy(() => import('./pages/superadmin/AdminEmailTemplates'));
+const AdminMobileApp = lazy(() => import('./pages/superadmin/AdminMobileApp'));
+const AdminAIConfig = lazy(() => import('./pages/superadmin/AdminAIConfig'));
+const AdminDeveloperTools = lazy(() => import('./pages/superadmin/AdminDeveloperTools'));
+const AdminLegal = lazy(() => import('./pages/superadmin/AdminLegal'));
+const AdminAnnouncements = lazy(() => import('./pages/superadmin/AdminAnnouncements'));
 
 // Kept for backward compatibility with lazy imports elsewhere
 import AppLayout from './layouts/AppLayout';
@@ -125,6 +133,14 @@ export default function App() {
               <Route path="/admin/backups" element={<ProtectedRoute allowedRoles={['SUPER_ADMIN']}><AdminBackup /></ProtectedRoute>} />
               <Route path="/admin/monitoring" element={<ProtectedRoute allowedRoles={['SUPER_ADMIN']}><AdminMonitoring /></ProtectedRoute>} />
               <Route path="/admin/support" element={<ProtectedRoute allowedRoles={['SUPER_ADMIN']}><AdminSupport /></ProtectedRoute>} />
+              <Route path="/admin/cms" element={<ProtectedRoute allowedRoles={['SUPER_ADMIN']}><AdminCMS /></ProtectedRoute>} />
+              <Route path="/admin/media" element={<ProtectedRoute allowedRoles={['SUPER_ADMIN']}><AdminMedia /></ProtectedRoute>} />
+              <Route path="/admin/email-templates" element={<ProtectedRoute allowedRoles={['SUPER_ADMIN']}><AdminEmailTemplates /></ProtectedRoute>} />
+              <Route path="/admin/mobile-app" element={<ProtectedRoute allowedRoles={['SUPER_ADMIN']}><AdminMobileApp /></ProtectedRoute>} />
+              <Route path="/admin/ai-config" element={<ProtectedRoute allowedRoles={['SUPER_ADMIN']}><AdminAIConfig /></ProtectedRoute>} />
+              <Route path="/admin/developer-tools" element={<ProtectedRoute allowedRoles={['SUPER_ADMIN']}><AdminDeveloperTools /></ProtectedRoute>} />
+              <Route path="/admin/legal" element={<ProtectedRoute allowedRoles={['SUPER_ADMIN']}><AdminLegal /></ProtectedRoute>} />
+              <Route path="/admin/announcements" element={<ProtectedRoute allowedRoles={['SUPER_ADMIN']}><AdminAnnouncements /></ProtectedRoute>} />
             </Route>
 
             <Route path="*" element={<CatchAll />} />
