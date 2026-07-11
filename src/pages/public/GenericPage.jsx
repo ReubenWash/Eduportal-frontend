@@ -15,7 +15,31 @@ const contentMap = {
 
 export default function GenericPage() {
   const location = useLocation();
-  const page = contentMap[location.pathname] || { title: 'Page Not Found', subtitle: 'The page you are looking for does not exist.' };
+  
+  const slugToKey = {
+    '/team': 'Team',
+    '/changelog': 'Changelog',
+    '/roadmap': 'Roadmap',
+    '/docs': 'Documentation',
+    '/contact': 'Contact Us',
+    '/status': 'System Status',
+    '/community': 'Community',
+    '/privacy': 'Privacy Policy',
+    '/terms-of-service': 'Terms of Service',
+    '/data': 'Data Processing',
+  };
+
+  const savedPages = JSON.parse(localStorage.getItem('publicPages') || '{}');
+  const pageKey = slugToKey[location.pathname];
+  
+  // Try to load from saved CMS data, fallback to hardcoded map, or 404
+  const page = savedPages[pageKey] || contentMap[location.pathname] || { 
+    title: 'Page Not Found', 
+    subtitle: 'The page you are looking for does not exist.',
+    content: '<p>Content coming soon</p>'
+  };
+
+  const renderContent = page.content || '<p>Content coming soon</p>';
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
@@ -45,9 +69,10 @@ export default function GenericPage() {
           <h1 className="text-3xl sm:text-4xl font-extrabold text-gray-900 tracking-tight mb-4">{page.title}</h1>
           <p className="text-lg text-gray-500 mb-8 max-w-2xl mx-auto">{page.subtitle}</p>
           
-          <div className="inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-lg shadow-sm text-indigo-700 bg-indigo-50">
-            Content coming soon
-          </div>
+          <div 
+            className="prose prose-indigo max-w-none text-left bg-gray-50 p-6 sm:p-8 rounded-xl border border-gray-100"
+            dangerouslySetInnerHTML={{ __html: renderContent }}
+          />
         </div>
       </main>
 

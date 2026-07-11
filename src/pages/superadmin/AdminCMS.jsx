@@ -8,6 +8,29 @@ import Modal from '../../components/ui/Modal';
 export default function AdminCMS() {
   const { addToast } = useToast();
   const [activeSection, setActiveSection] = useState(null);
+  
+  const [publicPages, setPublicPages] = useState(() => {
+    return JSON.parse(localStorage.getItem('publicPages')) || {
+      'Team': { title: 'Our Team', subtitle: 'Meet the people building EduPortal.', content: '<p>Here is where you can add team member profiles...</p>' },
+      'Changelog': { title: 'Changelog', subtitle: 'See what\'s new in EduPortal.', content: '<ul><li>v1.0.0 - Initial release</li></ul>' },
+      'Roadmap': { title: 'Roadmap', subtitle: 'Our planned features and upcoming releases.', content: '<p>Upcoming features...</p>' },
+      'Privacy Policy': { title: 'Privacy Policy', subtitle: 'How we collect, use, and protect your data.', content: '<p>Your privacy policy here...</p>' },
+      'Terms of Service': { title: 'Terms of Service', subtitle: 'The rules and guidelines for using our platform.', content: '<p>Your terms of service here...</p>' },
+      'Data Processing': { title: 'Data Processing', subtitle: 'Information on data handling and GDPR compliance.', content: '<p>Data processing agreement...</p>' },
+    };
+  });
+
+  const updatePublicPage = (pageKey, field, value) => {
+    setPublicPages(prev => ({ ...prev, [pageKey]: { ...prev[pageKey], [field]: value } }));
+  };
+
+  const handleSaveCMS = () => {
+    if (activeSection === 'Public Pages') {
+      localStorage.setItem('publicPages', JSON.stringify(publicPages));
+    }
+    addToast('Section updated successfully', 'success');
+    closeEditor();
+  };
 
   const openEditor = (section) => setActiveSection(section);
   const closeEditor = () => setActiveSection(null);
@@ -97,24 +120,24 @@ export default function AdminCMS() {
           <div className="space-y-4 pt-2">
             <p className="text-sm text-gray-500 mb-4">Edit the content of the generic public pages linked in the footer.</p>
             <div className="space-y-4 max-h-96 overflow-y-auto pr-2">
-              {['Team', 'Changelog', 'Roadmap', 'Privacy Policy', 'Terms of Service', 'Data Processing'].map(page => (
-                <div key={page} className="border border-gray-200 rounded-lg p-4 bg-gray-50">
+              {Object.entries(publicPages).map(([pageKey, pageData]) => (
+                <div key={pageKey} className="border border-gray-200 rounded-lg p-4 bg-gray-50">
                   <div className="flex items-center justify-between mb-3">
-                    <h4 className="font-semibold text-gray-900">{page}</h4>
-                    <span className="text-xs font-medium text-indigo-600 bg-indigo-50 px-2 py-1 rounded">/{page.toLowerCase().replace(/ /g, '-')}</span>
+                    <h4 className="font-semibold text-gray-900">{pageKey}</h4>
+                    <span className="text-xs font-medium text-indigo-600 bg-indigo-50 px-2 py-1 rounded">/{pageKey.toLowerCase().replace(/ /g, '-')}</span>
                   </div>
                   <div className="space-y-3">
                     <div>
                       <label className="block text-xs font-medium text-gray-700 mb-1">Page Title</label>
-                      <input type="text" className="w-full border border-gray-200 rounded px-3 py-1.5 text-sm" defaultValue={page} />
+                      <input type="text" className="w-full border border-gray-200 rounded px-3 py-1.5 text-sm" value={pageData.title} onChange={e => updatePublicPage(pageKey, 'title', e.target.value)} />
                     </div>
                     <div>
                       <label className="block text-xs font-medium text-gray-700 mb-1">Page Subtitle</label>
-                      <input type="text" className="w-full border border-gray-200 rounded px-3 py-1.5 text-sm" defaultValue={`Information regarding ${page}`} />
+                      <input type="text" className="w-full border border-gray-200 rounded px-3 py-1.5 text-sm" value={pageData.subtitle} onChange={e => updatePublicPage(pageKey, 'subtitle', e.target.value)} />
                     </div>
                     <div>
-                      <label className="block text-xs font-medium text-gray-700 mb-1">Page Content (HTML/Markdown)</label>
-                      <textarea className="w-full border border-gray-200 rounded px-3 py-2 text-sm font-mono h-24" defaultValue="<p>Content goes here...</p>" />
+                      <label className="block text-xs font-medium text-gray-700 mb-1">Page Content (HTML)</label>
+                      <textarea className="w-full border border-gray-200 rounded px-3 py-2 text-sm font-mono h-24" value={pageData.content} onChange={e => updatePublicPage(pageKey, 'content', e.target.value)} />
                     </div>
                   </div>
                 </div>
@@ -173,7 +196,7 @@ export default function AdminCMS() {
           {renderEditorContent()}
           <div className="mt-6 pt-4 border-t border-gray-100 flex justify-end gap-2">
             <Button variant="outline" onClick={closeEditor}>Cancel</Button>
-            <Button onClick={() => { addToast('Section updated successfully', 'success'); closeEditor(); }}>Save Section</Button>
+            <Button onClick={handleSaveCMS}>Save Section</Button>
           </div>
         </Modal>
       )}
