@@ -1,18 +1,5 @@
 import { Link, useLocation } from 'react-router-dom';
 
-const contentMap = {
-  '/changelog': { title: 'Changelog', subtitle: 'See what\'s new in EduPortal.' },
-  '/roadmap': { title: 'Roadmap', subtitle: 'Our planned features and upcoming releases.' },
-  '/team': { title: 'Our Team', subtitle: 'Meet the people building EduPortal.' },
-  '/docs': { title: 'Documentation', subtitle: 'Guides and tutorials for using EduPortal.' },
-  '/contact': { title: 'Contact Us', subtitle: 'Get in touch with our support team.' },
-  '/status': { title: 'System Status', subtitle: 'All systems are fully operational.' },
-  '/community': { title: 'Community', subtitle: 'Join the EduPortal administrator community.' },
-  '/privacy': { title: 'Privacy Policy', subtitle: 'How we collect, use, and protect your data.' },
-  '/terms': { title: 'Terms of Service', subtitle: 'The rules and guidelines for using our platform.' },
-  '/data': { title: 'Data Processing', subtitle: 'Information on data handling and GDPR compliance.' },
-};
-
 export default function GenericPage() {
   const location = useLocation();
   
@@ -29,11 +16,24 @@ export default function GenericPage() {
     '/data': 'Data Processing',
   };
 
+  const defaultPages = {
+    'Team': { title: 'Our Team', subtitle: 'Meet the people building EduPortal.', content: '<h3>Founders</h3><p>EduPortal was built by a group of passionate educators and engineers...</p>' },
+    'Changelog': { title: 'Changelog', subtitle: 'See what\'s new in EduPortal.', content: '<h3>v1.0.0</h3><ul><li>Initial release of the school management dashboard.</li><li>Added core modules for Enrollments, Scores, and Attendance.</li></ul>' },
+    'Roadmap': { title: 'Roadmap', subtitle: 'Our planned features and upcoming releases.', content: '<h3>Q3 2026</h3><ul><li>Mobile Application for Parents</li><li>AI-driven student performance predictions</li></ul>' },
+    'Documentation': { title: 'Documentation', subtitle: 'Guides and tutorials for using EduPortal.', content: '<h3>Getting Started</h3><p>Welcome to the EduPortal docs. Here you will find step-by-step guides for onboarding your school...</p>' },
+    'Contact Us': { title: 'Contact Us', subtitle: 'Get in touch with our support team.', content: '<p><strong>Email:</strong> support@eduportal.com</p><p><strong>Phone:</strong> +233 24 000 0000</p><p><strong>Office:</strong> Accra, Ghana</p><p>We aim to respond to all inquiries within 24 hours.</p>' },
+    'System Status': { title: 'System Status', subtitle: 'All systems are fully operational.', content: '<ul><li><strong>Database:</strong> Operational (99.99% uptime)</li><li><strong>API:</strong> Operational (99.98% uptime)</li><li><strong>Email Delivery:</strong> Operational</li></ul>' },
+    'Community': { title: 'Community', subtitle: 'Join the EduPortal administrator community.', content: '<p>Join thousands of other school administrators in our private forum to share tips, configurations, and best practices.</p><button style="background: #4F46E5; color: white; padding: 8px 16px; border-radius: 6px; border: none; margin-top: 12px; cursor: pointer;">Join the Slack Channel</button>' },
+    'Privacy Policy': { title: 'Privacy Policy', subtitle: 'How we collect, use, and protect your data.', content: '<h3>Data Collection</h3><p>We only collect data necessary for operating the school platform...</p>' },
+    'Terms of Service': { title: 'Terms of Service', subtitle: 'The rules and guidelines for using our platform.', content: '<h3>1. Acceptance of Terms</h3><p>By registering a school on EduPortal, you agree to...</p>' },
+    'Data Processing': { title: 'Data Processing', subtitle: 'Information on data handling and GDPR compliance.', content: '<h3>Security</h3><p>All student records are encrypted at rest using industry-standard protocols...</p>' },
+  };
+
   const savedPages = JSON.parse(localStorage.getItem('publicPages') || '{}');
   const pageKey = slugToKey[location.pathname];
   
-  // Try to load from saved CMS data, fallback to hardcoded map, or 404
-  const page = savedPages[pageKey] || contentMap[location.pathname] || { 
+  // Load from saved CMS data, fallback to defaults, or show 404
+  const page = savedPages[pageKey] || defaultPages[pageKey] || { 
     title: 'Page Not Found', 
     subtitle: 'The page you are looking for does not exist.',
     content: '<p>Content coming soon</p>'
