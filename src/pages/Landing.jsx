@@ -433,25 +433,25 @@ export default function LandingPage() {
               <ul className="footer-links">
                 <li><a href="#features">Features</a></li>
                 <li><a href="#plans">Pricing</a></li>
-                <li><a href="#">Changelog</a></li>
-                <li><a href="#">Roadmap</a></li>
+                <li><Link to="/changelog">Changelog</Link></li>
+                <li><Link to="/roadmap">Roadmap</Link></li>
               </ul>
             </div>
             <div>
               <div className="footer-col-title">Support</div>
               <ul className="footer-links">
-                <li><a href="#">Documentation</a></li>
-                <li><a href="#">Contact us</a></li>
-                <li><a href="#">Status</a></li>
-                <li><a href="#">Community</a></li>
+                <li><Link to="/docs">Documentation</Link></li>
+                <li><Link to="/contact">Contact us</Link></li>
+                <li><Link to="/status">Status</Link></li>
+                <li><Link to="/community">Community</Link></li>
               </ul>
             </div>
             <div>
               <div className="footer-col-title">Legal</div>
               <ul className="footer-links">
-                <li><a href="#">Privacy policy</a></li>
-                <li><a href="#">Terms of service</a></li>
-                <li><a href="#">Data processing</a></li>
+                <li><Link to="/privacy">Privacy policy</Link></li>
+                <li><Link to="/terms-of-service">Terms of service</Link></li>
+                <li><Link to="/data">Data processing</Link></li>
               </ul>
             </div>
           </div>

@@ -12,6 +12,7 @@ const RegisterPage = lazy(() => import('./pages/auth/Register'));
 const ForgotPasswordPage = lazy(() => import('./pages/auth/ForgotPassword'));
 const ResetPasswordPage = lazy(() => import('./pages/auth/ResetPassword'));
 const VerifyEmailPage = lazy(() => import('./pages/auth/VerifyEmail'));
+const GenericPage = lazy(() => import('./pages/public/GenericPage'));
 const Dashboard = lazy(() => import('./pages/Dashboard'));
 const Settings = lazy(() => import('./pages/settings/Settings'));
 const Terms = lazy(() => import('./pages/terms/Terms'));
@@ -85,6 +86,17 @@ export default function App() {
             <Route path="/forgot-password" element={<ForgotPasswordPage />} />
             <Route path="/reset-password/:token" element={<ResetPasswordPage />} />
             <Route path="/verify-email/:token" element={<VerifyEmailPage />} />
+
+            {/* Public Footer Links */}
+            <Route path="/changelog" element={<GenericPage />} />
+            <Route path="/roadmap" element={<GenericPage />} />
+            <Route path="/docs" element={<GenericPage />} />
+            <Route path="/contact" element={<GenericPage />} />
+            <Route path="/status" element={<GenericPage />} />
+            <Route path="/community" element={<GenericPage />} />
+            <Route path="/privacy" element={<GenericPage />} />
+            <Route path="/terms-of-service" element={<GenericPage />} />
+            <Route path="/data" element={<GenericPage />} />
 
             <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
               <Route path="/dashboard" element={<ProtectedRoute allowedRoles={STAFF_ROLES}><Dashboard /></ProtectedRoute>} />
