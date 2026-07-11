@@ -3,25 +3,48 @@ import { useState, useEffect } from 'react';
 
 export default function LandingPage() {
   const [deferredPrompt, setDeferredPrompt] = useState(null);
+  const [isInstalled, setIsInstalled] = useState(false);
+  const [showIosInstructions, setShowIosInstructions] = useState(false);
+
+  // Detect platform
+  const isIos = () => /iphone|ipad|ipod/i.test(navigator.userAgent);
+  const isInStandaloneMode = () => window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
 
   useEffect(() => {
+    // Already installed?
+    if (isInStandaloneMode()) { setIsInstalled(true); return; }
+
     const handleBeforeInstallPrompt = (e) => {
       e.preventDefault();
       setDeferredPrompt(e);
     };
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
-    return () => window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+
+    // Detect successful install
+    window.addEventListener('appinstalled', () => setIsInstalled(true));
+
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    };
   }, []);
 
   const handleInstallClick = async () => {
+    if (isInstalled) return; // already installed
+
+    if (isIos()) {
+      // iOS: show manual instructions (Safari Share → Add to Home Screen)
+      setShowIosInstructions(true);
+      return;
+    }
+
     if (deferredPrompt) {
+      // Android / Chrome / Edge / Samsung Internet native prompt
       deferredPrompt.prompt();
       const { outcome } = await deferredPrompt.userChoice;
-      if (outcome === 'accepted') {
-        setDeferredPrompt(null);
-      }
+      if (outcome === 'accepted') setDeferredPrompt(null);
     } else {
-      alert('Install prompt not available. You may have already installed the app, or your browser does not support it.');
+      // Already installed or browser doesn't support it
+      setShowIosInstructions(true);
     }
   };
 
@@ -453,15 +476,25 @@ export default function LandingPage() {
               <p className="footer-tagline">A school management platform built specifically for schools in Ghana and across West Africa.</p>
               <button 
                 onClick={handleInstallClick}
-                className="mt-6 flex items-center justify-center gap-2 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 transition-colors px-4 py-2 rounded-lg font-medium text-sm w-full sm:w-auto"
-                style={{ border: '1px solid #e0e7ff', cursor: 'pointer' }}
+                disabled={isInstalled}
+                className="mt-6 flex items-center justify-center gap-2 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 transition-colors px-4 py-2 rounded-lg font-medium text-sm w-full sm:w-auto disabled:opacity-60 disabled:cursor-not-allowed"
+                style={{ border: '1px solid #e0e7ff', cursor: isInstalled ? 'not-allowed' : 'pointer' }}
               >
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
-                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                  <polyline points="7 10 12 15 17 10"></polyline>
-                  <line x1="12" y1="15" x2="12" y2="3"></line>
-                </svg>
-                Install Web App
+                {isInstalled ? (
+                  <>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                    App Installed
+                  </>
+                ) : (
+                  <>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
+                      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                      <polyline points="7 10 12 15 17 10"></polyline>
+                      <line x1="12" y1="15" x2="12" y2="3"></line>
+                    </svg>
+                    {isIos() ? 'Add to Home Screen' : 'Install Web App'}
+                  </>
+                )}
               </button>
             </div>
             <div>
@@ -498,6 +531,63 @@ export default function LandingPage() {
           </div>
         </div>
       </footer>
+
+      {/* iOS Install Instructions Modal */}
+      {showIosInstructions && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 px-4 pb-4 sm:pb-0" onClick={() => setShowIosInstructions(false)}>
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <div className="h-8 w-8 bg-indigo-600 rounded-lg flex items-center justify-center">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.2" className="h-4 w-4"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>
+                </div>
+                <span className="font-bold text-gray-900">Install EduPortal</span>
+              </div>
+              <button onClick={() => setShowIosInstructions(false)} className="text-gray-400 hover:text-gray-600">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-5 w-5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+              </button>
+            </div>
+            {isIos() ? (
+              <div className="space-y-3">
+                <p className="text-sm text-gray-600 font-medium">To install on your iPhone or iPad:</p>
+                <div className="space-y-2">
+                  {[
+                    { step: '1', text: 'Open this page in Safari (not Chrome)' },
+                    { step: '2', text: 'Tap the Share button at the bottom of the screen' },
+                    { step: '3', text: 'Scroll down and tap "Add to Home Screen"' },
+                    { step: '4', text: 'Tap "Add" to confirm' },
+                  ].map(({ step, text }) => (
+                    <div key={step} className="flex items-start gap-3">
+                      <span className="h-6 w-6 bg-indigo-600 text-white text-xs font-bold rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">{step}</span>
+                      <p className="text-sm text-gray-700">{text}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <p className="text-sm text-gray-600">The app is either already installed or your browser doesn't support automatic installation.</p>
+                <p className="text-sm text-gray-600">To install manually in Chrome:</p>
+                <div className="space-y-2">
+                  {[
+                    { step: '1', text: 'Click the menu (⋮) in the top-right of Chrome' },
+                    { step: '2', text: 'Select "Install EduPortal" or "Add to Home Screen"' },
+                    { step: '3', text: 'Click "Install" to confirm' },
+                  ].map(({ step, text }) => (
+                    <div key={step} className="flex items-start gap-3">
+                      <span className="h-6 w-6 bg-indigo-600 text-white text-xs font-bold rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">{step}</span>
+                      <p className="text-sm text-gray-700">{text}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            <button onClick={() => setShowIosInstructions(false)} className="mt-5 w-full bg-indigo-600 hover:bg-indigo-500 text-white font-semibold py-2.5 rounded-xl text-sm transition-colors">
+              Got it
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
