@@ -356,26 +356,22 @@ function MyProfileTab({ profile }) {
 
 /* ─── MAIN STUDENT PORTAL ─── */
 const TABS = [
-  { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { id: 'scores', label: 'My Scores', icon: BarChart2 },
+  { id: 'dashboard',  label: 'Dashboard',     icon: LayoutDashboard },
+  { id: 'scores',     label: 'My Scores',     icon: BarChart2 },
   { id: 'attendance', label: 'My Attendance', icon: CheckSquare },
-  { id: 'reports', label: 'My Reports', icon: FileText },
-  { id: 'profile', label: 'My Profile', icon: User },
+  { id: 'reports',    label: 'My Reports',    icon: FileText },
+  { id: 'profile',    label: 'My Profile',    icon: User },
 ];
 
 export default function StudentPortal() {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [loadError, setLoadError] = useState(false);
 
   useEffect(() => {
     getMyProfile()
-      .then(p => { setProfile(p); setLoadError(false); })
-      .catch(err => {
-        setProfile(mockProfile); // Fallback to mock
-        setLoadError(false);
-      })
+      .then(p => setProfile(p))
+      .catch(() => setProfile(mockProfile))
       .finally(() => setLoading(false));
   }, []);
 
@@ -392,28 +388,26 @@ export default function StudentPortal() {
 
   return (
     <div className="space-y-6">
-      <PageHeader
-        title="Student Portal"
-        subtitle="Your personal academic overview"
-      />
+      <PageHeader title="Student Portal" subtitle="Your personal academic overview" />
 
-      {/* Tab Navigation */}
-      <div className="bg-white rounded-xl border border-gray-200 shadow-sm">
-        <div className="flex overflow-x-auto scrollbar-none">
+      {/* ── Tab nav: wraps on mobile so My Reports is never clipped ── */}
+      <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-2">
+        <div className="flex flex-wrap gap-1">
           {TABS.map(tab => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;
             return (
               <button
                 key={tab.id}
+                id={`student-tab-${tab.id}`}
                 onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center gap-2 px-5 py-4 text-sm font-medium border-b-2 whitespace-nowrap transition-all ${
+                className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all whitespace-nowrap ${
                   isActive
-                    ? 'border-indigo-600 text-indigo-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                    ? 'bg-indigo-600 text-white shadow-sm'
+                    : 'text-gray-500 hover:bg-gray-100 hover:text-gray-700'
                 }`}
               >
-                <Icon className="h-4 w-4" />
+                <Icon className="h-4 w-4 flex-shrink-0" />
                 {tab.label}
               </button>
             );
@@ -423,11 +417,11 @@ export default function StudentPortal() {
 
       {/* Tab Content */}
       <div>
-        {activeTab === 'dashboard' && <DashboardTab profile={displayProfile} />}
-        {activeTab === 'scores' && <MyScoresTab />}
+        {activeTab === 'dashboard'  && <DashboardTab profile={displayProfile} />}
+        {activeTab === 'scores'     && <MyScoresTab />}
         {activeTab === 'attendance' && <MyAttendanceTab />}
-        {activeTab === 'reports' && <MyReportsTab />}
-        {activeTab === 'profile' && <MyProfileTab profile={displayProfile} />}
+        {activeTab === 'reports'    && <MyReportsTab />}
+        {activeTab === 'profile'    && <MyProfileTab profile={displayProfile} />}
       </div>
     </div>
   );

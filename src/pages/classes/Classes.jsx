@@ -66,7 +66,7 @@ export default function Classes() {
     setDeleteDialog(null);
   };
 
-  const filtered = data.filter(c => !keyword || c.name.toLowerCase().includes(keyword.toLowerCase()));
+  const filtered = data.filter(c => !keyword || (c.name ?? '').toLowerCase().includes(keyword.toLowerCase()));
 
   return (
     <div>

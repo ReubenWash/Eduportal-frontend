@@ -58,19 +58,42 @@ export default function StudentDetail() {
     { label: 'Reports', content: <div className="p-6 text-sm text-gray-500">Reports data will load here.</div> },
   ];
 
+  // Backend returns guardians as an array of { guardian: {...}, isPrimary }.
+  // Pick the primary guardian, or fall back to the first one.
+  const primaryGuardian =
+    (student.guardians ?? []).find(g => g.isPrimary)?.guardian ??
+    student.guardians?.[0]?.guardian ??
+    null;
+
+  const displayName =
+    student.name ||
+    `${student.firstName ?? ''} ${student.lastName ?? ''}`.trim();
+  const className =
+    student.className ||
+    (student.enrollments?.[0]?.class
+      ? `${student.enrollments[0].class.level} ${student.enrollments[0].class.section}`
+      : '');
+  const photo = student.photo ?? student.photoUrl ?? null;
+  const studentNo = student.studentNo ?? student.studentNumber ?? '';
+  const dob = student.dob ?? (student.dateOfBirth ? student.dateOfBirth : null);
+
   return (
     <div>
-      <PageHeader title="Student Profile" subtitle={student.name} action={<Button variant="secondary" onClick={() => navigate('/students')} icon={ArrowLeft}>Back to Students</Button>} />
+      <PageHeader
+        title="Student Profile"
+        subtitle={displayName}
+        action={<Button variant="secondary" onClick={() => navigate('/students')} icon={ArrowLeft}>Back to Students</Button>}
+      />
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
         <div className="p-6 border-b border-gray-200">
           <div className="flex items-center gap-6">
-            <Avatar src={student.photo} name={student.name} size="lg" />
+            <Avatar src={photo} name={displayName} size="lg" />
             <div className="flex-1">
               <div className="flex items-center gap-3">
-                <h2 className="text-xl font-semibold text-gray-900">{student.name}</h2>
+                <h2 className="text-xl font-semibold text-gray-900">{displayName}</h2>
                 <Badge variant={student.status === 'ACTIVE' ? 'success' : 'default'}>{student.status}</Badge>
               </div>
-              <p className="text-sm text-gray-500 mt-1">{student.studentNo} • {student.class?.name || student.className}</p>
+              <p className="text-sm text-gray-500 mt-1">{studentNo} • {className}</p>
             </div>
           </div>
         </div>
@@ -78,21 +101,25 @@ export default function StudentDetail() {
           <div className="p-6 border-b lg:border-b-0 lg:border-r border-gray-200">
             <h3 className="text-sm font-semibold text-gray-900 mb-4">Profile Information</h3>
             <div className="space-y-3">
-              <ProfileItem label="Full Name" value={student.name} />
-              <ProfileItem label="Student Number" value={student.studentNo} />
-              <ProfileItem label="Date of Birth" value={formatDate(student.dob)} />
+              <ProfileItem label="Full Name" value={displayName} />
+              <ProfileItem label="Student Number" value={studentNo} />
+              <ProfileItem label="Date of Birth" value={formatDate(dob)} />
               <ProfileItem label="Gender" value={student.gender} />
-              <ProfileItem label="Enrollment Date" value={formatDate(student.enrollmentDate || student.createdAt)} />
-              <ProfileItem label="Class" value={student.class?.name || student.className} />
+              <ProfileItem label="Admission Date" value={formatDate(student.admissionDate || student.createdAt)} />
+              <ProfileItem label="Class" value={className} />
             </div>
           </div>
           <div className="lg:col-span-2 p-6">
             <h3 className="text-sm font-semibold text-gray-900 mb-4">Guardian Information</h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <ProfileItem label="Guardian Name" value={student.guardian?.name} />
-              <ProfileItem label="Email" value={student.guardian?.email} />
-              <ProfileItem label="Phone" value={student.guardian?.phone} />
-            </div>
+            {primaryGuardian ? (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <ProfileItem label="Guardian Name" value={`${primaryGuardian.firstName ?? ''} ${primaryGuardian.lastName ?? ''}`.trim()} />
+                <ProfileItem label="Email" value={primaryGuardian.email} />
+                <ProfileItem label="Phone" value={primaryGuardian.phone} />
+              </div>
+            ) : (
+              <p className="text-sm text-gray-400">No guardian linked to this student yet.</p>
+            )}
             <div className="mt-6">
               <Tabs tabs={tabs} />
             </div>

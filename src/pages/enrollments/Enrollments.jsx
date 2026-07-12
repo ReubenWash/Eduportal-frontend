@@ -11,24 +11,6 @@ import { getClasses } from '../../api/classesApi';
 import { getStudents } from '../../api/studentsApi';
 import { UserPlus, Trash2 } from 'lucide-react';
 
-// Flatten any {value, label} objects the backend might return into plain scalars.
-function scalar(v) {
-  if (v === null || v === undefined) return '';
-  if (typeof v === 'object' && !Array.isArray(v)) return v.label ?? v.name ?? v.value ?? '';
-  return v;
-}
-function normalizeRow(row) {
-  if (!row || typeof row !== 'object') return row;
-  const out = { ...row };
-  for (const k of Object.keys(out)) {
-    const v = out[k];
-    if (v !== null && typeof v === 'object' && !Array.isArray(v) && ('value' in v || 'label' in v)) {
-      out[k] = scalar(v);
-    }
-  }
-  return out;
-}
-
 export default function Enrollments() {
   const [data, setData] = useState([]);
   const [classes, setClasses] = useState([]);
@@ -39,17 +21,22 @@ export default function Enrollments() {
   const [form, setForm] = useState({ studentId: '', classId: '' });
   const { addToast } = useToast();
 
-  const load = () => Promise.all([getEnrollments(), getClasses(), getStudents()])
-    .then(([d, c, s]) => {
-      setData(Array.isArray(d) ? d.map(normalizeRow) : []);
-      setClasses(Array.isArray(c) ? c.map(normalizeRow) : []);
-      setStudents(Array.isArray(s) ? s.map(normalizeRow) : []);
-      setLoading(false);
-    })
-    .catch(() => setLoading(false));
+  // All normalization now happens inside the API layer (enrollmentsApi / classesApi / studentsApi)
+  const load = () =>
+    Promise.all([getEnrollments(), getClasses(), getStudents()])
+      .then(([d, c, s]) => {
+        setData(Array.isArray(d) ? d : []);
+        setClasses(Array.isArray(c) ? c : []);
+        setStudents(Array.isArray(s) ? s : []);
+        setLoading(false);
+      })
+      .catch(() => setLoading(false));
+
   useEffect(() => { load(); }, []);
 
-  const filtered = classFilter ? data.filter(e => e.classId === classFilter || e.class?.id === classFilter) : data;
+  const filtered = classFilter
+    ? data.filter(e => e.classId === classFilter)
+    : data;
 
   const openEnroll = () => {
     setForm({ studentId: '', classId: '' });
@@ -58,13 +45,18 @@ export default function Enrollments() {
 
   const handleEnroll = async (e) => {
     e.preventDefault();
-    if (!form.studentId || !form.classId) { addToast('Please select both student and class', 'error'); return; }
+    if (!form.studentId || !form.classId) {
+      addToast('Please select both student and class', 'error');
+      return;
+    }
     try {
       await createEnrollment(form);
       addToast('Student enrolled successfully', 'success');
       setModalOpen(false);
       load();
-    } catch { addToast('Failed to enroll student', 'error'); }
+    } catch {
+      addToast('Failed to enroll student', 'error');
+    }
   };
 
   const handleRemove = async (row) => {
@@ -72,26 +64,71 @@ export default function Enrollments() {
       await deleteEnrollment(row.id);
       addToast('Enrollment removed', 'success');
       load();
-    } catch { addToast('Failed to remove enrollment', 'error'); }
+    } catch {
+      addToast('Failed to remove enrollment', 'error');
+    }
   };
 
   return (
     <div>
-      <PageHeader title="Enrollments" subtitle="Student class enrollments" action={<Button onClick={openEnroll} icon={UserPlus}>Enroll Student</Button>} />
+      <PageHeader
+        title="Enrollments"
+        subtitle="Student class enrollments"
+        action={<Button onClick={openEnroll} icon={UserPlus}>Enroll Student</Button>}
+      />
+
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
         <div className="p-4 border-b border-gray-200">
-          <Select className="w-64" options={classes.map(c => ({ value: c.id, label: c.name }))} value={classFilter} onChange={e => setClassFilter(e.target.value)} placeholder="Filter by class..." />
+          <Select
+            className="w-64"
+            options={classes.map(c => ({ value: c.id, label: c.name }))}
+            value={classFilter}
+            onChange={e => setClassFilter(e.target.value)}
+            placeholder="Filter by class..."
+          />
         </div>
+
         <Table
           loading={loading}
           data={filtered}
           emptyMessage="No enrollments found"
           columns={[
-            { header: 'Student',  key: 'studentName',    render: (v, row) => <span className="font-medium text-gray-900">{v || row.student?.name || '—'}</span> },
-            { header: 'Class',    key: 'className',      render: (v, row) => <span className="text-gray-600">{v || row.class?.name || '—'}</span> },
-            { header: 'Term',     key: 'termName',       render: (v, row) => <span className="text-gray-600">{v || row.term?.name || '—'}</span> },
-            { header: 'Status',   key: 'status',         render: v => <Badge variant={v === 'ACTIVE' ? 'success' : 'default'}>{v || '—'}</Badge> },
-            { header: 'Enrolled', key: 'enrollmentDate', render: v => v ? new Date(v).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—' },
+            {
+              header: 'Student',
+              key: 'studentName',
+              render: (v) => <span className="font-medium text-gray-900">{v || '—'}</span>,
+            },
+            {
+              header: 'Class',
+              key: 'className',
+              render: (v) => <span className="text-gray-600">{v || '—'}</span>,
+            },
+            {
+              header: 'Term',
+              key: 'termName',
+              render: (v) => <span className="text-gray-600">{v || '—'}</span>,
+            },
+            {
+              header: 'Status',
+              key: 'status',
+              render: (v) => (
+                <Badge variant={v === 'ACTIVE' ? 'success' : v === 'COMPLETED' ? 'info' : 'default'}>
+                  {v || 'ENROLLED'}
+                </Badge>
+              ),
+            },
+            {
+              header: 'Enrolled On',
+              key: 'enrollmentDate',
+              render: (v) =>
+                v
+                  ? new Date(v).toLocaleDateString('en-US', {
+                      month: 'short',
+                      day: 'numeric',
+                      year: 'numeric',
+                    })
+                  : '—',
+            },
           ]}
           rowActions={(row) => (
             <button
@@ -104,13 +141,20 @@ export default function Enrollments() {
         />
       </div>
 
-      <Modal isOpen={modalOpen} onClose={() => setModalOpen(false)} title="Enroll Student" subtitle="Select a student and class to enroll.">
+      <Modal
+        isOpen={modalOpen}
+        onClose={() => setModalOpen(false)}
+        title="Enroll Student"
+        subtitle="Select a student and class to enroll."
+      >
         <form onSubmit={handleEnroll} className="space-y-4 pt-2">
           <Select
             label="Student"
             value={form.studentId}
             onChange={e => setForm({ ...form, studentId: e.target.value })}
-            options={students.filter(s => s.status === 'ACTIVE').map(s => ({ value: s.id, label: `${s.name} (${s.studentNo})` }))}
+            options={students
+              .filter(s => s.status === 'ACTIVE')
+              .map(s => ({ value: s.id, label: `${s.name} (${s.studentNo})` }))}
             placeholder="Select a student..."
           />
           <Select

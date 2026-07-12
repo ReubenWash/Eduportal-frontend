@@ -44,9 +44,11 @@ export default function Students() {
 
   const filtered = useMemo(() => {
     return data.filter(s => {
-      if (keyword && !s.name.toLowerCase().includes(keyword.toLowerCase()) && !s.studentNo.toLowerCase().includes(keyword.toLowerCase())) return false;
-      if (classFilter && s.classId !== classFilter) return false;
-      return true;
+      const nameMatch = !keyword ||
+        (s.name || '').toLowerCase().includes(keyword.toLowerCase()) ||
+        (s.studentNo || '').toLowerCase().includes(keyword.toLowerCase());
+      const classMatch = !classFilter || s.classId === classFilter;
+      return nameMatch && classMatch;
     });
   }, [data, keyword, classFilter]);
 
