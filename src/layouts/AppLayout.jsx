@@ -248,7 +248,7 @@ export default function AppLayout() {
       {/* Sidebar */}
       <aside
         className={`
-          fixed inset-y-0 left-0 z-50 w-60 flex flex-col
+          fixed inset-y-0 left-0 z-50 w-60 flex flex-col safe-pt
           transform transition-transform duration-200 ease-in-out
           ${userRole === 'SUPER_ADMIN' ? 'bg-slate-950' : 'bg-gray-900'}
           ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0 lg:static lg:z-auto
@@ -304,7 +304,7 @@ export default function AppLayout() {
         </nav>
 
         {/* Bottom user area */}
-        <div className="flex-shrink-0 p-3 border-t border-white/5">
+        <div className="flex-shrink-0 p-3 border-t border-white/5 safe-pb">
           <div className="flex items-center gap-3 px-2 py-2 rounded-lg hover:bg-white/5 transition-colors cursor-pointer group">
             <Avatar name={user?.name || 'User'} size="sm" />
             <div className="flex-1 min-w-0">
@@ -331,7 +331,7 @@ export default function AppLayout() {
       {/* Main area */}
       <div className="flex-1 flex flex-col min-w-0 lg:pl-0">
         {/* Header */}
-        <header className="h-16 bg-white border-b border-gray-200 flex items-center px-4 lg:px-8 gap-4 sticky top-0 z-30 flex-shrink-0">
+        <header className="h-[calc(4rem+env(safe-area-inset-top))] safe-pt bg-white border-b border-gray-200 flex items-center px-4 lg:px-8 gap-4 sticky top-0 z-30 flex-shrink-0">
           <button
             onClick={() => setSidebarOpen(true)}
             className="lg:hidden text-gray-500 hover:text-gray-700 transition-colors"
