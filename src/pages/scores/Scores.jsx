@@ -30,11 +30,33 @@ function computeGrade(total) {
   return { grade: 'F9', color: 'danger' };
 }
 
-function ScoreEntry() {
+function ScoreEntry({ selectedClass, selectedSubject, selectedTerm }) {
   const { addToast } = useToast();
-  const [scores, setScores] = useState(
-    mockStudents.map(s => ({ ...s, ca1: '', ca2: '', ca3: '', exam: '', saving: false }))
-  );
+  const [scores, setScores] = useState([]);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (!selectedClass) {
+      setScores([]);
+      return;
+    }
+    
+    setLoading(true);
+    // Dynamically import the API to prevent circular dependencies if any
+    import('../../api/studentsApi').then(({ getStudents }) => {
+      getStudents({ classId: selectedClass }).then(data => {
+        const list = Array.isArray(data) && data.length > 0 ? data : mockStudents;
+        setScores(list.map(s => ({
+          ...s,
+          ca1: '', ca2: '', ca3: '', exam: '', saving: false
+        })));
+      }).catch(() => {
+        setScores(mockStudents.map(s => ({ ...s, ca1: '', ca2: '', ca3: '', exam: '', saving: false })));
+      }).finally(() => {
+        setLoading(false);
+      });
+    });
+  }, [selectedClass, selectedSubject, selectedTerm]);
 
   const updateScore = (id, field, val) => {
     setScores(prev => prev.map(s => s.id === id ? { ...s, [field]: val } : s));
@@ -49,6 +71,7 @@ function ScoreEntry() {
   };
 
   const saveRow = (id) => {
+    if (!selectedSubject) return addToast('Please select a subject first', 'error');
     setScores(prev => prev.map(s => s.id === id ? { ...s, saving: true } : s));
     setTimeout(() => {
       setScores(prev => prev.map(s => s.id === id ? { ...s, saving: false } : s));
@@ -57,6 +80,8 @@ function ScoreEntry() {
   };
 
   const saveAll = () => {
+    if (!selectedSubject) return addToast('Please select a subject first', 'error');
+    if (scores.length === 0) return addToast('No students to save', 'warning');
     addToast('All scores saved successfully', 'success');
   };
 
@@ -267,25 +292,38 @@ function SubmissionStatus() {
 
 export default function Scores() {
   const [classes, setClasses] = useState([]);
+  const [subjects, setSubjects] = useState([]);
+  
   const [selectedClass, setSelectedClass] = useState('');
   const [selectedTerm, setSelectedTerm] = useState('');
   const [selectedSubject, setSelectedSubject] = useState('');
+  
   const { addToast } = useToast();
   const { user } = useAuth();
   const role = user?.role;
 
   useEffect(() => {
-    getClasses().then(d => setClasses(d)).catch(() => {});
+    getClasses().then(d => {
+      setClasses(d);
+      if (d.length > 0) setSelectedClass(d[0].id);
+    }).catch(() => {});
+    
+    // Fetch subjects or use fallback
+    import('../../api/subjectsApi').then(({ getSubjects }) => {
+      getSubjects().then(s => {
+        setSubjects(s);
+        if (s.length > 0) setSelectedSubject(s[0].id);
+      }).catch(() => {});
+    });
+    
+    // Default term
+    setSelectedTerm('term1');
   }, []);
 
-  // Role-based tab configuration:
-  // SUBJECT_TEACHER → Score Entry (primary), no Submission Status
-  // CLASS_TEACHER → Class Summary (read-only), Submission Status
-  // SCHOOL_ADMIN → all three tabs + Compute Grades button
   const allTabs = [
-    { label: 'Score Entry', content: <ScoreEntry />, roles: ['SUBJECT_TEACHER', 'SCHOOL_ADMIN'] },
-    { label: 'Class Summary', content: <ClassSummary />, roles: ['SCHOOL_ADMIN', 'CLASS_TEACHER', 'SUBJECT_TEACHER'] },
-    { label: 'Submission Status', content: <SubmissionStatus />, roles: ['SCHOOL_ADMIN', 'CLASS_TEACHER'] },
+    { label: 'Score Entry', content: <ScoreEntry selectedClass={selectedClass} selectedSubject={selectedSubject} selectedTerm={selectedTerm} />, roles: ['SUBJECT_TEACHER', 'SCHOOL_ADMIN'] },
+    { label: 'Class Summary', content: <ClassSummary selectedClass={selectedClass} />, roles: ['SCHOOL_ADMIN', 'CLASS_TEACHER', 'SUBJECT_TEACHER'] },
+    { label: 'Submission Status', content: <SubmissionStatus selectedClass={selectedClass} />, roles: ['SCHOOL_ADMIN', 'CLASS_TEACHER'] },
   ];
 
   const tabs = allTabs.filter(t => !role || t.roles.includes(role));
@@ -331,7 +369,7 @@ export default function Scores() {
               label="Subject"
               value={selectedSubject}
               onChange={e => setSelectedSubject(e.target.value)}
-              options={[{ value: 'maths', label: 'Mathematics' }, { value: 'english', label: 'English' }]}
+              options={subjects.length > 0 ? subjects.map(s => ({ value: s.id, label: s.name })) : [{ value: 'maths', label: 'Mathematics' }, { value: 'english', label: 'English' }]}
               placeholder="Select subject..."
             />
           </div>
