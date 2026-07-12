@@ -401,13 +401,11 @@ export default function ParentPortal() {
     getMyChildren()
       .then(data => {
         const list = Array.isArray(data) ? data : [];
-        const finalList = list.length > 0 ? list : mockChildren;
-        setChildren(finalList);
-        if (finalList.length > 0) setSelectedChild(finalList[0].id);
+        setChildren(list);
+        if (list.length > 0) setSelectedChild(list[0].id);
       })
       .catch(() => {
-        setChildren(mockChildren);
-        setSelectedChild(mockChildren[0].id);
+        setChildren([]);
       })
       .finally(() => setLoading(false));
   }, []);

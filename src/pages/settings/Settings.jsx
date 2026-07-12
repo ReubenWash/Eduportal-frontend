@@ -15,10 +15,15 @@ export default function Settings() {
   
   // Grading config state
   const [gradingConfig, setGradingConfig] = useState(() => {
+    const defaults = { caCount: 3, caMaxScore: 10, examMaxScore: 70, boundaries: { A1: 90, B2: 80, B3: 75, C4: 70, C5: 65, C6: 60, D7: 55, E8: 50 } };
     try {
-      return JSON.parse(localStorage.getItem('schoolGradingConfig')) || { caCount: 3, caMaxScore: 10, examMaxScore: 70 };
+      const stored = JSON.parse(localStorage.getItem('schoolGradingConfig'));
+      if (stored) {
+         return { ...defaults, ...stored, boundaries: { ...defaults.boundaries, ...(stored.boundaries || {}) } };
+      }
+      return defaults;
     } catch {
-      return { caCount: 3, caMaxScore: 10, examMaxScore: 70 };
+      return defaults;
     }
   });
 
@@ -204,7 +209,27 @@ export default function Settings() {
               </div>
             </div>
             
-            <div className="mt-4 flex items-center justify-end">
+            <div className="mt-6 border-t border-gray-100 pt-5">
+              <h3 className="text-sm font-semibold text-gray-900 mb-3">Grade Boundaries (Minimum Score)</h3>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                {['A1', 'B2', 'B3', 'C4', 'C5', 'C6', 'D7', 'E8'].map(grade => (
+                  <div key={grade} className="flex items-center gap-2">
+                    <label className="text-xs font-bold text-gray-700 w-6">{grade}</label>
+                    <input 
+                      type="number" min="0" max="100" 
+                      value={gradingConfig.boundaries?.[grade] ?? ''}
+                      onChange={e => setGradingConfig({
+                        ...gradingConfig, 
+                        boundaries: { ...gradingConfig.boundaries, [grade]: Number(e.target.value) }
+                      })}
+                      className="w-full border border-gray-200 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/30"
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="mt-5 flex items-center justify-end">
               <Button type="button" onClick={handleSubmit} loading={saving} icon={saving ? undefined : CheckCircle}>
                 Save Grading Config
               </Button>

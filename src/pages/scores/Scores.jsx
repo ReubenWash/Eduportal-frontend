@@ -18,23 +18,29 @@ const mockStudents = [
   { id: '5', name: 'Abena Osei', studentNo: 'STU/005' },
 ];
 
-function computeGrade(total) {
-  if (total >= 90) return { grade: 'A1', color: 'success' };
-  if (total >= 80) return { grade: 'B2', color: 'success' };
-  if (total >= 75) return { grade: 'B3', color: 'success' };
-  if (total >= 70) return { grade: 'C4', color: 'info' };
-  if (total >= 65) return { grade: 'C5', color: 'info' };
-  if (total >= 60) return { grade: 'C6', color: 'warning' };
-  if (total >= 55) return { grade: 'D7', color: 'warning' };
-  if (total >= 50) return { grade: 'E8', color: 'danger' };
+function computeGrade(total, boundaries) {
+  if (!boundaries) {
+    boundaries = { A1: 90, B2: 80, B3: 75, C4: 70, C5: 65, C6: 60, D7: 55, E8: 50 };
+  }
+  if (total >= boundaries.A1) return { grade: 'A1', color: 'success' };
+  if (total >= boundaries.B2) return { grade: 'B2', color: 'success' };
+  if (total >= boundaries.B3) return { grade: 'B3', color: 'success' };
+  if (total >= boundaries.C4) return { grade: 'C4', color: 'info' };
+  if (total >= boundaries.C5) return { grade: 'C5', color: 'info' };
+  if (total >= boundaries.C6) return { grade: 'C6', color: 'warning' };
+  if (total >= boundaries.D7) return { grade: 'D7', color: 'warning' };
+  if (total >= boundaries.E8) return { grade: 'E8', color: 'danger' };
   return { grade: 'F9', color: 'danger' };
 }
 
 const getGradingConfig = () => {
+  const defaults = { caCount: 3, caMaxScore: 10, examMaxScore: 70, boundaries: { A1: 90, B2: 80, B3: 75, C4: 70, C5: 65, C6: 60, D7: 55, E8: 50 } };
   try {
-    return JSON.parse(localStorage.getItem('schoolGradingConfig')) || { caCount: 3, caMaxScore: 10, examMaxScore: 70 };
+    const stored = JSON.parse(localStorage.getItem('schoolGradingConfig'));
+    if (stored) return { ...defaults, ...stored, boundaries: { ...defaults.boundaries, ...(stored.boundaries || {}) } };
+    return defaults;
   } catch {
-    return { caCount: 3, caMaxScore: 10, examMaxScore: 70 };
+    return defaults;
   }
 };
 
@@ -201,7 +207,7 @@ function ScoreEntry({ selectedClass, selectedSubject, selectedTerm, gradingConfi
           <tbody className="bg-white divide-y divide-gray-100">
             {scores.map((row) => {
               const total = getTotal(row);
-              const { grade, color } = computeGrade(total);
+              const { grade, color } = computeGrade(total, gradingConfig.boundaries);
               return (
                 <tr key={row.id} className="hover:bg-gray-50/80 transition-colors">
                   <td className="px-4 py-3 text-sm font-medium text-gray-900 whitespace-nowrap">{row.name}</td>
@@ -247,6 +253,7 @@ function ScoreEntry({ selectedClass, selectedSubject, selectedTerm, gradingConfi
 function ClassSummary({ selectedClass }) {
   const [students, setStudents] = useState([]);
   const [loading, setLoading] = useState(false);
+  const gradingConfig = getGradingConfig();
 
   useEffect(() => {
     if (!selectedClass) {
@@ -285,7 +292,7 @@ function ClassSummary({ selectedClass }) {
             students.map((s) => {
               const scores = [78, 82, 75, 90]; // Still mock scores until backend supports it
               const avg = Math.round(scores.reduce((a, b) => a + b, 0) / scores.length);
-              const { grade, color } = computeGrade(avg);
+              const { grade, color } = computeGrade(avg, gradingConfig.boundaries);
               return (
                 <tr key={s.id} className="hover:bg-gray-50/80 transition-colors">
                   <td className="px-4 py-3 text-sm font-medium text-gray-900">{s.name}</td>
@@ -373,7 +380,7 @@ export default function Scores() {
   const gradingConfig = getGradingConfig();
 
   const allTabs = [
-    { label: 'Score Entry', content: <ScoreEntry selectedClass={selectedClass} selectedSubject={selectedSubject} selectedTerm={selectedTerm} gradingConfig={gradingConfig} />, roles: ['SUBJECT_TEACHER', 'SCHOOL_ADMIN'] },
+    { label: 'Score Entry', content: <ScoreEntry selectedClass={selectedClass} selectedSubject={selectedSubject} selectedTerm={selectedTerm} gradingConfig={gradingConfig} />, roles: ['SUBJECT_TEACHER', 'CLASS_TEACHER', 'SCHOOL_ADMIN'] },
     { label: 'Class Summary', content: <ClassSummary selectedClass={selectedClass} />, roles: ['SCHOOL_ADMIN', 'CLASS_TEACHER', 'SUBJECT_TEACHER'] },
     { label: 'Submission Status', content: <SubmissionStatus selectedClass={selectedClass} />, roles: ['SCHOOL_ADMIN', 'CLASS_TEACHER'] },
   ];

@@ -14,7 +14,7 @@ export default defineConfig({
         description: 'A complete school management SaaS platform for schools, teachers, students, and parents across Ghana and West Africa.',
         theme_color: '#4F46E5',
         background_color: '#ffffff',
-        display: 'standalone',
+        display: 'browser',
         orientation: 'portrait-primary',
         scope: '/',
         start_url: '/',
