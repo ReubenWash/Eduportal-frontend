@@ -1,4 +1,5 @@
 import api, { unwrapList, unwrapItem } from './axios';
+import { normalizeStudent } from './studentsApi';
 
 // NOTE: same caveat as parentApi.js — these "self" endpoints for a
 // logged-in STUDENT user are not confirmed to exist on the backend yet:
@@ -9,7 +10,7 @@ import api, { unwrapList, unwrapItem } from './axios';
 
 export const getMyProfile = async () => {
   const res = await api.get('/students/me');
-  return unwrapItem(res.data);
+  return normalizeStudent(unwrapItem(res.data));
 };
 
 export const getMyReportCards = async () => {

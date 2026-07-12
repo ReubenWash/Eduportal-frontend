@@ -5,7 +5,7 @@ import api, { unwrapList, unwrapItem } from './axios';
 //   { id, firstName, lastName, studentNumber, dateOfBirth, photoUrl, status, gender,
 //     enrollments: [{ class: { level, section } }] }
 // Frontend expects flat fields: name, studentNo, dob, photo, className, classId
-function normalizeStudent(s) {
+export function normalizeStudent(s) {
   if (!s || typeof s !== 'object') return s;
 
   // Full name

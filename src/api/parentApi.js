@@ -1,4 +1,5 @@
 import api, { unwrapList, unwrapItem } from './axios';
+import { normalizeStudent } from './studentsApi';
 
 // NOTE: these endpoints follow the same "/me" self-scoping pattern as
 // schoolApi.js (GET /schools/me), but are NOT confirmed to exist yet on
@@ -10,7 +11,8 @@ import api, { unwrapList, unwrapItem } from './axios';
 
 export const getMyChildren = async () => {
   const res = await api.get('/guardians/me/children');
-  return unwrapList(res.data);
+  const list = unwrapList(res.data);
+  return Array.isArray(list) ? list.map(normalizeStudent) : [];
 };
 
 export const getChildReportCards = async (studentId) => {

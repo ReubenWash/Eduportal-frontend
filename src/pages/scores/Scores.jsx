@@ -7,7 +7,7 @@ import Badge from '../../components/ui/Badge';
 import { useToast } from '../../context/ToastContext';
 import { useAuth } from '../../context/AuthContext';
 import { getClasses } from '../../api/classesApi';
-import { Calculator, Save, CheckCircle2 } from 'lucide-react';
+import { Calculator, Save, CheckCircle2, Download, Upload } from 'lucide-react';
 
 // Mock score data
 const mockStudents = [
@@ -60,6 +60,60 @@ function ScoreEntry() {
     addToast('All scores saved successfully', 'success');
   };
 
+  const handleDownload = () => {
+    const headers = ['Student', 'StudentNo', 'CA1', 'CA2', 'CA3', 'Exam'];
+    const csvContent = [
+      headers.join(','),
+      ...scores.map(s => `"${s.name}","${s.studentNo}","${s.ca1 || ''}","${s.ca2 || ''}","${s.ca3 || ''}","${s.exam || ''}"`)
+    ].join('\n');
+    
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'Score_Template.csv';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  };
+
+  const handleUpload = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const text = event.target.result;
+      const lines = text.split('\n');
+      if (lines.length < 2) return addToast('Invalid or empty file', 'error');
+      
+      const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
+      const newScores = [...scores];
+      
+      for (let i = 1; i < lines.length; i++) {
+        if (!lines[i].trim()) continue;
+        
+        // Handle quotes in CSV line correctly (basic handling)
+        const values = lines[i].split(',').map(v => v.trim().replace(/"/g, ''));
+        const rowData = {};
+        headers.forEach((h, idx) => {
+           rowData[h] = values[idx];
+        });
+        
+        const studentIndex = newScores.findIndex(s => s.studentNo === rowData.StudentNo);
+        if (studentIndex >= 0) {
+           newScores[studentIndex].ca1 = rowData.CA1 || '';
+           newScores[studentIndex].ca2 = rowData.CA2 || '';
+           newScores[studentIndex].ca3 = rowData.CA3 || '';
+           newScores[studentIndex].exam = rowData.Exam || '';
+        }
+      }
+      setScores(newScores);
+      addToast('Scores imported successfully', 'success');
+      e.target.value = null; // reset input
+    };
+    reader.readAsText(file);
+  };
+
   const InputCell = ({ value, onChange, max, placeholder }) => (
     <input
       type="number"
@@ -74,12 +128,20 @@ function ScoreEntry() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <p className="text-sm font-medium text-gray-700">Enter scores per student</p>
           <p className="text-xs text-gray-500 mt-0.5">CA1, CA2, CA3 (max 10 each) + Exam (max 70)</p>
         </div>
-        <Button onClick={saveAll} icon={Save} size="sm">Save All</Button>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button variant="secondary" onClick={handleDownload} icon={Download} size="sm">Download Template</Button>
+          <label className="cursor-pointer inline-flex items-center gap-2 justify-center rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600">
+            <Upload className="h-4 w-4" />
+            Upload CSV
+            <input type="file" accept=".csv" className="hidden" onChange={handleUpload} />
+          </label>
+          <Button onClick={saveAll} icon={Save} size="sm">Save All</Button>
+        </div>
       </div>
       <div className="overflow-x-auto rounded-xl border border-gray-200">
         <table className="min-w-full">
