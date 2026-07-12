@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import PageHeader from '../../components/common/PageHeader';
 import Button from '../../components/ui/Button';
-import Input from '../../components/ui/Input';
 import Select from '../../components/ui/Select';
 import Modal from '../../components/ui/Modal';
 import Badge from '../../components/ui/Badge';
@@ -11,6 +10,24 @@ import { getEnrollments, createEnrollment, deleteEnrollment } from '../../api/en
 import { getClasses } from '../../api/classesApi';
 import { getStudents } from '../../api/studentsApi';
 import { UserPlus, Trash2 } from 'lucide-react';
+
+// Flatten any {value, label} objects the backend might return into plain scalars.
+function scalar(v) {
+  if (v === null || v === undefined) return '';
+  if (typeof v === 'object' && !Array.isArray(v)) return v.label ?? v.name ?? v.value ?? '';
+  return v;
+}
+function normalizeRow(row) {
+  if (!row || typeof row !== 'object') return row;
+  const out = { ...row };
+  for (const k of Object.keys(out)) {
+    const v = out[k];
+    if (v !== null && typeof v === 'object' && !Array.isArray(v) && ('value' in v || 'label' in v)) {
+      out[k] = scalar(v);
+    }
+  }
+  return out;
+}
 
 export default function Enrollments() {
   const [data, setData] = useState([]);
@@ -24,9 +41,9 @@ export default function Enrollments() {
 
   const load = () => Promise.all([getEnrollments(), getClasses(), getStudents()])
     .then(([d, c, s]) => {
-      setData(Array.isArray(d) ? d : []);
-      setClasses(Array.isArray(c) ? c : []);
-      setStudents(Array.isArray(s) ? s : []);
+      setData(Array.isArray(d) ? d.map(normalizeRow) : []);
+      setClasses(Array.isArray(c) ? c.map(normalizeRow) : []);
+      setStudents(Array.isArray(s) ? s.map(normalizeRow) : []);
       setLoading(false);
     })
     .catch(() => setLoading(false));
@@ -70,11 +87,11 @@ export default function Enrollments() {
           data={filtered}
           emptyMessage="No enrollments found"
           columns={[
-            { header: 'Student', key: 'studentName', render: (v, row) => <span className="font-medium text-gray-900">{typeof v === 'string' ? v : v?.label || v?.name || row.student?.name || '—'}</span> },
-            { header: 'Class', key: 'className', render: (v, row) => <span className="text-gray-600">{typeof v === 'string' ? v : v?.label || v?.name || row.class?.name || '—'}</span> },
-            { header: 'Term', key: 'termName', render: (v, row) => <span className="text-gray-600">{typeof v === 'string' ? v : v?.label || v?.name || row.term?.name || '—'}</span> },
-            { header: 'Status', key: 'status', render: v => <Badge variant={(typeof v === 'string' ? v : v?.value) === 'ACTIVE' ? 'success' : 'default'}>{typeof v === 'string' ? v : v?.label || v?.value || '—'}</Badge> },
-            { header: 'Enrolled', key: 'enrollmentDate', render: v => v ? new Date(typeof v === 'string' ? v : v?.value || v).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—' },
+            { header: 'Student',  key: 'studentName',    render: (v, row) => <span className="font-medium text-gray-900">{v || row.student?.name || '—'}</span> },
+            { header: 'Class',    key: 'className',      render: (v, row) => <span className="text-gray-600">{v || row.class?.name || '—'}</span> },
+            { header: 'Term',     key: 'termName',       render: (v, row) => <span className="text-gray-600">{v || row.term?.name || '—'}</span> },
+            { header: 'Status',   key: 'status',         render: v => <Badge variant={v === 'ACTIVE' ? 'success' : 'default'}>{v || '—'}</Badge> },
+            { header: 'Enrolled', key: 'enrollmentDate', render: v => v ? new Date(v).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—' },
           ]}
           rowActions={(row) => (
             <button
