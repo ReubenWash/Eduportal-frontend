@@ -8,8 +8,37 @@ import Modal from '../../components/ui/Modal';
 export default function AdminCMS() {
   const { addToast } = useToast();
   const [activeSection, setActiveSection] = useState(null);
-  
-  const defaultPages = {
+
+  // Load persisted landing content from localStorage
+  const loadLanding = () => {
+    try { return JSON.parse(localStorage.getItem('landingContent') || '{}'); }
+    catch { return {}; }
+  };
+  const saveLanding = (patch) => {
+    const current = loadLanding();
+    localStorage.setItem('landingContent', JSON.stringify({ ...current, ...patch }));
+  };
+
+  // Hero section form state
+  const [heroForm, setHeroForm] = useState(() => ({
+    heroHeadline: 'Run your school.',
+    heroHeadlineHighlight: 'Not paperwork.',
+    heroSubtitle: 'EduPortal gives school administrators, teachers, and parents one place to manage students, scores, attendance, and term reports — without the spreadsheets.',
+    heroTrustText: 'Trusted by 200+ schools across Ghana, Nigeria & Kenya',
+    ...loadLanding(),
+  }));
+
+  // Stats form state
+  const [statsForm, setStatsForm] = useState(() => {
+    const saved = loadLanding();
+    return saved.stats || [
+      { number: '200+', label: 'Schools registered' },
+      { number: '84K',  label: 'Students managed' },
+      { number: '1.2M', label: 'Reports generated' },
+      { number: '99.9%', label: 'Platform uptime' },
+    ];
+  });
+
     'Team': { title: 'Our Team', subtitle: 'Meet the people building EduPortal.', content: '<h3>Founders</h3><p>EduPortal was built by a group of passionate educators and engineers...</p>' },
     'Changelog': { title: 'Changelog', subtitle: 'See what\'s new in EduPortal.', content: '<h3>v1.0.0</h3><ul><li>Initial release of the school management dashboard.</li><li>Added core modules for Enrollments, Scores, and Attendance.</li></ul>' },
     'Roadmap': { title: 'Roadmap', subtitle: 'Our planned features and upcoming releases.', content: '<h3>Q3 2026</h3><ul><li>Mobile Application for Parents</li><li>AI-driven student performance predictions</li></ul>' },
@@ -32,7 +61,11 @@ export default function AdminCMS() {
   };
 
   const handleSaveCMS = () => {
-    if (activeSection === 'Public Pages') {
+    if (activeSection === 'Hero Section') {
+      saveLanding(heroForm);
+    } else if (activeSection === 'Stats / Numbers') {
+      saveLanding({ stats: statsForm });
+    } else if (activeSection === 'Public Pages') {
       localStorage.setItem('publicPages', JSON.stringify(publicPages));
     }
     addToast('Section updated successfully', 'success');
@@ -49,30 +82,38 @@ export default function AdminCMS() {
           <div className="space-y-4 pt-2">
             <div>
               <label className="block text-sm font-medium text-gray-700">Main Headline</label>
-              <input type="text" className="mt-1 w-full border border-gray-200 rounded-lg px-3 py-2 text-sm" defaultValue="Empowering Education Through Technology" />
+              <input type="text" className="mt-1 w-full border border-gray-200 rounded-lg px-3 py-2 text-sm" value={heroForm.heroHeadline} onChange={e => setHeroForm(f => ({...f, heroHeadline: e.target.value}))} />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Headline Highlight (coloured part)</label>
+              <input type="text" className="mt-1 w-full border border-gray-200 rounded-lg px-3 py-2 text-sm" value={heroForm.heroHeadlineHighlight} onChange={e => setHeroForm(f => ({...f, heroHeadlineHighlight: e.target.value}))} />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700">Subtitle Text</label>
-              <textarea rows={3} className="mt-1 w-full border border-gray-200 rounded-lg px-3 py-2 text-sm" defaultValue="A complete SaaS platform for schools, teachers, students, and parents to streamline learning and management." />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Primary Button Text</label>
-                <input type="text" className="mt-1 w-full border border-gray-200 rounded-lg px-3 py-2 text-sm" defaultValue="Get Started" />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Primary Button Link</label>
-                <input type="text" className="mt-1 w-full border border-gray-200 rounded-lg px-3 py-2 text-sm" defaultValue="/register" />
-              </div>
+              <textarea rows={3} className="mt-1 w-full border border-gray-200 rounded-lg px-3 py-2 text-sm" value={heroForm.heroSubtitle} onChange={e => setHeroForm(f => ({...f, heroSubtitle: e.target.value}))} />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Hero Image</label>
-              <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 flex flex-col items-center justify-center text-gray-500 hover:bg-gray-50 hover:border-indigo-400 transition-colors cursor-pointer">
-                <ImageIcon className="h-8 w-8 text-gray-400 mb-2" />
-                <span className="text-sm font-medium">Click to upload or drag and drop</span>
-                <span className="text-xs mt-1">SVG, PNG, JPG or GIF (max. 800x400px)</span>
-              </div>
+              <label className="block text-sm font-medium text-gray-700">Trust Badge Text</label>
+              <input type="text" className="mt-1 w-full border border-gray-200 rounded-lg px-3 py-2 text-sm" value={heroForm.heroTrustText} onChange={e => setHeroForm(f => ({...f, heroTrustText: e.target.value}))} />
             </div>
+          </div>
+        );
+      case 'Stats / Numbers':
+        return (
+          <div className="space-y-4 pt-2">
+            <p className="text-sm text-gray-500">Edit the 4 stat numbers shown in the indigo banner on the landing page.</p>
+            {statsForm.map((stat, i) => (
+              <div key={i} className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-gray-600 mb-1">Number / Value</label>
+                  <input type="text" className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm" value={stat.number} onChange={e => setStatsForm(s => s.map((x, j) => j === i ? {...x, number: e.target.value} : x))} />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-gray-600 mb-1">Label</label>
+                  <input type="text" className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm" value={stat.label} onChange={e => setStatsForm(s => s.map((x, j) => j === i ? {...x, label: e.target.value} : x))} />
+                </div>
+              </div>
+            ))}
           </div>
         );
       case 'Features Section':
@@ -172,7 +213,8 @@ export default function AdminCMS() {
         <h2 className="text-lg font-semibold text-gray-900 mb-4">Landing Page Sections</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {[
-            { id: 'Hero Section', desc: 'Edit main heading, subtitle, buttons, and background.' },
+            { id: 'Hero Section', desc: 'Edit main heading, subtitle, and the trust badge text.' },
+            { id: 'Stats / Numbers', desc: 'Update the 4 statistics shown in the indigo band.' },
             { id: 'Features Section', desc: 'Manage platform features, icons, and descriptions.' },
             { id: 'Pricing Section', desc: 'Edit pricing cards, add new plans, and manage feature lists.' },
             { id: 'Testimonials & FAQ', desc: 'Add or remove testimonials and frequently asked questions.' },

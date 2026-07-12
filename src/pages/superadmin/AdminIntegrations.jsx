@@ -44,19 +44,58 @@ const INTEGRATIONS = [
   },
 ];
 
+import { updateEnvConfig } from '../../api/superAdminApi';
+
 function IntegrationCard({ item, onToggle, onTest, onCopy }) {
+  const { addToast } = useToast();
   const [modalOpen, setModalOpen] = useState(false);
   const [revealed, setRevealed] = useState({});
   const [saving, setSaving] = useState(false);
-  const [values, setValues] = useState(item.keys.reduce((acc, k) => ({ ...acc, [k.label]: k.value }), {}));
+  
+  // Load saved key values from localStorage (only for public keys fallback, secrets will be empty)
+  const loadedKeys = (() => {
+    try { return JSON.parse(localStorage.getItem('platformKeys') || '{}'); } catch { return {}; }
+  })();
+  
+  const [values, setValues] = useState(
+    item.keys.reduce((acc, k) => ({ 
+      ...acc, 
+      [k.label]: loadedKeys[`${item.id}.${k.label}`] ?? k.value 
+    }), {})
+  );
 
-  const handleSave = () => {
+  const handleSave = async () => {
     setSaving(true);
-    setTimeout(() => { 
-      setSaving(false); 
-      onTest(item.id, 'save'); 
+    
+    try {
+      // 1. Prepare keys for the backend
+      const keysToUpdate = {};
+      item.keys.forEach(k => {
+        // Construct the expected .env variable name (e.g., STRIPE_SECRET_KEY)
+        const envKeyName = `${item.id.toUpperCase()}_${k.label.toUpperCase().replace(/\s+/g, '_')}`;
+        keysToUpdate[envKeyName] = values[k.label];
+        
+        // 2. Also persist public keys to localStorage for UI convenience
+        if (k.type !== 'password') {
+          try {
+            const current = JSON.parse(localStorage.getItem('platformKeys') || '{}');
+            current[`${item.id}.${k.label}`] = values[k.label];
+            localStorage.setItem('platformKeys', JSON.stringify(current));
+          } catch {}
+        }
+      });
+      
+      // 3. Send to backend to write to .env
+      await updateEnvConfig(keysToUpdate);
+      
+      addToast('Configuration saved securely to server.', 'success');
       setModalOpen(false);
-    }, 800);
+    } catch (error) {
+      console.error('Failed to save config:', error);
+      addToast(error.message || 'Failed to save configuration to server.', 'error');
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -108,6 +147,11 @@ function IntegrationCard({ item, onToggle, onTest, onCopy }) {
               {item.keys.map(k => (
                 <div key={k.label}>
                   <label className="block text-sm font-semibold text-gray-700 mb-1">{k.label}</label>
+                  {k.type === 'password' && (
+                    <p className="text-xs text-amber-600 mb-1 flex items-center gap-1">
+                      <span>⚠️</span> Secret keys must also be set in your server's <code className="font-mono bg-amber-50 px-1 rounded">.env</code> file to take effect.
+                    </p>
+                  )}
                   <div className="flex gap-2">
                     <input
                       type={k.type === 'password' && !revealed[k.label] ? 'password' : 'text'}

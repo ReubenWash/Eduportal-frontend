@@ -64,3 +64,9 @@ export const sendPushNotification = async ({ title, body, audience }) => {
   const res = await api.post('/admin/notifications/push', { title, body, audience });
   return unwrapItem(res.data);
 };
+
+// ─── System Configuration ─────────────────────────────────────────
+export const updateEnvConfig = async (keys) => {
+  const res = await api.post('/admin/config/env', { keys });
+  return unwrapItem(res.data);
+};

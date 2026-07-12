@@ -1,7 +1,48 @@
 import { Link } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 
+// ── Default landing page content ─────────────────────────────────────────
+// AdminCMS (Super Admin → Website CMS) writes to localStorage under 'landingContent'.
+// If no overrides exist, these defaults are used.
+const DEFAULT_CONTENT = {
+  heroHeadline: "Run your school.",
+  heroHeadlineHighlight: "Not paperwork.",
+  heroSubtitle: "EduPortal gives school administrators, teachers, and parents one place to manage students, scores, attendance, and term reports — without the spreadsheets.",
+  heroPrimaryBtn: "Register your school",
+  heroTrustText: "Trusted by 200+ schools across Ghana, Nigeria & Kenya",
+  stats: [
+    { number: "200+", label: "Schools registered" },
+    { number: "84K",  label: "Students managed" },
+    { number: "1.2M", label: "Reports generated" },
+    { number: "99.9%", label: "Platform uptime" },
+  ],
+  schools: ["Accra Academy", "Presec Legon", "Wesley Girls", "Achimota School", "Aburi Girls", "Holy Child"],
+  testimonials: [
+    { quote: "We used to spend three weeks compiling report cards. With EduPortal, the whole process takes two days. Teachers submit scores, I approve, and parents get a PDF. That's it.", author: "Abena Owusu", role: "Headmistress, Holy Child School", initials: "AO", color: "#4F46E5" },
+    { quote: "The attendance analytics alone are worth it. I can see which classes have the worst absenteeism and act on it before the term ends — not after.", author: "Kwame Darko", role: "Deputy Head, Presec Legon", initials: "KD", color: "#10B981" },
+    { quote: "As a parent, I used to wait weeks to find out how my daughter was doing. Now I get her report on my phone the same day results are released. Genuinely impressive.", author: "Efua Boateng", role: "Parent, Achimota School", initials: "EB", color: "#F59E0B" },
+  ],
+  plans: [
+    { name: "Basic",    price: "Free",     period: "/ term", desc: "For small schools getting started. Up to 150 students.", popular: false, features: ["Up to 150 students", "Scores & grading", "Attendance tracking", "PDF report cards"], disabled: ["Analytics dashboard", "Email reports to parents"] },
+    { name: "Standard", price: "GHS 299",  period: "/ term", desc: "For growing schools. Up to 800 students, full feature set.", popular: true, features: ["Up to 800 students", "Scores & grading", "Attendance tracking", "PDF report cards", "Analytics dashboard", "Email reports to parents"], disabled: [] },
+    { name: "Premium",  price: "GHS 599",  period: "/ term", desc: "For large institutions. Unlimited students, priority support.", popular: false, features: ["Unlimited students", "Everything in Standard", "Bulk import & export", "Priority email support", "Custom report branding", "Dedicated account manager"], disabled: [] },
+  ],
+  footerTagline: "A school management platform built specifically for schools in Ghana and across West Africa.",
+};
+
+function useLandingContent() {
+  const [content, setContent] = useState(DEFAULT_CONTENT);
+  useEffect(() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem('landingContent') || '{}');
+      setContent(prev => ({ ...prev, ...saved }));
+    } catch { /* ignore parse errors */ }
+  }, []);
+  return content;
+}
+
 export default function LandingPage() {
+  const c = useLandingContent();
   const [deferredPrompt, setDeferredPrompt] = useState(null);
   const [isInstalled, setIsInstalled] = useState(false);
   const [showIosInstructions, setShowIosInstructions] = useState(false);
@@ -11,41 +52,21 @@ export default function LandingPage() {
   const isInStandaloneMode = () => window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
 
   useEffect(() => {
-    // Already installed?
     if (isInStandaloneMode()) { setIsInstalled(true); return; }
-
-    const handleBeforeInstallPrompt = (e) => {
-      e.preventDefault();
-      setDeferredPrompt(e);
-    };
-    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
-
-    // Detect successful install
+    const handleBefore = (e) => { e.preventDefault(); setDeferredPrompt(e); };
+    window.addEventListener('beforeinstallprompt', handleBefore);
     window.addEventListener('appinstalled', () => setIsInstalled(true));
-
-    return () => {
-      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
-    };
+    return () => window.removeEventListener('beforeinstallprompt', handleBefore);
   }, []);
 
   const handleInstallClick = async () => {
-    if (isInstalled) return; // already installed
-
-    if (isIos()) {
-      // iOS: show manual instructions (Safari Share → Add to Home Screen)
-      setShowIosInstructions(true);
-      return;
-    }
-
+    if (isInstalled) return;
+    if (isIos()) { setShowIosInstructions(true); return; }
     if (deferredPrompt) {
-      // Android / Chrome / Edge / Samsung Internet native prompt
       deferredPrompt.prompt();
       const { outcome } = await deferredPrompt.userChoice;
       if (outcome === 'accepted') setDeferredPrompt(null);
-    } else {
-      // Already installed or browser doesn't support it
-      setShowIosInstructions(true);
-    }
+    } else { setShowIosInstructions(true); }
   };
 
   return (
@@ -85,8 +106,8 @@ export default function LandingPage() {
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
               Built for African schools
             </div>
-            <h1 className="hero-h1">Run your school.<br /><span>Not paperwork.</span></h1>
-            <p className="hero-sub">EduPortal gives school administrators, teachers, and parents one place to manage students, scores, attendance, and term reports — without the spreadsheets.</p>
+            <h1 className="hero-h1">{c.heroHeadline}<br /><span>{c.heroHeadlineHighlight}</span></h1>
+            <p className="hero-sub">{c.heroSubtitle}</p>
             <div className="hero-cta">
               <Link to="/login" className="btn-hero-primary">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 12l2 2 4-4"/></svg>
@@ -104,7 +125,7 @@ export default function LandingPage() {
                 <div className="trust-avatar" style={{background:'#F59E0B'}}>ES</div>
                 <div className="trust-avatar" style={{background:'#EF4444'}}>NB</div>
               </div>
-              Trusted by 200+ schools across Ghana, Nigeria & Kenya
+              {c.heroTrustText}
             </div>
           </div>
           <div className="hero-visual">
@@ -185,12 +206,7 @@ export default function LandingPage() {
         <div className="logos-inner">
           <p className="logos-label">Schools that run on EduPortal</p>
           <div className="logos-row">
-            <div className="school-name-pill"><span className="dot"></span>Accra Academy</div>
-            <div className="school-name-pill"><span className="dot"></span>Presec Legon</div>
-            <div className="school-name-pill"><span className="dot"></span>Wesley Girls</div>
-            <div className="school-name-pill"><span className="dot"></span>Achimota School</div>
-            <div className="school-name-pill"><span className="dot"></span>Aburi Girls</div>
-            <div className="school-name-pill"><span className="dot"></span>Holy Child</div>
+            {c.schools.map(s => <div key={s} className="school-name-pill"><span className="dot"></span>{s}</div>)}
           </div>
         </div>
       </div>
@@ -305,22 +321,12 @@ export default function LandingPage() {
       {/* STATS BAND */}
       <div className="stats-band">
         <div className="stats-band-inner">
-          <div>
-            <div className="stat-number">200+</div>
-            <div className="stat-label">Schools registered</div>
-          </div>
-          <div>
-            <div className="stat-number">84K</div>
-            <div className="stat-label">Students managed</div>
-          </div>
-          <div>
-            <div className="stat-number">1.2M</div>
-            <div className="stat-label">Reports generated</div>
-          </div>
-          <div>
-            <div className="stat-number">99.9%</div>
-            <div className="stat-label">Platform uptime</div>
-          </div>
+          {c.stats.map(s => (
+            <div key={s.label}>
+              <div className="stat-number">{s.number}</div>
+              <div className="stat-label">{s.label}</div>
+            </div>
+          ))}
         </div>
       </div>
 
@@ -332,57 +338,23 @@ export default function LandingPage() {
             <h2 className="section-h2" style={{maxWidth:'500px', margin:'0 auto'}}>Real feedback from real administrators</h2>
           </div>
           <div className="testimonials-grid">
-            <div className="testimonial-card">
-              <div className="testimonial-stars">
-                <svg viewBox="0 0 24 24" fill="currentColor"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-                <svg viewBox="0 0 24 24" fill="currentColor"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-                <svg viewBox="0 0 24 24" fill="currentColor"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-                <svg viewBox="0 0 24 24" fill="currentColor"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-                <svg viewBox="0 0 24 24" fill="currentColor"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-              </div>
-              <p className="testimonial-quote">"We used to spend three weeks compiling report cards. With EduPortal, the whole process takes two days. Teachers submit scores, I approve, and parents get a PDF. That's it."</p>
-              <div className="testimonial-author">
-                <div className="author-avatar" style={{background:'#4F46E5'}}>AO</div>
-                <div>
-                  <div className="author-name">Abena Owusu</div>
-                  <div className="author-role">Headmistress, Holy Child School</div>
+            {c.testimonials.map((t, i) => (
+              <div key={i} className="testimonial-card">
+                <div className="testimonial-stars">
+                  {[1,2,3,4,5].map(n => (
+                    <svg key={n} viewBox="0 0 24 24" fill="currentColor"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                  ))}
+                </div>
+                <p className="testimonial-quote">"{t.quote}"</p>
+                <div className="testimonial-author">
+                  <div className="author-avatar" style={{background: t.color}}>{t.initials}</div>
+                  <div>
+                    <div className="author-name">{t.author}</div>
+                    <div className="author-role">{t.role}</div>
+                  </div>
                 </div>
               </div>
-            </div>
-            <div className="testimonial-card">
-              <div className="testimonial-stars">
-                <svg viewBox="0 0 24 24" fill="currentColor"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-                <svg viewBox="0 0 24 24" fill="currentColor"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-                <svg viewBox="0 0 24 24" fill="currentColor"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-                <svg viewBox="0 0 24 24" fill="currentColor"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-                <svg viewBox="0 0 24 24" fill="currentColor"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-              </div>
-              <p className="testimonial-quote">"The attendance analytics alone are worth it. I can see which classes have the worst absenteeism and act on it before the term ends — not after."</p>
-              <div className="testimonial-author">
-                <div className="author-avatar" style={{background:'#10B981'}}>KD</div>
-                <div>
-                  <div className="author-name">Kwame Darko</div>
-                  <div className="author-role">Deputy Head, Presec Legon</div>
-                </div>
-              </div>
-            </div>
-            <div className="testimonial-card">
-              <div className="testimonial-stars">
-                <svg viewBox="0 0 24 24" fill="currentColor"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-                <svg viewBox="0 0 24 24" fill="currentColor"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-                <svg viewBox="0 0 24 24" fill="currentColor"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-                <svg viewBox="0 0 24 24" fill="currentColor"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-                <svg viewBox="0 0 24 24" fill="currentColor"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-              </div>
-              <p className="testimonial-quote">"As a parent, I used to wait weeks to find out how my daughter was doing. Now I get her report on my phone the same day results are released. Genuinely impressive."</p>
-              <div className="testimonial-author">
-                <div className="author-avatar" style={{background:'#F59E0B'}}>EB</div>
-                <div>
-                  <div className="author-name">Efua Boateng</div>
-                  <div className="author-role">Parent, Achimota School</div>
-                </div>
-              </div>
-            </div>
+            ))}
           </div>
         </div>
       </section>
@@ -395,49 +367,31 @@ export default function LandingPage() {
           <p className="section-sub" style={{maxWidth:'400px', margin:'16px auto 0'}}>Pay per term or annually. Cancel any time.</p>
         </div>
         <div className="plans-grid">
-          <div className="plan-card">
-            <div className="plan-name">Basic</div>
-            <div className="plan-price">Free <span>/ term</span></div>
-            <div className="plan-desc">For small schools getting started. Up to 150 students.</div>
-            <ul className="plan-features">
-              <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg> Up to 150 students</li>
-              <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg> Scores & grading</li>
-              <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg> Attendance tracking</li>
-              <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg> PDF report cards</li>
-              <li className="dim"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg> Analytics dashboard</li>
-              <li className="dim"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg> Email reports to parents</li>
-            </ul>
-            <Link to="/login" className="btn-plan btn-plan-outline" style={{textDecoration:'none', display:'block', textAlign:'center'}}>Get started free</Link>
-          </div>
-          <div className="plan-card featured">
-            <div className="plan-badge">Most popular</div>
-            <div className="plan-name">Standard</div>
-            <div className="plan-price">GHS 299 <span>/ term</span></div>
-            <div className="plan-desc">For growing schools. Up to 800 students, full feature set.</div>
-            <ul className="plan-features">
-              <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg> Up to 800 students</li>
-              <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg> Scores & grading</li>
-              <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg> Attendance tracking</li>
-              <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg> PDF report cards</li>
-              <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg> Analytics dashboard</li>
-              <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg> Email reports to parents</li>
-            </ul>
-            <Link to="/login" className="btn-plan btn-plan-solid" style={{textDecoration:'none', display:'block', textAlign:'center'}}>Start free trial</Link>
-          </div>
-          <div className="plan-card">
-            <div className="plan-name">Premium</div>
-            <div className="plan-price">GHS 599 <span>/ term</span></div>
-            <div className="plan-desc">For large institutions. Unlimited students, priority support.</div>
-            <ul className="plan-features">
-              <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg> Unlimited students</li>
-              <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg> Everything in Standard</li>
-              <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg> Bulk import & export</li>
-              <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg> Priority email support</li>
-              <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg> Custom report branding</li>
-              <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg> Dedicated account manager</li>
-            </ul>
-            <Link to="/login" className="btn-plan btn-plan-outline" style={{textDecoration:'none', display:'block', textAlign:'center'}}>Contact sales</Link>
-          </div>
+          {c.plans.map((plan, i) => (
+            <div key={plan.name} className={`plan-card ${plan.popular ? 'featured' : ''}`}>
+              {plan.popular && <div className="plan-badge">Most popular</div>}
+              <div className="plan-name">{plan.name}</div>
+              <div className="plan-price">{plan.price} <span>{plan.period}</span></div>
+              <div className="plan-desc">{plan.desc}</div>
+              <ul className="plan-features">
+                {plan.features.map(f => (
+                  <li key={f}>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                    {f}
+                  </li>
+                ))}
+                {plan.disabled && plan.disabled.map(f => (
+                  <li key={f} className="dim">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                    {f}
+                  </li>
+                ))}
+              </ul>
+              <Link to="/login" className={`btn-plan ${plan.popular ? 'btn-plan-solid' : 'btn-plan-outline'}`} style={{textDecoration:'none', display:'block', textAlign:'center'}}>
+                {plan.name === 'Basic' ? 'Get started free' : plan.name === 'Standard' ? 'Start free trial' : 'Contact sales'}
+              </Link>
+            </div>
+          ))}
         </div>
       </section>
 
@@ -473,7 +427,7 @@ export default function LandingPage() {
                 </div>
                 <span className="logo-name">EduPortal</span>
               </Link>
-              <p className="footer-tagline">A school management platform built specifically for schools in Ghana and across West Africa.</p>
+              <p className="footer-tagline">{c.footerTagline}</p>
               <button 
                 onClick={handleInstallClick}
                 disabled={isInstalled}
