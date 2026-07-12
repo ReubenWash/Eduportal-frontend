@@ -331,7 +331,7 @@ export default function AppLayout() {
       {/* Main area */}
       <div className="flex-1 flex flex-col min-w-0 lg:pl-0">
         {/* Header */}
-        <header className="h-[calc(4rem+env(safe-area-inset-top))] safe-pt bg-white border-b border-gray-200 flex items-center px-4 lg:px-8 gap-4 sticky top-0 z-30 flex-shrink-0">
+        <header className="min-h-[4.5rem] py-3 safe-pt bg-white border-b border-gray-200 flex items-center px-4 lg:px-8 gap-4 sticky top-0 z-30 flex-shrink-0">
           <button
             onClick={() => setSidebarOpen(true)}
             className="lg:hidden text-gray-500 hover:text-gray-700 transition-colors"
