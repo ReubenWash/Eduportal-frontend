@@ -27,15 +27,24 @@ const roleConfig = {
 export default function AdminUsers() {
   const { addToast } = useToast();
   const [users, setUsers] = useState(MOCK_USERS);
+  const [schools] = useState(['Sunshine Academy', 'Riverside JHS', 'Golden Gate School', 'Star of the Sea']);
+  const [selectedSchool, setSelectedSchool] = useState('');
+  
   const [keyword, setKeyword] = useState('');
   const [roleFilter, setRoleFilter] = useState('');
   const [viewUser, setViewUser] = useState(null);
+  const [addUserModal, setAddUserModal] = useState(false);
+  const [addForm, setAddForm] = useState({ name: '', email: '', role: 'CLASS_TEACHER' });
 
   const filtered = useMemo(() => users.filter(u => {
-    if (keyword && !u.name.toLowerCase().includes(keyword.toLowerCase()) && !u.email.toLowerCase().includes(keyword.toLowerCase()) && !u.school.toLowerCase().includes(keyword.toLowerCase())) return false;
+    // If Super Admin hasn't selected a school, they don't see any users (per requirements)
+    if (!selectedSchool) return false;
+    if (u.school !== selectedSchool) return false;
+    
+    if (keyword && !u.name.toLowerCase().includes(keyword.toLowerCase()) && !u.email.toLowerCase().includes(keyword.toLowerCase())) return false;
     if (roleFilter && u.role !== roleFilter) return false;
     return true;
-  }), [users, keyword, roleFilter]);
+  }), [users, keyword, roleFilter, selectedSchool]);
 
   const toggleSuspend = (user) => {
     const newStatus = user.status === 'SUSPENDED' ? 'ACTIVE' : 'SUSPENDED';
@@ -50,12 +59,58 @@ export default function AdminUsers() {
     setViewUser(null);
   };
 
+  const handleAddUser = (e) => {
+    e.preventDefault();
+    if (!selectedSchool) return addToast("Please select a school first", "error");
+    
+    const newUser = {
+      id: Math.random().toString(),
+      name: addForm.name,
+      email: addForm.email,
+      role: addForm.role,
+      school: selectedSchool,
+      status: 'ACTIVE',
+      joinedAt: new Date().toISOString()
+    };
+    
+    setUsers([...users, newUser]);
+    addToast(`${addForm.name} added to ${selectedSchool}`, 'success');
+    setAddUserModal(false);
+    setAddForm({ name: '', email: '', role: 'CLASS_TEACHER' });
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900 tracking-tight">User Management</h1>
-        <p className="text-sm text-gray-500 mt-1">View, suspend, or remove all users across every school on the platform.</p>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900 tracking-tight">User Management</h1>
+          <p className="text-sm text-gray-500 mt-1">Select a school to view, add, or remove its users.</p>
+        </div>
+        
+        {/* School Selector & Add Button */}
+        <div className="flex items-center gap-3">
+          <select 
+            value={selectedSchool} 
+            onChange={(e) => setSelectedSchool(e.target.value)}
+            className="border border-gray-200 rounded-lg px-4 py-2 text-sm bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          >
+            <option value="">-- Select a School --</option>
+            {schools.map(s => <option key={s} value={s}>{s}</option>)}
+          </select>
+          
+          <button 
+            onClick={() => {
+              if(!selectedSchool) return addToast("Please select a school first", "error");
+              setAddUserModal(true);
+            }}
+            className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-colors shadow-sm disabled:opacity-50"
+            disabled={!selectedSchool}
+          >
+            <UserCheck className="h-4 w-4" />
+            Add User
+          </button>
+        </div>
       </div>
 
       {/* Summary Pills */}
@@ -102,8 +157,10 @@ export default function AdminUsers() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {filtered.length === 0 ? (
-                <tr><td colSpan={6} className="py-16 text-center text-sm text-gray-400">No users match your search.</td></tr>
+              {!selectedSchool ? (
+                <tr><td colSpan={6} className="py-16 text-center text-sm text-gray-500 font-medium">Please select a school from the dropdown above to view and manage its users.</td></tr>
+              ) : filtered.length === 0 ? (
+                <tr><td colSpan={6} className="py-16 text-center text-sm text-gray-400">No users found for {selectedSchool}.</td></tr>
               ) : filtered.map(user => {
                 const role = roleConfig[user.role] || {};
                 const RoleIcon = role.icon || Shield;
@@ -183,6 +240,33 @@ export default function AdminUsers() {
               </button>
             </div>
           </div>
+        </Modal>
+      )}
+      {/* Add User Modal */}
+      {addUserModal && (
+        <Modal isOpen={addUserModal} onClose={() => setAddUserModal(false)} title="Add User" subtitle={`Adding a new user to ${selectedSchool}`}>
+          <form onSubmit={handleAddUser} className="space-y-4 pt-4">
+            <div>
+              <label className="block text-xs font-semibold text-gray-600 mb-1">Full Name</label>
+              <input required className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-300 outline-none" value={addForm.name} onChange={e => setAddForm(f => ({ ...f, name: e.target.value }))} placeholder="e.g. John Doe" />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-gray-600 mb-1">Email</label>
+              <input required type="email" className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-300 outline-none" value={addForm.email} onChange={e => setAddForm(f => ({ ...f, email: e.target.value }))} placeholder="e.g. john@school.edu" />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-gray-600 mb-1">Role</label>
+              <select className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-300 outline-none" value={addForm.role} onChange={e => setAddForm(f => ({ ...f, role: e.target.value }))}>
+                <option value="SCHOOL_ADMIN">School Admin</option>
+                <option value="CLASS_TEACHER">Class Teacher</option>
+                <option value="SUBJECT_TEACHER">Subject Teacher</option>
+              </select>
+            </div>
+            <div className="flex gap-3 pt-4 border-t border-gray-100">
+              <button type="button" onClick={() => setAddUserModal(false)} className="flex-1 py-2 rounded-lg border border-gray-200 text-gray-700 text-sm font-semibold hover:bg-gray-50 transition-colors">Cancel</button>
+              <button type="submit" className="flex-1 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold transition-colors">Add User</button>
+            </div>
+          </form>
         </Modal>
       )}
     </div>
