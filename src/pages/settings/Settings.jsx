@@ -12,6 +12,16 @@ export default function Settings() {
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({ name: '', email: '', phone: '', address: '', logo: null, plan: '' });
   const [preview, setPreview] = useState('');
+  
+  // Grading config state
+  const [gradingConfig, setGradingConfig] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem('schoolGradingConfig')) || { caCount: 3, caMaxScore: 10, examMaxScore: 70 };
+    } catch {
+      return { caCount: 3, caMaxScore: 10, examMaxScore: 70 };
+    }
+  });
+
   const { addToast } = useToast();
 
   useEffect(() => {
@@ -41,6 +51,8 @@ export default function Settings() {
     setSaving(true);
     try {
       await updateSchool(form);
+      // Save grading config locally
+      localStorage.setItem('schoolGradingConfig', JSON.stringify(gradingConfig));
       addToast('School settings updated successfully', 'success');
     } catch (err) {
       addToast('Failed to update settings', 'error');
@@ -155,6 +167,48 @@ export default function Settings() {
                 </div>
               </form>
             )}
+          </div>
+
+          {/* Grading System Configuration */}
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <h2 className="text-sm font-semibold text-gray-900 mb-2">Grading System Configuration</h2>
+            <p className="text-xs text-gray-500 mb-5">Set the number of Continuous Assessments (CA) and max scores for teachers.</p>
+            
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
+              <div>
+                <label className="block text-xs font-semibold text-gray-600 mb-1">Number of CAs</label>
+                <input 
+                  type="number" min="1" max="5" 
+                  value={gradingConfig.caCount} 
+                  onChange={e => setGradingConfig({...gradingConfig, caCount: Number(e.target.value)})}
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/30"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-600 mb-1">Max Score per CA</label>
+                <input 
+                  type="number" min="1" max="100" 
+                  value={gradingConfig.caMaxScore} 
+                  onChange={e => setGradingConfig({...gradingConfig, caMaxScore: Number(e.target.value)})}
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/30"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-600 mb-1">Max Exam Score</label>
+                <input 
+                  type="number" min="1" max="100" 
+                  value={gradingConfig.examMaxScore} 
+                  onChange={e => setGradingConfig({...gradingConfig, examMaxScore: Number(e.target.value)})}
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/30"
+                />
+              </div>
+            </div>
+            
+            <div className="mt-4 flex items-center justify-end">
+              <Button type="button" onClick={handleSubmit} loading={saving} icon={saving ? undefined : CheckCircle}>
+                Save Grading Config
+              </Button>
+            </div>
           </div>
         </div>
 

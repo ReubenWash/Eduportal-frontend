@@ -30,7 +30,15 @@ function computeGrade(total) {
   return { grade: 'F9', color: 'danger' };
 }
 
-function ScoreEntry({ selectedClass, selectedSubject, selectedTerm }) {
+const getGradingConfig = () => {
+  try {
+    return JSON.parse(localStorage.getItem('schoolGradingConfig')) || { caCount: 3, caMaxScore: 10, examMaxScore: 70 };
+  } catch {
+    return { caCount: 3, caMaxScore: 10, examMaxScore: 70 };
+  }
+};
+
+function ScoreEntry({ selectedClass, selectedSubject, selectedTerm, gradingConfig }) {
   const { addToast } = useToast();
   const [scores, setScores] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -62,12 +70,10 @@ function ScoreEntry({ selectedClass, selectedSubject, selectedTerm }) {
     setScores(prev => prev.map(s => s.id === id ? { ...s, [field]: val } : s));
   };
 
-  const getTotal = (row) => {
-    const ca1 = Number(row.ca1) || 0;
-    const ca2 = Number(row.ca2) || 0;
-    const ca3 = Number(row.ca3) || 0;
+    const caScores = Array.from({ length: gradingConfig.caCount }).map((_, i) => Number(row[`ca${i+1}`]) || 0);
+    const caTotal = caScores.reduce((a, b) => a + b, 0);
     const exam = Number(row.exam) || 0;
-    return ca1 + ca2 + ca3 + exam;
+    return caTotal + exam;
   };
 
   const saveRow = (id) => {
@@ -86,10 +92,14 @@ function ScoreEntry({ selectedClass, selectedSubject, selectedTerm }) {
   };
 
   const handleDownload = () => {
-    const headers = ['Student', 'StudentNo', 'CA1', 'CA2', 'CA3', 'Exam'];
+    const caHeaders = Array.from({ length: gradingConfig.caCount }).map((_, i) => `CA${i+1}`);
+    const headers = ['Student', 'StudentNo', ...caHeaders, 'Exam'];
     const csvContent = [
       headers.join(','),
-      ...scores.map(s => `"${s.name}","${s.studentNo}","${s.ca1 || ''}","${s.ca2 || ''}","${s.ca3 || ''}","${s.exam || ''}"`)
+      ...scores.map(s => {
+        const caVals = Array.from({ length: gradingConfig.caCount }).map((_, i) => `"${s[`ca${i+1}`] || ''}"`);
+        return `"${s.name}","${s.studentNo}",${caVals.join(',')},"${s.exam || ''}"`;
+      })
     ].join('\n');
     
     const blob = new Blob([csvContent], { type: 'text/csv' });
@@ -126,9 +136,9 @@ function ScoreEntry({ selectedClass, selectedSubject, selectedTerm }) {
         
         const studentIndex = newScores.findIndex(s => s.studentNo === rowData.StudentNo);
         if (studentIndex >= 0) {
-           newScores[studentIndex].ca1 = rowData.CA1 || '';
-           newScores[studentIndex].ca2 = rowData.CA2 || '';
-           newScores[studentIndex].ca3 = rowData.CA3 || '';
+           for (let c = 1; c <= gradingConfig.caCount; c++) {
+             newScores[studentIndex][`ca${c}`] = rowData[`CA${c}`] || '';
+           }
            newScores[studentIndex].exam = rowData.Exam || '';
         }
       }
@@ -156,7 +166,9 @@ function ScoreEntry({ selectedClass, selectedSubject, selectedTerm }) {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <p className="text-sm font-medium text-gray-700">Enter scores per student</p>
-          <p className="text-xs text-gray-500 mt-0.5">CA1, CA2, CA3 (max 10 each) + Exam (max 70)</p>
+          <p className="text-xs text-gray-500 mt-0.5">
+            {gradingConfig.caCount} CAs (max {gradingConfig.caMaxScore} each) + Exam (max {gradingConfig.examMaxScore})
+          </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <Button variant="secondary" onClick={handleDownload} icon={Download} size="sm">Download Template</Button>
@@ -172,11 +184,17 @@ function ScoreEntry({ selectedClass, selectedSubject, selectedTerm }) {
         <table className="min-w-full">
           <thead>
             <tr className="bg-gray-50 border-b border-gray-200">
-              {['Student', 'Stu. No.', 'CA1 /10', 'CA2 /10', 'CA3 /10', 'Exam /70', 'Total', 'Grade', ''].map((h) => (
-                <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider whitespace-nowrap">
-                  {h}
+              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider whitespace-nowrap">Student</th>
+              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider whitespace-nowrap">Stu. No.</th>
+              {Array.from({ length: gradingConfig.caCount }).map((_, i) => (
+                <th key={i} className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider whitespace-nowrap">
+                  CA{i+1} /{gradingConfig.caMaxScore}
                 </th>
               ))}
+              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider whitespace-nowrap">Exam /{gradingConfig.examMaxScore}</th>
+              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider whitespace-nowrap">Total</th>
+              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider whitespace-nowrap">Grade</th>
+              <th className="px-4 py-3"></th>
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-100">
@@ -187,10 +205,14 @@ function ScoreEntry({ selectedClass, selectedSubject, selectedTerm }) {
                 <tr key={row.id} className="hover:bg-gray-50/80 transition-colors">
                   <td className="px-4 py-3 text-sm font-medium text-gray-900 whitespace-nowrap">{row.name}</td>
                   <td className="px-4 py-3 text-xs text-gray-500">{row.studentNo}</td>
-                  <td className="px-4 py-3"><InputCell value={row.ca1} onChange={(v) => updateScore(row.id, 'ca1', v)} max={10} placeholder="—" /></td>
-                  <td className="px-4 py-3"><InputCell value={row.ca2} onChange={(v) => updateScore(row.id, 'ca2', v)} max={10} placeholder="—" /></td>
-                  <td className="px-4 py-3"><InputCell value={row.ca3} onChange={(v) => updateScore(row.id, 'ca3', v)} max={10} placeholder="—" /></td>
-                  <td className="px-4 py-3"><InputCell value={row.exam} onChange={(v) => updateScore(row.id, 'exam', v)} max={70} placeholder="—" /></td>
+                  {Array.from({ length: gradingConfig.caCount }).map((_, i) => (
+                    <td key={i} className="px-4 py-3">
+                      <InputCell value={row[`ca${i+1}`]} onChange={(v) => updateScore(row.id, `ca${i+1}`, v)} max={gradingConfig.caMaxScore} placeholder="—" />
+                    </td>
+                  ))}
+                  <td className="px-4 py-3">
+                    <InputCell value={row.exam} onChange={(v) => updateScore(row.id, 'exam', v)} max={gradingConfig.examMaxScore} placeholder="—" />
+                  </td>
                   <td className="px-4 py-3 text-sm font-bold text-gray-900">{total > 0 ? total : '—'}</td>
                   <td className="px-4 py-3">
                     {total > 0 ? <Badge variant={color}>{grade}</Badge> : <span className="text-gray-300 text-xs">—</span>}
@@ -221,7 +243,28 @@ function ScoreEntry({ selectedClass, selectedSubject, selectedTerm }) {
   );
 }
 
-function ClassSummary() {
+function ClassSummary({ selectedClass }) {
+  const [students, setStudents] = useState([]);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (!selectedClass) {
+      setStudents([]);
+      return;
+    }
+    
+    setLoading(true);
+    import('../../api/studentsApi').then(({ getStudents }) => {
+      getStudents({ classId: selectedClass }).then(data => {
+        setStudents(Array.isArray(data) && data.length > 0 ? data : mockStudents);
+      }).catch(() => {
+        setStudents(mockStudents);
+      }).finally(() => {
+        setLoading(false);
+      });
+    });
+  }, [selectedClass]);
+
   return (
     <div className="overflow-x-auto rounded-xl border border-gray-200">
       <table className="min-w-full">
@@ -233,21 +276,27 @@ function ClassSummary() {
           </tr>
         </thead>
         <tbody className="bg-white divide-y divide-gray-100">
-          {mockStudents.map((s) => {
-            const scores = [78, 82, 75, 90];
-            const avg = Math.round(scores.reduce((a, b) => a + b, 0) / scores.length);
-            const { grade, color } = computeGrade(avg);
-            return (
-              <tr key={s.id} className="hover:bg-gray-50/80 transition-colors">
-                <td className="px-4 py-3 text-sm font-medium text-gray-900">{s.name}</td>
-                {scores.map((sc, i) => (
-                  <td key={i} className="px-4 py-3 text-sm text-gray-700">{sc}</td>
-                ))}
-                <td className="px-4 py-3 text-sm font-bold text-gray-900">{avg}</td>
-                <td className="px-4 py-3"><Badge variant={color}>{grade}</Badge></td>
-              </tr>
-            );
-          })}
+          {loading ? (
+            <tr><td colSpan={7} className="px-4 py-8 text-center text-gray-500 text-sm">Loading students...</td></tr>
+          ) : students.length === 0 ? (
+            <tr><td colSpan={7} className="px-4 py-8 text-center text-gray-500 text-sm">No students found in this class.</td></tr>
+          ) : (
+            students.map((s) => {
+              const scores = [78, 82, 75, 90]; // Still mock scores until backend supports it
+              const avg = Math.round(scores.reduce((a, b) => a + b, 0) / scores.length);
+              const { grade, color } = computeGrade(avg);
+              return (
+                <tr key={s.id} className="hover:bg-gray-50/80 transition-colors">
+                  <td className="px-4 py-3 text-sm font-medium text-gray-900">{s.name}</td>
+                  {scores.map((sc, i) => (
+                    <td key={i} className="px-4 py-3 text-sm text-gray-700">{sc}</td>
+                  ))}
+                  <td className="px-4 py-3 text-sm font-bold text-gray-900">{avg}</td>
+                  <td className="px-4 py-3"><Badge variant={color}>{grade}</Badge></td>
+                </tr>
+              );
+            })
+          )}
         </tbody>
       </table>
     </div>
@@ -320,8 +369,10 @@ export default function Scores() {
     setSelectedTerm('term1');
   }, []);
 
+  const gradingConfig = getGradingConfig();
+
   const allTabs = [
-    { label: 'Score Entry', content: <ScoreEntry selectedClass={selectedClass} selectedSubject={selectedSubject} selectedTerm={selectedTerm} />, roles: ['SUBJECT_TEACHER', 'SCHOOL_ADMIN'] },
+    { label: 'Score Entry', content: <ScoreEntry selectedClass={selectedClass} selectedSubject={selectedSubject} selectedTerm={selectedTerm} gradingConfig={gradingConfig} />, roles: ['SUBJECT_TEACHER', 'SCHOOL_ADMIN'] },
     { label: 'Class Summary', content: <ClassSummary selectedClass={selectedClass} />, roles: ['SCHOOL_ADMIN', 'CLASS_TEACHER', 'SUBJECT_TEACHER'] },
     { label: 'Submission Status', content: <SubmissionStatus selectedClass={selectedClass} />, roles: ['SCHOOL_ADMIN', 'CLASS_TEACHER'] },
   ];
