@@ -38,7 +38,7 @@ export default function AdminCMS() {
       { number: '99.9%', label: 'Platform uptime' },
     ];
   });
-
+  const defaultPages = {
     'Team': { title: 'Our Team', subtitle: 'Meet the people building EduPortal.', content: '<h3>Founders</h3><p>EduPortal was built by a group of passionate educators and engineers...</p>' },
     'Changelog': { title: 'Changelog', subtitle: 'See what\'s new in EduPortal.', content: '<h3>v1.0.0</h3><ul><li>Initial release of the school management dashboard.</li><li>Added core modules for Enrollments, Scores, and Attendance.</li></ul>' },
     'Roadmap': { title: 'Roadmap', subtitle: 'Our planned features and upcoming releases.', content: '<h3>Q3 2026</h3><ul><li>Mobile Application for Parents</li><li>AI-driven student performance predictions</li></ul>' },

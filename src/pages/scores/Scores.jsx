@@ -70,6 +70,7 @@ function ScoreEntry({ selectedClass, selectedSubject, selectedTerm, gradingConfi
     setScores(prev => prev.map(s => s.id === id ? { ...s, [field]: val } : s));
   };
 
+  const getTotal = (row) => {
     const caScores = Array.from({ length: gradingConfig.caCount }).map((_, i) => Number(row[`ca${i+1}`]) || 0);
     const caTotal = caScores.reduce((a, b) => a + b, 0);
     const exam = Number(row.exam) || 0;
