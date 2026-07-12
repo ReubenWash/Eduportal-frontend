@@ -85,10 +85,14 @@
   -webkit-backdrop-filter: blur(12px);
   backdrop-filter: blur(12px);
   border-bottom: 1px solid var(--border);
-  height: 64px;
+  /* Grow to accommodate the Dynamic Island / notch in PWA mode */
+  min-height: 64px;
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   padding: 0 40px;
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: 12px;
+  box-sizing: border-box;
 }
 .landing-page .nav-inner {
   max-width: 1200px;
@@ -164,7 +168,8 @@
 }
 .landing-page .btn-primary:hover { background: #4338CA; transform: translateY(-1px); }
 .landing-page .hero {
-  padding: 140px 40px 100px;
+  /* Use a larger top padding that also absorbs the notch/dynamic island height */
+  padding: calc(140px + env(safe-area-inset-top, 0px)) 40px 100px;
   max-width: 1200px;
   margin: 0 auto;
   display: grid;
@@ -430,7 +435,7 @@
 .landing-page .footer-links a:hover { color: #94A3B8; }
 .landing-page .footer-bottom { padding-top: 32px; display: flex; align-items: center; justify-content: space-between; font-size: 12px; color: #334155; }
 @media (max-width: 900px) {
-  .landing-page .hero { grid-template-columns: 1fr; gap: 48px; padding: 120px 24px 60px; }
+  .landing-page .hero { grid-template-columns: 1fr; gap: 48px; padding: calc(120px + env(safe-area-inset-top, 0px)) 24px 60px; }
   .landing-page .hero-visual { display: none; }
   .landing-page .features-grid { grid-template-columns: 1fr 1fr; }
   .landing-page .steps-grid { grid-template-columns: 1fr 1fr; }
@@ -438,7 +443,7 @@
   .landing-page .stats-band-inner { grid-template-columns: repeat(2, 1fr); gap: 32px; }
   .landing-page .testimonials-grid { grid-template-columns: 1fr; }
   .landing-page .footer-top { grid-template-columns: 1fr 1fr; gap: 32px; }
-  .landing-page nav { padding: 0 24px; }
+  .landing-page nav { padding-left: 24px; padding-right: 24px; }
   .landing-page .nav-links { display: none; }
 }
 @media (max-width: 600px) {
