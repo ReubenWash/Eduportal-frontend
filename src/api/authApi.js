@@ -34,6 +34,11 @@ export const verifyEmail = async (token) => {
   return new Promise(resolve => setTimeout(() => resolve({ message: 'Success' }), 800));
 };
 
+export const changePassword = async (data) => {
+  const response = await api.patch('/auth/change-password', data);
+  return response.data;
+};
+
 export const register = async (data) => {
   try {
     const response = await api.post('/schools/register', {

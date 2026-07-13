@@ -3,69 +3,12 @@ import PageHeader from '../../components/common/PageHeader';
 import Badge from '../../components/ui/Badge';
 import Avatar from '../../components/ui/Avatar';
 import { getMyProfile, getMyReportCards, getMyGrades } from '../../api/studentselfApi';
+import { getReportDownloadUrl } from '../../api/reportsApi';
 import {
   LayoutDashboard, BarChart2, CheckSquare, FileText, User,
   GraduationCap, CalendarDays, TrendingUp, Download, Eye, Bell,
   CheckCircle2, XCircle, Clock, ChevronDown, ChevronUp,
 } from 'lucide-react';
-
-/* ─── Mock data for when API isn't connected yet ─── */
-const mockProfile = {
-  name: 'Ama Mensah',
-  studentNo: 'STU/001',
-  dateOfBirth: '2010-03-15',
-  gender: 'Female',
-  className: 'JHS 1A',
-  guardianName: 'Kofi Mensah',
-  guardianContact: '+233 24 555 0123',
-  photo: null,
-};
-
-const mockScores = [
-  {
-    term: 'Term 1, 2025',
-    subjects: [
-      { name: 'Mathematics', ca1: 9, ca2: 8, ca3: 9, caTotal: 26, exam: 64, total: 90, grade: 'A1' },
-      { name: 'English Language', ca1: 7, ca2: 8, ca3: 7, caTotal: 22, exam: 60, total: 82, grade: 'B2' },
-      { name: 'Integrated Science', ca1: 8, ca2: 7, ca3: 8, caTotal: 23, exam: 52, total: 75, grade: 'B3' },
-      { name: 'Social Studies', ca1: 9, ca2: 9, ca3: 8, caTotal: 26, exam: 64, total: 90, grade: 'A1' },
-      { name: 'ICT', ca1: 10, ca2: 9, ca3: 10, caTotal: 29, exam: 68, total: 97, grade: 'A1' },
-    ],
-    average: 86.8,
-  },
-  {
-    term: 'Term 2, 2025',
-    subjects: [
-      { name: 'Mathematics', ca1: 8, ca2: 9, ca3: 8, caTotal: 25, exam: 60, total: 85, grade: 'B2' },
-      { name: 'English Language', ca1: 7, ca2: 8, ca3: 8, caTotal: 23, exam: 58, total: 81, grade: 'B2' },
-      { name: 'Integrated Science', ca1: 7, ca2: 8, ca3: 7, caTotal: 22, exam: 55, total: 77, grade: 'B3' },
-      { name: 'Social Studies', ca1: 9, ca2: 8, ca3: 9, caTotal: 26, exam: 62, total: 88, grade: 'B2' },
-      { name: 'ICT', ca1: 10, ca2: 10, ca3: 9, caTotal: 29, exam: 65, total: 94, grade: 'A1' },
-    ],
-    average: 85.0,
-  },
-];
-
-const mockAttendance = {
-  summary: { present: 48, absent: 3, late: 5, total: 56 },
-  records: [
-    { date: '2025-06-01', day: 'Mon', status: 'PRESENT' },
-    { date: '2025-06-02', day: 'Tue', status: 'PRESENT' },
-    { date: '2025-06-03', day: 'Wed', status: 'LATE' },
-    { date: '2025-06-04', day: 'Thu', status: 'PRESENT' },
-    { date: '2025-06-05', day: 'Fri', status: 'ABSENT' },
-    { date: '2025-06-08', day: 'Mon', status: 'PRESENT' },
-    { date: '2025-06-09', day: 'Tue', status: 'PRESENT' },
-    { date: '2025-06-10', day: 'Wed', status: 'PRESENT' },
-    { date: '2025-06-11', day: 'Thu', status: 'LATE' },
-    { date: '2025-06-12', day: 'Fri', status: 'PRESENT' },
-  ],
-};
-
-const mockReports = [
-  { id: 1, termName: 'Term 1, 2025', status: 'RELEASED', average: 86.8, position: '2nd / 32', url: '#' },
-  { id: 2, termName: 'Term 2, 2025', status: 'RELEASED', average: 85.0, position: '3rd / 32', url: '#' },
-];
 
 /* ─── Helper components ─── */
 const gradeColor = (grade) => {
@@ -77,11 +20,12 @@ const gradeColor = (grade) => {
 
 const statusConfig = {
   PRESENT: { icon: CheckCircle2, color: 'text-emerald-600', bg: 'bg-emerald-50 border-emerald-100' },
-  ABSENT: { icon: XCircle, color: 'text-red-600', bg: 'bg-red-50 border-red-100' },
-  LATE: { icon: Clock, color: 'text-amber-600', bg: 'bg-amber-50 border-amber-100' },
+  ABSENT:  { icon: XCircle,     color: 'text-red-600',     bg: 'bg-red-50 border-red-100' },
+  LATE:    { icon: Clock,       color: 'text-amber-600',   bg: 'bg-amber-50 border-amber-100' },
 };
 
 function ScoreTermRow({ term, expanded, onToggle }) {
+  const subjects = term.subjects || term.scores || [];
   return (
     <div className="border border-gray-200 rounded-xl overflow-hidden">
       <button
@@ -90,7 +34,7 @@ function ScoreTermRow({ term, expanded, onToggle }) {
       >
         <div className="flex items-center gap-3">
           <CalendarDays className="h-4 w-4 text-gray-400" />
-          <span className="text-sm font-semibold text-gray-900">{term.term}</span>
+          <span className="text-sm font-semibold text-gray-900">{term.term || term.termName}</span>
         </div>
         <div className="flex items-center gap-3">
           <span className="text-xs font-medium text-gray-500">Avg: <strong className="text-gray-900">{term.average}%</strong></span>
@@ -108,16 +52,16 @@ function ScoreTermRow({ term, expanded, onToggle }) {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-50">
-              {term.subjects.map((s, i) => (
+              {subjects.map((s, i) => (
                 <tr key={i} className="hover:bg-gray-50/60 transition-colors">
-                  <td className="px-4 py-3 text-sm font-medium text-gray-900 whitespace-nowrap">{s.name}</td>
-                  <td className="px-4 py-3 text-sm text-gray-700">{s.ca1}</td>
-                  <td className="px-4 py-3 text-sm text-gray-700">{s.ca2}</td>
-                  <td className="px-4 py-3 text-sm text-gray-700">{s.ca3}</td>
-                  <td className="px-4 py-3 text-sm font-semibold text-gray-800">{s.caTotal}/30</td>
-                  <td className="px-4 py-3 text-sm text-gray-700">{s.exam}</td>
-                  <td className="px-4 py-3 text-sm font-bold text-gray-900">{s.total}</td>
-                  <td className="px-4 py-3"><Badge variant={gradeColor(s.grade)}>{s.grade}</Badge></td>
+                  <td className="px-4 py-3 text-sm font-medium text-gray-900 whitespace-nowrap">{s.name || s.subjectName}</td>
+                  <td className="px-4 py-3 text-sm text-gray-700">{s.ca1 ?? '—'}</td>
+                  <td className="px-4 py-3 text-sm text-gray-700">{s.ca2 ?? '—'}</td>
+                  <td className="px-4 py-3 text-sm text-gray-700">{s.ca3 ?? '—'}</td>
+                  <td className="px-4 py-3 text-sm font-semibold text-gray-800">{s.caTotal ?? '—'}/30</td>
+                  <td className="px-4 py-3 text-sm text-gray-700">{s.exam ?? '—'}</td>
+                  <td className="px-4 py-3 text-sm font-bold text-gray-900">{s.total ?? '—'}</td>
+                  <td className="px-4 py-3"><Badge variant={gradeColor(s.grade)}>{s.grade || '—'}</Badge></td>
                 </tr>
               ))}
             </tbody>
@@ -136,22 +80,26 @@ function ScoreTermRow({ term, expanded, onToggle }) {
 }
 
 /* ─── Tab content components ─── */
-function DashboardTab({ profile }) {
-  const attendancePct = Math.round((mockAttendance.summary.present / mockAttendance.summary.total) * 100);
-  const latestReport = mockReports[mockReports.length - 1];
-  const submittedSubjects = mockScores[mockScores.length - 1]?.subjects?.length || 0;
-  const totalSubjects = 5;
+function DashboardTab({ profile, scores, attendance, reports }) {
+  const latestReport = reports?.[reports.length - 1];
+  const latestScores = scores?.[scores.length - 1];
+  const summary = attendance?.summary || attendance || null;
+  const attendancePct = summary
+    ? Math.round(((summary.present || 0) / (summary.total || 1)) * 100)
+    : null;
+  const submittedSubjects = latestScores?.subjects?.length || latestScores?.scores?.length || 0;
 
   return (
     <div className="space-y-5">
-      {/* Profile Summary Card */}
       <div className="bg-gradient-to-br from-indigo-600 to-indigo-700 rounded-2xl p-6 text-white">
         <div className="flex items-center gap-4">
           <Avatar name={profile?.name || 'Student'} size="xl" className="ring-4 ring-white/20" />
           <div className="flex-1 min-w-0">
             <h2 className="text-xl font-bold truncate">{profile?.name}</h2>
             <p className="text-indigo-200 text-sm">{profile?.studentNo} · {profile?.className}</p>
-            <p className="text-indigo-200 text-xs mt-1">Current Term: Term 2, 2025</p>
+            <p className="text-indigo-200 text-xs mt-1">
+              {latestScores?.term || latestScores?.termName || 'Current Term'}
+            </p>
           </div>
           {latestReport && (
             <div className="hidden sm:block text-right">
@@ -164,13 +112,32 @@ function DashboardTab({ profile }) {
         </div>
       </div>
 
-      {/* Stat Cards */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         {[
-          { label: 'Attendance Rate', value: `${attendancePct}%`, sub: `${mockAttendance.summary.present} days present`, color: 'bg-emerald-50 border-emerald-100 text-emerald-700' },
-          { label: 'Subjects with Scores', value: `${submittedSubjects}/${totalSubjects}`, sub: 'Term 2, 2025', color: 'bg-indigo-50 border-indigo-100 text-indigo-700' },
-          { label: 'Latest Average', value: `${mockScores[mockScores.length - 1]?.average}%`, sub: 'Term 2, 2025', color: 'bg-blue-50 border-blue-100 text-blue-700' },
-          { label: 'Report Status', value: 'Released', sub: latestReport?.termName, color: 'bg-amber-50 border-amber-100 text-amber-700' },
+          {
+            label: 'Attendance Rate',
+            value: attendancePct != null ? `${attendancePct}%` : '—',
+            sub: summary ? `${summary.present || 0} days present` : 'No data yet',
+            color: 'bg-emerald-50 border-emerald-100 text-emerald-700',
+          },
+          {
+            label: 'Subjects with Scores',
+            value: submittedSubjects ? `${submittedSubjects}` : '—',
+            sub: latestScores?.term || latestScores?.termName || '—',
+            color: 'bg-indigo-50 border-indigo-100 text-indigo-700',
+          },
+          {
+            label: 'Latest Average',
+            value: latestScores?.average != null ? `${latestScores.average}%` : '—',
+            sub: latestScores?.term || latestScores?.termName || '—',
+            color: 'bg-blue-50 border-blue-100 text-blue-700',
+          },
+          {
+            label: 'Report Status',
+            value: latestReport?.status || '—',
+            sub: latestReport?.termName || latestReport?.term || '—',
+            color: 'bg-amber-50 border-amber-100 text-amber-700',
+          },
         ].map((s, i) => (
           <div key={i} className={`rounded-xl border p-4 ${s.color}`}>
             <p className="text-2xl font-bold">{s.value}</p>
@@ -179,51 +146,55 @@ function DashboardTab({ profile }) {
           </div>
         ))}
       </div>
-
-      {/* Score Progress */}
-      <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
-        <h3 className="text-sm font-semibold text-gray-900 mb-3">Score Entry Progress — Term 2, 2025</h3>
-        <div className="flex items-center gap-3 mb-2">
-          <div className="flex-1 bg-gray-100 rounded-full h-3">
-            <div className="bg-indigo-500 h-3 rounded-full transition-all" style={{ width: `${(submittedSubjects / totalSubjects) * 100}%` }} />
-          </div>
-          <span className="text-sm font-semibold text-gray-700">{submittedSubjects}/{totalSubjects}</span>
-        </div>
-        <p className="text-xs text-gray-500">Scores entered for {submittedSubjects} of {totalSubjects} subjects</p>
-      </div>
     </div>
   );
 }
 
-function MyScoresTab() {
+function MyScoresTab({ scores }) {
   const [expanded, setExpanded] = useState({ 0: true });
   const toggle = (i) => setExpanded(prev => ({ ...prev, [i]: !prev[i] }));
 
+  if (!scores || scores.length === 0) {
+    return (
+      <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-12 text-center">
+        <BarChart2 className="h-10 w-10 text-gray-200 mx-auto mb-3" />
+        <p className="text-sm text-gray-500">No scores available yet.</p>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <p className="text-sm text-gray-500">Your academic scores grouped by term. Only computed grades are shown.</p>
-      </div>
-      {mockScores.map((term, i) => (
+      <p className="text-sm text-gray-500">Your academic scores grouped by term. Only computed grades are shown.</p>
+      {scores.map((term, i) => (
         <ScoreTermRow key={i} term={term} expanded={!!expanded[i]} onToggle={() => toggle(i)} />
       ))}
     </div>
   );
 }
 
-function MyAttendanceTab() {
-  const { summary, records } = mockAttendance;
-  const pct = Math.round((summary.present / summary.total) * 100);
+function MyAttendanceTab({ attendance }) {
+  const summary = attendance?.summary || attendance || null;
+  const records = attendance?.records || [];
+  const pct = summary ? Math.round(((summary.present || 0) / (summary.total || 1)) * 100) : 0;
+
+  if (!summary) {
+    return (
+      <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-12 text-center">
+        <CheckSquare className="h-10 w-10 text-gray-200 mx-auto mb-3" />
+        <p className="text-sm text-gray-500">No attendance records available yet.</p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-5">
-      {/* Summary Row */}
       <div className="grid grid-cols-4 gap-4">
         {[
-          { label: 'Total Days', value: summary.total, color: 'text-gray-900 bg-gray-50 border-gray-200' },
-          { label: 'Present', value: summary.present, color: 'text-emerald-700 bg-emerald-50 border-emerald-100' },
-          { label: 'Absent', value: summary.absent, color: 'text-red-700 bg-red-50 border-red-100' },
-          { label: 'Late', value: summary.late, color: 'text-amber-700 bg-amber-50 border-amber-100' },
+          { label: 'Total Days', value: summary.total   || 0, color: 'text-gray-900 bg-gray-50 border-gray-200' },
+          { label: 'Present',   value: summary.present  || 0, color: 'text-emerald-700 bg-emerald-50 border-emerald-100' },
+          { label: 'Absent',    value: summary.absent   || 0, color: 'text-red-700 bg-red-50 border-red-100' },
+          { label: 'Late',      value: summary.late     || 0, color: 'text-amber-700 bg-amber-50 border-amber-100' },
         ].map(s => (
           <div key={s.label} className={`rounded-xl border p-4 text-center ${s.color}`}>
             <p className="text-2xl font-bold">{s.value}</p>
@@ -232,7 +203,6 @@ function MyAttendanceTab() {
         ))}
       </div>
 
-      {/* Attendance % bar */}
       <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
         <div className="flex items-center justify-between mb-2">
           <span className="text-sm font-semibold text-gray-900">Overall Attendance Rate</span>
@@ -243,45 +213,60 @@ function MyAttendanceTab() {
         </div>
       </div>
 
-      {/* Records List */}
-      <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-        <div className="px-5 py-4 border-b border-gray-100">
-          <h3 className="text-sm font-semibold text-gray-900">Attendance Records</h3>
-        </div>
-        <div className="divide-y divide-gray-50">
-          {records.map((r, i) => {
-            const cfg = statusConfig[r.status];
-            const Icon = cfg.icon;
-            return (
-              <div key={i} className={`flex items-center gap-4 px-5 py-3 ${cfg.bg}`}>
-                <Icon className={`h-4 w-4 flex-shrink-0 ${cfg.color}`} />
-                <div className="flex-1">
-                  <p className="text-sm font-medium text-gray-900">{r.day}, {new Date(r.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</p>
+      {records.length > 0 && (
+        <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+          <div className="px-5 py-4 border-b border-gray-100">
+            <h3 className="text-sm font-semibold text-gray-900">Attendance Records</h3>
+          </div>
+          <div className="divide-y divide-gray-50">
+            {records.map((r, i) => {
+              const cfg = statusConfig[r.status] || statusConfig.PRESENT;
+              const Icon = cfg.icon;
+              return (
+                <div key={i} className={`flex items-center gap-4 px-5 py-3 ${cfg.bg}`}>
+                  <Icon className={`h-4 w-4 flex-shrink-0 ${cfg.color}`} />
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-gray-900">
+                      {r.day || ''} {r.date ? new Date(r.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : ''}
+                    </p>
+                  </div>
+                  <span className={`text-xs font-medium ${cfg.color}`}>{r.status}</span>
                 </div>
-                <span className={`text-xs font-medium ${cfg.color}`}>{r.status}</span>
-              </div>
-            );
-          })}
+              );
+            })}
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }
 
-function MyReportsTab() {
+function MyReportsTab({ reports }) {
   const [previewId, setPreviewId] = useState(null);
+  const released = (reports || []).filter(r => r.status === 'RELEASED');
+
+  if (released.length === 0) {
+    return (
+      <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-12 text-center">
+        <FileText className="h-10 w-10 text-gray-200 mx-auto mb-3" />
+        <p className="text-sm text-gray-500">No released report cards yet.</p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">
       <p className="text-sm text-gray-500">Only RELEASED report cards are visible to you.</p>
-      {mockReports.filter(r => r.status === 'RELEASED').map(r => (
+      {released.map(r => (
         <div key={r.id} className="bg-white rounded-xl border border-gray-200 shadow-sm p-5 flex items-center gap-4">
           <div className="h-12 w-12 rounded-xl bg-indigo-50 flex items-center justify-center flex-shrink-0">
             <FileText className="h-6 w-6 text-indigo-600" />
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-semibold text-gray-900">{r.termName}</p>
-            <p className="text-xs text-gray-500 mt-0.5">Average: {r.average}% · Position: {r.position}</p>
+            <p className="text-sm font-semibold text-gray-900">{r.termName || r.term}</p>
+            <p className="text-xs text-gray-500 mt-0.5">
+              Average: {r.average ?? '—'}%{r.position ? ` · Position: ${r.position}` : ''}
+            </p>
           </div>
           <Badge variant="success">{r.status}</Badge>
           <div className="flex items-center gap-2">
@@ -291,13 +276,17 @@ function MyReportsTab() {
             >
               <Eye className="h-3.5 w-3.5" /> View
             </button>
-            <a href={r.url} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-gray-600 bg-gray-50 hover:bg-gray-100 transition-colors">
+            <a
+              href={r.url || getReportDownloadUrl(r.id)}
+              target="_blank"
+              rel="noreferrer"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-gray-600 bg-gray-50 hover:bg-gray-100 transition-colors"
+            >
               <Download className="h-3.5 w-3.5" /> Download
             </a>
           </div>
         </div>
       ))}
-      {/* PDF Preview Modal placeholder */}
       {previewId && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm" onClick={() => setPreviewId(null)}>
           <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-lg w-full mx-4" onClick={e => e.stopPropagation()}>
@@ -308,7 +297,14 @@ function MyReportsTab() {
             <div className="bg-gray-50 rounded-xl border border-gray-200 p-12 text-center">
               <FileText className="h-12 w-12 text-gray-300 mx-auto mb-3" />
               <p className="text-sm text-gray-600 font-medium">Report Card</p>
-              <p className="text-xs text-gray-400 mt-1">PDF viewer loads here in production</p>
+              <a
+                href={getReportDownloadUrl(previewId)}
+                target="_blank"
+                rel="noreferrer"
+                className="mt-4 inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white text-sm font-semibold rounded-lg hover:bg-indigo-500 transition-colors"
+              >
+                <Download className="h-4 w-4" /> Download PDF
+              </a>
             </div>
           </div>
         </div>
@@ -319,12 +315,12 @@ function MyReportsTab() {
 
 function MyProfileTab({ profile }) {
   const fields = [
-    { label: 'Full Name', value: profile?.name },
-    { label: 'Student Number', value: profile?.studentNo },
-    { label: 'Date of Birth', value: profile?.dateOfBirth ? new Date(profile.dateOfBirth).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }) : '—' },
-    { label: 'Gender', value: profile?.gender },
-    { label: 'Class', value: profile?.className },
-    { label: 'Guardian Name', value: profile?.guardianName },
+    { label: 'Full Name',        value: profile?.name },
+    { label: 'Student Number',   value: profile?.studentNo },
+    { label: 'Date of Birth',    value: profile?.dateOfBirth ? new Date(profile.dateOfBirth).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }) : '—' },
+    { label: 'Gender',           value: profile?.gender },
+    { label: 'Class',            value: profile?.className },
+    { label: 'Guardian Name',    value: profile?.guardianName },
     { label: 'Guardian Contact', value: profile?.guardianContact },
   ];
 
@@ -366,13 +362,21 @@ const TABS = [
 export default function StudentPortal() {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [profile, setProfile] = useState(null);
+  const [scores, setScores] = useState([]);
+  const [attendance, setAttendance] = useState(null);
+  const [reports, setReports] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    getMyProfile()
-      .then(p => setProfile(p))
-      .catch(() => setProfile(mockProfile))
-      .finally(() => setLoading(false));
+    Promise.allSettled([
+      getMyProfile(),
+      getMyGrades(),
+      getMyReportCards(),
+    ]).then(([profileRes, gradesRes, reportsRes]) => {
+      if (profileRes.status === 'fulfilled') setProfile(profileRes.value);
+      if (gradesRes.status === 'fulfilled') setScores(Array.isArray(gradesRes.value) ? gradesRes.value : []);
+      if (reportsRes.status === 'fulfilled') setReports(Array.isArray(reportsRes.value) ? reportsRes.value : []);
+    }).finally(() => setLoading(false));
   }, []);
 
   if (loading) {
@@ -384,13 +388,10 @@ export default function StudentPortal() {
     );
   }
 
-  const displayProfile = profile || mockProfile;
-
   return (
     <div className="space-y-6">
       <PageHeader title="Student Portal" subtitle="Your personal academic overview" />
 
-      {/* ── Tab nav: wraps on mobile so My Reports is never clipped ── */}
       <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-2">
         <div className="flex flex-wrap gap-1">
           {TABS.map(tab => {
@@ -402,9 +403,7 @@ export default function StudentPortal() {
                 id={`student-tab-${tab.id}`}
                 onClick={() => setActiveTab(tab.id)}
                 className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all whitespace-nowrap ${
-                  isActive
-                    ? 'bg-indigo-600 text-white shadow-sm'
-                    : 'text-gray-500 hover:bg-gray-100 hover:text-gray-700'
+                  isActive ? 'bg-indigo-600 text-white shadow-sm' : 'text-gray-500 hover:bg-gray-100 hover:text-gray-700'
                 }`}
               >
                 <Icon className="h-4 w-4 flex-shrink-0" />
@@ -415,13 +414,12 @@ export default function StudentPortal() {
         </div>
       </div>
 
-      {/* Tab Content */}
       <div>
-        {activeTab === 'dashboard'  && <DashboardTab profile={displayProfile} />}
-        {activeTab === 'scores'     && <MyScoresTab />}
-        {activeTab === 'attendance' && <MyAttendanceTab />}
-        {activeTab === 'reports'    && <MyReportsTab />}
-        {activeTab === 'profile'    && <MyProfileTab profile={displayProfile} />}
+        {activeTab === 'dashboard'  && <DashboardTab profile={profile} scores={scores} attendance={attendance} reports={reports} />}
+        {activeTab === 'scores'     && <MyScoresTab scores={scores} />}
+        {activeTab === 'attendance' && <MyAttendanceTab attendance={attendance} />}
+        {activeTab === 'reports'    && <MyReportsTab reports={reports} />}
+        {activeTab === 'profile'    && <MyProfileTab profile={profile} />}
       </div>
     </div>
   );

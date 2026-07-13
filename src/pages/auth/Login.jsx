@@ -24,11 +24,14 @@ export default function LoginPage() {
     try {
       await login(creds, (user) => {
         addToast(`Signed in as ${user.name}`, 'success');
-        // Send each role to its own home. If they were redirected here from
-        // a specific page they're allowed to see, honor that instead.
         const home = roleHome(user.role);
         const destination = from && from !== '/login' ? from : home;
-        navigate(destination, { replace: true });
+        
+        if (user.mustChangePassword) {
+          navigate('/change-password', { state: { from: destination }, replace: true });
+        } else {
+          navigate(destination, { replace: true });
+        }
       });
     } catch (err) {
       setError(err.response?.data?.message || 'Invalid email or password.');
@@ -67,12 +70,12 @@ export default function LoginPage() {
         {/* Form */}
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-slate-300 mb-1.5">Email address</label>
+            <label className="block text-sm font-medium text-slate-300 mb-1.5">Email or Student ID</label>
             <input
-              type="email"
+              type="text"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="you@school.com"
+              placeholder="you@school.com or JHS-..."
               className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
             />
           </div>

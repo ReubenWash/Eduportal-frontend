@@ -3,88 +3,13 @@ import PageHeader from '../../components/common/PageHeader';
 import Badge from '../../components/ui/Badge';
 import Avatar from '../../components/ui/Avatar';
 import { getMyChildren, getChildReportCards, getChildGrades, getChildAttendance } from '../../api/parentApi';
+import { getReportDownloadUrl } from '../../api/reportsApi';
 import {
   LayoutDashboard, BarChart2, CheckSquare, FileText, User, Bell,
   Mail, Download, Eye, CheckCircle2, XCircle, Clock,
   ChevronDown, ChevronUp, CalendarDays,
 } from 'lucide-react';
 
-/* ─── Mock data for when API isn't connected ─── */
-const mockChildren = [
-  {
-    id: '1', name: 'Ama Mensah', studentNo: 'STU/001', className: 'JHS 1A',
-    photo: null, classTeacherEmail: 'k.adu@school.edu.gh',
-  },
-  {
-    id: '2', name: 'Kofi Mensah', studentNo: 'STU/042', className: 'JHS 2B',
-    photo: null, classTeacherEmail: 'a.boateng@school.edu.gh',
-  },
-];
-
-const mockScoresByChild = {
-  '1': [
-    {
-      term: 'Term 1, 2025', average: 86.8,
-      subjects: [
-        { name: 'Mathematics', ca1: 9, ca2: 8, ca3: 9, caTotal: 26, exam: 64, total: 90, grade: 'A1' },
-        { name: 'English Language', ca1: 7, ca2: 8, ca3: 7, caTotal: 22, exam: 60, total: 82, grade: 'B2' },
-        { name: 'Integrated Science', ca1: 8, ca2: 7, ca3: 8, caTotal: 23, exam: 52, total: 75, grade: 'B3' },
-        { name: 'Social Studies', ca1: 9, ca2: 9, ca3: 8, caTotal: 26, exam: 64, total: 90, grade: 'A1' },
-      ],
-    },
-  ],
-  '2': [
-    {
-      term: 'Term 1, 2025', average: 72.4,
-      subjects: [
-        { name: 'Mathematics', ca1: 6, ca2: 7, ca3: 6, caTotal: 19, exam: 52, total: 71, grade: 'C4' },
-        { name: 'English Language', ca1: 8, ca2: 7, ca3: 7, caTotal: 22, exam: 55, total: 77, grade: 'B3' },
-        { name: 'Social Studies', ca1: 7, ca2: 7, ca3: 8, caTotal: 22, exam: 50, total: 72, grade: 'C4' },
-      ],
-    },
-  ],
-};
-
-const mockAttendanceByChild = {
-  '1': {
-    summary: { present: 48, absent: 3, late: 5, total: 56 },
-    records: [
-      { date: '2025-06-01', day: 'Mon', status: 'PRESENT' },
-      { date: '2025-06-02', day: 'Tue', status: 'PRESENT' },
-      { date: '2025-06-03', day: 'Wed', status: 'LATE' },
-      { date: '2025-06-04', day: 'Thu', status: 'PRESENT' },
-      { date: '2025-06-05', day: 'Fri', status: 'ABSENT' },
-      { date: '2025-06-08', day: 'Mon', status: 'PRESENT' },
-    ],
-  },
-  '2': {
-    summary: { present: 50, absent: 5, late: 1, total: 56 },
-    records: [
-      { date: '2025-06-01', day: 'Mon', status: 'PRESENT' },
-      { date: '2025-06-02', day: 'Tue', status: 'ABSENT' },
-      { date: '2025-06-03', day: 'Wed', status: 'PRESENT' },
-      { date: '2025-06-04', day: 'Thu', status: 'LATE' },
-      { date: '2025-06-05', day: 'Fri', status: 'PRESENT' },
-    ],
-  },
-};
-
-const mockReportsByChild = {
-  '1': [
-    { id: 1, termName: 'Term 1, 2025', status: 'RELEASED', average: 86.8, position: '2nd / 32', url: '#' },
-    { id: 2, termName: 'Term 2, 2025', status: 'RELEASED', average: 85.0, position: '3rd / 32', url: '#' },
-  ],
-  '2': [
-    { id: 3, termName: 'Term 1, 2025', status: 'RELEASED', average: 72.4, position: '15th / 28', url: '#' },
-  ],
-};
-
-const mockGuardianProfile = {
-  name: 'Kofi Mensah',
-  phone: '+233 24 555 0123',
-  email: 'kmensah@example.com',
-  address: 'House 14, Tema Community 1, Accra',
-};
 
 /* ─── Helpers ─── */
 const gradeColor = (grade) => {
@@ -411,9 +336,29 @@ export default function ParentPortal() {
   }, []);
 
   const activeChild = children.find(c => c.id === selectedChild);
-  const scores = mockScoresByChild[selectedChild] || [];
-  const attendance = mockAttendanceByChild[selectedChild] || null;
-  const reports = mockReportsByChild[selectedChild] || [];
+
+  // Per-child data state
+  const [childData, setChildData] = useState({ scores: [], attendance: null, reports: [] });
+  const [childLoading, setChildLoading] = useState(false);
+
+  // Fetch data whenever selected child changes
+  useEffect(() => {
+    if (!selectedChild) return;
+    setChildLoading(true);
+    Promise.allSettled([
+      getChildGrades(selectedChild),
+      getChildAttendance(selectedChild),
+      getChildReportCards(selectedChild),
+    ]).then(([gradesRes, attendanceRes, reportsRes]) => {
+      setChildData({
+        scores: gradesRes.status === 'fulfilled' && Array.isArray(gradesRes.value) ? gradesRes.value : [],
+        attendance: attendanceRes.status === 'fulfilled' ? attendanceRes.value : null,
+        reports: reportsRes.status === 'fulfilled' && Array.isArray(reportsRes.value) ? reportsRes.value : [],
+      });
+    }).finally(() => setChildLoading(false));
+  }, [selectedChild]);
+
+  const { scores, attendance, reports } = childData;
 
   if (loading) {
     return (
@@ -490,11 +435,17 @@ export default function ParentPortal() {
       </div>
 
       {/* Tab Content */}
-      {activeTab === 'dashboard' && <DashboardTab child={activeChild} scores={scores} attendance={attendance} reports={reports} />}
-      {activeTab === 'scores' && <ScoresTab scores={scores} />}
-      {activeTab === 'attendance' && <AttendanceTab attendance={attendance} />}
-      {activeTab === 'reports' && <ReportsTab reports={reports} />}
-      {activeTab === 'profile' && <MyProfileTab guardian={mockGuardianProfile} />}
+      {childLoading ? (
+        <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-12 text-center animate-pulse text-sm text-gray-400">Loading…</div>
+      ) : (
+        <>
+          {activeTab === 'dashboard'  && <DashboardTab child={activeChild} scores={scores} attendance={attendance} reports={reports} />}
+          {activeTab === 'scores'     && <ScoresTab scores={scores} />}
+          {activeTab === 'attendance' && <AttendanceTab attendance={attendance} />}
+          {activeTab === 'reports'    && <ReportsTab reports={reports} />}
+          {activeTab === 'profile'    && <MyProfileTab guardian={activeChild} />}
+        </>
+      )}
     </div>
   );
 }

@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import {
   CheckCircle, XCircle, Clock, Eye, School, MapPin, Mail,
   Phone, FileText, Download, MessageSquare, ChevronRight, Filter,
@@ -6,33 +6,48 @@ import {
 import Badge from '../../components/ui/Badge';
 import Modal from '../../components/ui/Modal';
 import { useToast } from '../../context/ToastContext';
-
-const MOCK_APPLICATIONS = [
-  { id: 'APP001', schoolName: 'Harmony International School', contactName: 'Dr. Abena Yeboah', email: 'abena@harmony.edu.gh', phone: '+233 24 100 1000', location: 'Accra, Greater Accra', type: 'JHS', students: 300, status: 'PENDING', submittedAt: '2024-06-22', documents: ['License.pdf', 'Registration.pdf', 'Curriculum.pdf'] },
-  { id: 'APP002', schoolName: 'Blue Horizon Academy',          contactName: 'Mr. Kweku Asare',   email: 'kweku@bluehorizon.edu.gh', phone: '+233 20 200 2000', location: 'Kumasi, Ashanti',    type: 'SHS', students: 500, status: 'PENDING', submittedAt: '2024-06-21', documents: ['License.pdf', 'Registration.pdf'] },
-  { id: 'APP003', schoolName: 'Sunrise Basic School',          contactName: 'Mrs. Efua Asante',   email: 'efua@sunrise.edu.gh',     phone: '+233 27 300 3000', location: 'Cape Coast, Central', type: 'Primary', students: 200, status: 'INFO_REQUESTED', submittedAt: '2024-06-19', documents: ['License.pdf'] },
-  { id: 'APP004', schoolName: 'Green Valley College',          contactName: 'Prof. Kofi Boadu',   email: 'kofi@greenvalley.edu.gh', phone: '+233 55 400 4000', location: 'Tamale, Northern',   type: 'SHS', students: 800, status: 'APPROVED', submittedAt: '2024-06-10', documents: ['License.pdf', 'Registration.pdf', 'Tax.pdf'] },
-  { id: 'APP005', schoolName: 'Westfield Academy',             contactName: 'Ms. Adwoa Frimpong', email: 'adwoa@westfield.edu.gh',  phone: '+233 26 500 5000', location: 'Takoradi, Western',  type: 'JHS', students: 350, status: 'REJECTED',  submittedAt: '2024-06-08', documents: ['License.pdf'] },
-  { id: 'APP006', schoolName: 'Mountain Top School',           contactName: 'Mr. Samuel Owusu',   email: 'samuel@mountaintop.edu.gh',phone: '+233 24 600 6000', location: 'Sunyani, Bono',     type: 'Primary', students: 150, status: 'PENDING', submittedAt: '2024-06-23', documents: ['License.pdf', 'Registration.pdf'] },
-];
+import { getAllSchools, updateSchoolStatus as apiUpdateSchoolStatus } from '../../api/schoolApi';
+import { sendWelcomeEmail } from '../../api/superAdminApi';
 
 const statusConfig = {
   PENDING:        { label: 'Pending Review', variant: 'warning', icon: <Clock className="h-4 w-4 text-amber-500" /> },
-  APPROVED:       { label: 'Approved',       variant: 'success', icon: <CheckCircle className="h-4 w-4 text-emerald-500" /> },
+  ACTIVE:         { label: 'Approved',       variant: 'success', icon: <CheckCircle className="h-4 w-4 text-emerald-500" /> },
   REJECTED:       { label: 'Rejected',       variant: 'danger',  icon: <XCircle className="h-4 w-4 text-red-500" /> },
   INFO_REQUESTED: { label: 'Info Requested', variant: 'info',    icon: <MessageSquare className="h-4 w-4 text-blue-500" /> },
 };
 
-const tabs = ['ALL', 'PENDING', 'INFO_REQUESTED', 'APPROVED', 'REJECTED'];
+const tabs = ['ALL', 'PENDING', 'INFO_REQUESTED', 'ACTIVE', 'REJECTED'];
 
 export default function AdminApplications() {
   const { addToast } = useToast();
-  const [apps, setApps] = useState(MOCK_APPLICATIONS);
+  const [apps, setApps] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('ALL');
   const [selected, setSelected] = useState(null);
   const [confirmAction, setConfirmAction] = useState(null);
   const [infoNote, setInfoNote] = useState('');
   const [showInfoModal, setShowInfoModal] = useState(false);
+
+  useEffect(() => {
+    setLoading(true);
+    getAllSchools()
+      .then(list => {
+        const fetchedSchools = (Array.isArray(list) ? list : []).map(s => ({
+          ...s,
+          schoolName: s.name,
+          contactName: s.headmasterName || 'N/A', // fallback
+          location: s.district && s.region ? `${s.district}, ${s.region}` : s.address || 'Unknown',
+          students: s._count?.students || 0,
+          type: s.plan === 'BASIC' ? 'Basic' : 'Premium',
+          submittedAt: s.createdAt || new Date().toISOString(),
+          documents: ['Registration.pdf'], // Mock documents since backend doesn't store them yet
+        }));
+        // Show pending and recently rejected/approved apps in the applications view
+        setApps(fetchedSchools.filter(s => ['PENDING', 'ACTIVE', 'REJECTED'].includes(s.status)));
+      })
+      .catch(() => setApps([]))
+      .finally(() => setLoading(false));
+  }, []);
 
   const filtered = useMemo(() =>
     apps.filter(a => activeTab === 'ALL' || a.status === activeTab),
@@ -44,18 +59,34 @@ export default function AdminApplications() {
     [t]: t === 'ALL' ? apps.length : apps.filter(a => a.status === t).length
   }), {});
 
-  const applyAction = (app, action) => {
-    const newStatus = action === 'approve' ? 'APPROVED' : action === 'reject' ? 'REJECTED' : 'INFO_REQUESTED';
-    setApps(prev => prev.map(a => a.id === app.id ? { ...a, status: newStatus } : a));
-    addToast(
-      action === 'approve' ? `${app.schoolName} approved!` :
-      action === 'reject'  ? `${app.schoolName} rejected.` :
-      `Information requested from ${app.schoolName}.`,
-      action === 'approve' ? 'success' : 'error'
-    );
-    setConfirmAction(null);
-    setSelected(null);
-    setShowInfoModal(false);
+  const applyAction = async (app, action) => {
+    // We map frontend action 'approve' to 'ACTIVE' status in DB
+    const newStatus = action === 'approve' ? 'ACTIVE' : action === 'reject' ? 'REJECTED' : 'PENDING';
+    
+    if (action === 'info') {
+      addToast(`Information requested from ${app.schoolName}.`, 'success');
+      setShowInfoModal(false);
+      return;
+    }
+
+    try {
+      await apiUpdateSchoolStatus(app.id, newStatus);
+      setApps(prev => prev.map(a => a.id === app.id ? { ...a, status: newStatus } : a));
+      addToast(
+        action === 'approve' ? `${app.schoolName} approved!` :
+        `${app.schoolName} rejected.`,
+        action === 'approve' ? 'success' : 'error'
+      );
+      if (newStatus === 'ACTIVE') {
+        try { await sendWelcomeEmail(app.id); } catch { /* non-blocking */ }
+      }
+    } catch {
+      addToast('Failed to update status', 'error');
+    } finally {
+      setConfirmAction(null);
+      setSelected(null);
+      setShowInfoModal(false);
+    }
   };
 
   return (
@@ -93,7 +124,15 @@ export default function AdminApplications() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {filtered.map(app => (
+              {loading ? (
+                <tr>
+                  <td colSpan={7} className="py-16 text-center text-sm text-gray-400">Loading applications…</td>
+                </tr>
+              ) : filtered.length === 0 ? (
+                <tr>
+                  <td colSpan={7} className="py-16 text-center text-sm text-gray-400">No applications match your search.</td>
+                </tr>
+              ) : filtered.map(app => (
                 <tr key={app.id} className="hover:bg-gray-50/60 transition-colors">
                   <td className="px-5 py-4">
                     <div className="flex items-center gap-3">

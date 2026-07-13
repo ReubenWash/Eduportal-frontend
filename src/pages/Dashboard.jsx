@@ -156,19 +156,12 @@ function SchoolAdminDashboard({ stats, loading, loadError }) {
 /* ─────────────────────────────────────────
    CLASS TEACHER DASHBOARD
 ───────────────────────────────────────── */
-const mockClassStudents = [
-  { id: '1', name: 'Ama Mensah', studentNo: 'STU/001', presentToday: true },
-  { id: '2', name: 'Kofi Boateng', studentNo: 'STU/002', presentToday: false },
-  { id: '3', name: 'Akua Sarpong', studentNo: 'STU/003', presentToday: true },
-  { id: '4', name: 'Kwame Asante', studentNo: 'STU/004', presentToday: true },
-  { id: '5', name: 'Abena Osei', studentNo: 'STU/005', presentToday: false },
-  { id: '6', name: 'Yaw Darkoh', studentNo: 'STU/006', presentToday: true },
-];
-
-function ClassTeacherDashboard({ user }) {
-  const present = mockClassStudents.filter(s => s.presentToday).length;
-  const total = mockClassStudents.length;
-  const attendancePct = Math.round((present / total) * 100);
+function ClassTeacherDashboard({ user, stats }) {
+  const classStudents = stats?.myClass?.students || [];
+  const present = classStudents.filter(s => s.presentToday).length;
+  const total = classStudents.length;
+  const attendancePct = total > 0 ? Math.round((present / total) * 100) : 0;
+  const className = stats?.myClass?.name || 'My Class';
 
   const statCards = [
     { title: 'My Class Students', value: String(total), icon: GraduationCap, color: 'indigo' },
@@ -189,7 +182,7 @@ function ClassTeacherDashboard({ user }) {
           <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
             <div className="flex items-center gap-2">
               <CheckSquare className="h-4 w-4 text-gray-400" />
-              <h3 className="text-sm font-semibold text-gray-900">Today's Attendance — JHS1A</h3>
+              <h3 className="text-sm font-semibold text-gray-900">Today's Attendance — {className}</h3>
             </div>
             <Link to="/attendance" className="text-xs font-medium text-indigo-600 hover:text-indigo-500 flex items-center gap-1">
               Mark Attendance <ArrowRight className="h-3 w-3" />
@@ -206,7 +199,7 @@ function ClassTeacherDashboard({ user }) {
               <span className="text-sm font-semibold text-gray-900">{present}/{total}</span>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              {mockClassStudents.map(s => (
+              {classStudents.map(s => (
                 <div key={s.id} className={`flex items-center gap-2.5 px-3 py-2 rounded-lg border text-sm ${s.presentToday ? 'bg-emerald-50 border-emerald-100 text-emerald-800' : 'bg-red-50 border-red-100 text-red-700'}`}>
                   {s.presentToday
                     ? <CheckCircle2 className="h-3.5 w-3.5 flex-shrink-0" />
@@ -225,7 +218,7 @@ function ClassTeacherDashboard({ user }) {
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
             <div className="bg-gradient-to-br from-indigo-600 to-indigo-700 px-5 py-4">
               <p className="text-indigo-200 text-xs font-medium uppercase tracking-wider mb-1">My Assigned Class</p>
-              <p className="text-white font-bold text-2xl">JHS 1A</p>
+              <p className="text-white font-bold text-2xl">{className}</p>
               <p className="text-indigo-200 text-xs mt-1">Form Teacher</p>
             </div>
             <div className="px-5 py-4 space-y-3">
@@ -277,20 +270,14 @@ function ClassTeacherDashboard({ user }) {
 /* ─────────────────────────────────────────
    SUBJECT TEACHER DASHBOARD
 ───────────────────────────────────────── */
-const myAssignments = [
-  { class: 'JHS1A', subject: 'Mathematics', submitted: true, date: '12 Jun 2025', students: 28 },
-  { class: 'JHS2A', subject: 'Mathematics', submitted: false, date: null, students: 30 },
-  { class: 'JHS1B', subject: 'Mathematics', submitted: true, date: '13 Jun 2025', students: 25 },
-  { class: 'JHS3A', subject: 'Elective Math', submitted: false, date: null, students: 22 },
-];
-
-function SubjectTeacherDashboard({ user }) {
-  const submitted = myAssignments.filter(a => a.submitted).length;
-  const pending = myAssignments.filter(a => !a.submitted).length;
+function SubjectTeacherDashboard({ user, stats }) {
+  const assignments = stats?.myAssignments || [];
+  const submitted = assignments.filter(a => a.submitted).length;
+  const pending = assignments.filter(a => !a.submitted).length;
 
   const statCards = [
     { title: 'My Subjects', value: '1', icon: BookOpen, color: 'indigo' },
-    { title: 'My Classes', value: String(myAssignments.length), icon: Users, color: 'blue' },
+    { title: 'My Classes', value: String(assignments.length), icon: Users, color: 'blue' },
     { title: 'Scores Submitted', value: String(submitted), icon: CheckCircle2, color: 'green' },
     { title: 'Scores Pending', value: String(pending), icon: Clock, color: 'amber' },
   ];
@@ -314,7 +301,7 @@ function SubjectTeacherDashboard({ user }) {
             </Link>
           </div>
           <div className="divide-y divide-gray-50">
-            {myAssignments.map((a, i) => (
+            {assignments.map((a, i) => (
               <div key={i} className="flex items-center gap-4 px-6 py-4">
                 <div className={`h-8 w-8 rounded-lg flex items-center justify-center flex-shrink-0 ${a.submitted ? 'bg-emerald-50' : 'bg-amber-50'}`}>
                   {a.submitted
@@ -344,7 +331,7 @@ function SubjectTeacherDashboard({ user }) {
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
             <div className="bg-gradient-to-br from-indigo-600 to-indigo-700 px-5 py-4">
               <p className="text-indigo-200 text-xs font-medium uppercase tracking-wider mb-1">Progress</p>
-              <p className="text-white font-bold text-3xl">{submitted}/{myAssignments.length}</p>
+              <p className="text-white font-bold text-3xl">{submitted}/{assignments.length}</p>
               <p className="text-indigo-200 text-xs mt-1">Classes with scores submitted</p>
             </div>
             <div className="px-5 py-4">
@@ -352,11 +339,11 @@ function SubjectTeacherDashboard({ user }) {
                 <div className="flex-1 bg-gray-100 rounded-full h-2">
                   <div
                     className="bg-indigo-500 h-2 rounded-full transition-all"
-                    style={{ width: `${(submitted / myAssignments.length) * 100}%` }}
+                    style={{ width: assignments.length > 0 ? `${(submitted / assignments.length) * 100}%` : '0%' }}
                   />
                 </div>
                 <span className="text-xs font-medium text-gray-700">
-                  {Math.round((submitted / myAssignments.length) * 100)}%
+                  {assignments.length > 0 ? Math.round((submitted / assignments.length) * 100) : 0}%
                 </span>
               </div>
               <p className="text-xs text-gray-500">
@@ -429,8 +416,8 @@ export default function Dashboard() {
       />
 
       {role === 'SCHOOL_ADMIN' && <SchoolAdminDashboard stats={stats} loading={loading} loadError={loadError} />}
-      {role === 'CLASS_TEACHER' && <ClassTeacherDashboard user={user} />}
-      {role === 'SUBJECT_TEACHER' && <SubjectTeacherDashboard user={user} />}
+      {role === 'CLASS_TEACHER' && <ClassTeacherDashboard user={user} stats={stats} />}
+      {role === 'SUBJECT_TEACHER' && <SubjectTeacherDashboard user={user} stats={stats} />}
     </div>
   );
 }
