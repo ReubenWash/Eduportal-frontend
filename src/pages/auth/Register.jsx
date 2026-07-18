@@ -98,10 +98,10 @@ export default function RegisterPage() {
           </div>
           <div className="pt-4">
             <Link
-              to="/login"
+              to="/verify-email"
               className="w-full sm:w-auto inline-flex bg-indigo-600 hover:bg-indigo-500 text-white font-semibold py-2.5 px-8 rounded-lg text-sm transition-all items-center justify-center shadow-lg shadow-indigo-500/20"
             >
-              Return to Login
+              Verify Email
             </Link>
           </div>
         </div>

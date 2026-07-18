@@ -26,5 +26,10 @@ export default function ProtectedRoute({ children, allowedRoles = [] }) {
     return <Navigate to={roleHome(user.role)} replace />;
   }
 
+  // If the user belongs to a school that is PENDING, block them from normal dashboard routes
+  if (user.schoolStatus === 'PENDING' && user.role !== 'SUPER_ADMIN' && location.pathname !== '/kyc') {
+    return <Navigate to="/kyc" replace />;
+  }
+
   return children;
 }

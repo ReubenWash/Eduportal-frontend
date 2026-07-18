@@ -19,19 +19,24 @@ export const login = async (credentials) => {
   return result.data; // ✅ unwrap to { accessToken, user }
 };
 
+export const getPublicSettings = async () => {
+  const response = await api.get('/admin/config/public');
+  return response.data;
+};
+
 export const forgotPassword = async (email) => {
-  // Mock forgot password
-  return new Promise(resolve => setTimeout(() => resolve({ message: 'Success' }), 800));
+  const response = await api.post('/auth/forgot-password', { email });
+  return response.data;
 };
 
 export const resetPassword = async (token, password) => {
-  // Mock reset password
-  return new Promise(resolve => setTimeout(() => resolve({ message: 'Success' }), 800));
+  const response = await api.post('/auth/reset-password', { token, password });
+  return response.data;
 };
 
-export const verifyEmail = async (token) => {
-  // Mock verify email
-  return new Promise(resolve => setTimeout(() => resolve({ message: 'Success' }), 800));
+export const verifyEmail = async (code) => {
+  const response = await api.post('/auth/verify-email', { code });
+  return response.data;
 };
 
 export const changePassword = async (data) => {
@@ -40,31 +45,15 @@ export const changePassword = async (data) => {
 };
 
 export const register = async (data) => {
-  try {
-    const response = await api.post('/schools/register', {
-      name: data.schoolName,
-      email: data.email,
-      password: data.password,
-      region: data.region,
-      district: data.district,
-      address: data.address,
-      headmasterName: data.name,
-      plan: data.plan,
-    });
-    return response.data;
-  } catch (error) {
-    if (error.code === 'ERR_NETWORK' || error.message === 'Network Error') {
-      return new Promise(resolve => setTimeout(() => resolve({
-        success: true,
-        message: "Mock registration successful.",
-        data: {
-          id: 'school_mock_' + Date.now(),
-          name: data.schoolName,
-          status: 'PENDING',
-          plan: data.plan,
-        }
-      }), 800));
-    }
-    throw error;
-  }
+  const response = await api.post('/schools/register', {
+    name: data.schoolName,
+    email: data.email,
+    password: data.password,
+    region: data.region,
+    district: data.district,
+    address: data.address,
+    headmasterName: data.name,
+    plan: data.plan,
+  });
+  return response.data;
 };

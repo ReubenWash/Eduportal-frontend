@@ -30,10 +30,24 @@ export function unwrapItem(body) {
   return body;
 }
 
-// Always attach the current token from sessionStorage on every request.
+// Always attach the current token from localStorage on every request.
 api.interceptors.request.use(
   (config) => {
-    const accessToken = sessionStorage.getItem('accessToken');
+    // Check 14 days inactivity
+    const lastActivity = localStorage.getItem('lastActivity');
+    const now = Date.now();
+    if (lastActivity && (now - parseInt(lastActivity, 10)) > 14 * 24 * 60 * 60 * 1000) {
+      localStorage.removeItem('accessToken');
+      localStorage.removeItem('user');
+      localStorage.removeItem('lastActivity');
+      window.location.href = '/login';
+      return Promise.reject(new Error('Session expired due to inactivity'));
+    }
+    
+    // Update last activity
+    localStorage.setItem('lastActivity', now.toString());
+
+    const accessToken = localStorage.getItem('accessToken');
     if (accessToken && accessToken !== 'undefined' && accessToken !== 'null') {
       config.headers.Authorization = `Bearer ${accessToken}`;
     }
@@ -58,13 +72,14 @@ api.interceptors.response.use(
         );
 
         const newAccessToken = response.data.accessToken;
-        sessionStorage.setItem('accessToken', newAccessToken);
+        localStorage.setItem('accessToken', newAccessToken);
         originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
 
         return api(originalRequest);
       } catch (refreshError) {
-        sessionStorage.removeItem('accessToken');
-        sessionStorage.removeItem('user');
+        localStorage.removeItem('accessToken');
+        localStorage.removeItem('user');
+        localStorage.removeItem('lastActivity');
 
         if (window.location.pathname !== '/login') {
           window.location.href = '/login';

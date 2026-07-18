@@ -30,13 +30,24 @@ const DEFAULT_CONTENT = {
   footerTagline: "A school management platform built specifically for schools in Ghana and across West Africa.",
 };
 
+import { getPublicSettings } from '../api/authApi';
+
 function useLandingContent() {
   const [content, setContent] = useState(DEFAULT_CONTENT);
   useEffect(() => {
-    try {
-      const saved = JSON.parse(localStorage.getItem('landingContent') || '{}');
-      setContent(prev => ({ ...prev, ...saved }));
-    } catch { /* ignore parse errors */ }
+    getPublicSettings()
+      .then(settings => {
+        if (settings?.cms_landing) {
+          const saved = JSON.parse(settings.cms_landing);
+          setContent(prev => ({ ...prev, ...saved }));
+        }
+      })
+      .catch(() => {
+        try {
+          const saved = JSON.parse(localStorage.getItem('landingContent') || '{}');
+          setContent(prev => ({ ...prev, ...saved }));
+        } catch { /* ignore */ }
+      });
   }, []);
   return content;
 }

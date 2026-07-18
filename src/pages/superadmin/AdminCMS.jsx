@@ -1,43 +1,32 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import PageHeader from '../../components/common/PageHeader';
 import { Monitor, Layout, Image as ImageIcon, Settings, Plus, Save, Edit3, X, Eye } from 'lucide-react';
 import Button from '../../components/ui/Button';
 import { useToast } from '../../context/ToastContext';
 import Modal from '../../components/ui/Modal';
+import { getGlobalSettings, updateGlobalSettings } from '../../api/superAdminApi';
 
 export default function AdminCMS() {
   const { addToast } = useToast();
   const [activeSection, setActiveSection] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
 
-  // Load persisted landing content from localStorage
-  const loadLanding = () => {
-    try { return JSON.parse(localStorage.getItem('landingContent') || '{}'); }
-    catch { return {}; }
-  };
-  const saveLanding = (patch) => {
-    const current = loadLanding();
-    localStorage.setItem('landingContent', JSON.stringify({ ...current, ...patch }));
-  };
-
-  // Hero section form state
-  const [heroForm, setHeroForm] = useState(() => ({
+  // Default states
+  const [heroForm, setHeroForm] = useState({
     heroHeadline: 'Run your school.',
     heroHeadlineHighlight: 'Not paperwork.',
     heroSubtitle: 'EduPortal gives school administrators, teachers, and parents one place to manage students, scores, attendance, and term reports — without the spreadsheets.',
     heroTrustText: 'Trusted by 200+ schools across Ghana, Nigeria & Kenya',
-    ...loadLanding(),
-  }));
-
-  // Stats form state
-  const [statsForm, setStatsForm] = useState(() => {
-    const saved = loadLanding();
-    return saved.stats || [
-      { number: '200+', label: 'Schools registered' },
-      { number: '84K',  label: 'Students managed' },
-      { number: '1.2M', label: 'Reports generated' },
-      { number: '99.9%', label: 'Platform uptime' },
-    ];
   });
+
+  const [statsForm, setStatsForm] = useState([
+    { number: '200+', label: 'Schools registered' },
+    { number: '84K',  label: 'Students managed' },
+    { number: '1.2M', label: 'Reports generated' },
+    { number: '99.9%', label: 'Platform uptime' },
+  ]);
+
   const defaultPages = {
     'Team': { title: 'Our Team', subtitle: 'Meet the people building EduPortal.', content: '<h3>Founders</h3><p>EduPortal was built by a group of passionate educators and engineers...</p>' },
     'Changelog': { title: 'Changelog', subtitle: 'See what\'s new in EduPortal.', content: '<h3>v1.0.0</h3><ul><li>Initial release of the school management dashboard.</li><li>Added core modules for Enrollments, Scores, and Attendance.</li></ul>' },
@@ -51,25 +40,62 @@ export default function AdminCMS() {
     'Data Processing': { title: 'Data Processing', subtitle: 'Information on data handling and GDPR compliance.', content: '<h3>Security</h3><p>All student records are encrypted at rest using industry-standard protocols...</p>' },
   };
   
-  const [publicPages, setPublicPages] = useState(() => {
-    const saved = JSON.parse(localStorage.getItem('publicPages') || '{}');
-    return { ...defaultPages, ...saved };
-  });
+  const [publicPages, setPublicPages] = useState(defaultPages);
+
+  useEffect(() => {
+    getGlobalSettings().then((settings) => {
+      const cmsLanding = settings?.cms_landing ? JSON.parse(settings.cms_landing) : {};
+      const cmsPages = settings?.cms_pages ? JSON.parse(settings.cms_pages) : {};
+      
+      if (cmsLanding.heroHeadline) {
+        setHeroForm({
+          heroHeadline: cmsLanding.heroHeadline,
+          heroHeadlineHighlight: cmsLanding.heroHeadlineHighlight,
+          heroSubtitle: cmsLanding.heroSubtitle,
+          heroTrustText: cmsLanding.heroTrustText,
+        });
+      }
+      if (cmsLanding.stats) {
+        setStatsForm(cmsLanding.stats);
+      }
+      if (Object.keys(cmsPages).length > 0) {
+        setPublicPages({ ...defaultPages, ...cmsPages });
+      }
+    }).catch(err => {
+      console.error('Failed to load CMS settings:', err);
+    }).finally(() => {
+      setLoading(false);
+    });
+  }, []);
 
   const updatePublicPage = (pageKey, field, value) => {
     setPublicPages(prev => ({ ...prev, [pageKey]: { ...prev[pageKey], [field]: value } }));
   };
 
-  const handleSaveCMS = () => {
-    if (activeSection === 'Hero Section') {
-      saveLanding(heroForm);
-    } else if (activeSection === 'Stats / Numbers') {
-      saveLanding({ stats: statsForm });
-    } else if (activeSection === 'Public Pages') {
-      localStorage.setItem('publicPages', JSON.stringify(publicPages));
+  const handleSaveCMS = async () => {
+    setSaving(true);
+    try {
+      const payload = {};
+      if (activeSection === 'Hero Section' || activeSection === 'Stats / Numbers') {
+        const landingContent = {
+          ...heroForm,
+          stats: statsForm,
+        };
+        payload.cms_landing = JSON.stringify(landingContent);
+      } else if (activeSection === 'Public Pages') {
+        payload.cms_pages = JSON.stringify(publicPages);
+      }
+      
+      if (Object.keys(payload).length > 0) {
+        await updateGlobalSettings(payload);
+      }
+      addToast('Section updated successfully', 'success');
+      closeEditor();
+    } catch (err) {
+      addToast('Failed to save settings', 'error');
+    } finally {
+      setSaving(false);
     }
-    addToast('Section updated successfully', 'success');
-    closeEditor();
   };
 
   const openEditor = (section) => setActiveSection(section);
@@ -245,7 +271,7 @@ export default function AdminCMS() {
           {renderEditorContent()}
           <div className="mt-6 pt-4 border-t border-gray-100 flex justify-end gap-2">
             <Button variant="outline" onClick={closeEditor}>Cancel</Button>
-            <Button onClick={handleSaveCMS}>Save Section</Button>
+            <Button onClick={handleSaveCMS} loading={saving}>Save Section</Button>
           </div>
         </Modal>
       )}

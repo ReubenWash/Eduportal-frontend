@@ -10,7 +10,10 @@ export default function Settings() {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [form, setForm] = useState({ name: '', email: '', phone: '', address: '', logo: null, plan: '' });
+  const [form, setForm] = useState({ 
+    name: '', email: '', phone: '', address: '', logo: null, plan: '',
+    scoreLabels: { ca1: 'C/A 1', ca2: 'C/A 2', ca3: 'C/A 3', examScore: 'Exam Score' }
+  });
   const [preview, setPreview] = useState('');
   
   // Grading config state
@@ -32,7 +35,15 @@ export default function Settings() {
   useEffect(() => {
     getSchool()
       .then((data) => {
-        setForm({ name: data?.name || '', email: data?.email || '', phone: data?.phone || '', address: data?.address || '', logo: null, plan: data?.plan || '' });
+        setForm({ 
+          name: data?.name || '', 
+          email: data?.email || '', 
+          phone: data?.phone || '', 
+          address: data?.address || '', 
+          logo: null, 
+          plan: data?.plan || '',
+          scoreLabels: data?.scoreLabels || { ca1: 'C/A 1', ca2: 'C/A 2', ca3: 'C/A 3', examScore: 'Exam Score' }
+        });
         setPreview(data?.logoUrl || '');
         setLoadError(false);
       })
@@ -43,6 +54,13 @@ export default function Settings() {
   }, []);
 
   const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value });
+
+  const handleScoreLabelChange = (e) => {
+    setForm({
+      ...form,
+      scoreLabels: { ...form.scoreLabels, [e.target.name]: e.target.value }
+    });
+  };
 
   const handleFile = (e) => {
     const file = e.target.files[0];
@@ -232,6 +250,61 @@ export default function Settings() {
             <div className="mt-5 flex items-center justify-end">
               <Button type="button" onClick={handleSubmit} loading={saving} icon={saving ? undefined : CheckCircle}>
                 Save Grading Config
+              </Button>
+            </div>
+          </div>
+
+          {/* Score Labels Configuration */}
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <h2 className="text-sm font-semibold text-gray-900 mb-2">Score Category Labels</h2>
+            <p className="text-xs text-gray-500 mb-5">Customize the names of the score categories displayed on report cards and entry forms.</p>
+            
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+              <div>
+                <label className="block text-xs font-semibold text-gray-600 mb-1">C/A 1 Label</label>
+                <input 
+                  type="text" 
+                  name="ca1"
+                  value={form.scoreLabels.ca1} 
+                  onChange={handleScoreLabelChange}
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/30"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-600 mb-1">C/A 2 Label</label>
+                <input 
+                  type="text" 
+                  name="ca2"
+                  value={form.scoreLabels.ca2} 
+                  onChange={handleScoreLabelChange}
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/30"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-600 mb-1">C/A 3 Label</label>
+                <input 
+                  type="text" 
+                  name="ca3"
+                  value={form.scoreLabels.ca3} 
+                  onChange={handleScoreLabelChange}
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/30"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-600 mb-1">Exam Score Label</label>
+                <input 
+                  type="text" 
+                  name="examScore"
+                  value={form.scoreLabels.examScore} 
+                  onChange={handleScoreLabelChange}
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/30"
+                />
+              </div>
+            </div>
+
+            <div className="mt-5 flex items-center justify-end">
+              <Button type="button" onClick={handleSubmit} loading={saving} icon={saving ? undefined : CheckCircle}>
+                Save Score Labels
               </Button>
             </div>
           </div>

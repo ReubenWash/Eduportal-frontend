@@ -70,3 +70,13 @@ export const updateEnvConfig = async (keys) => {
   const res = await api.post('/admin/config/env', { keys });
   return unwrapItem(res.data);
 };
+
+export const getGlobalSettings = async () => {
+  const res = await api.get('/admin/config/settings');
+  return unwrapItem(res.data);
+};
+
+export const updateGlobalSettings = async (settings) => {
+  const res = await api.put('/admin/config/settings', { settings });
+  return unwrapItem(res.data);
+};

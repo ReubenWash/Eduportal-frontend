@@ -7,6 +7,7 @@ import Badge from '../../components/ui/Badge';
 import { useToast } from '../../context/ToastContext';
 import { useAuth } from '../../context/AuthContext';
 import { getClasses } from '../../api/classesApi';
+import { getSchool } from '../../api/schoolApi';
 import { Calculator, Save, CheckCircle2, Download, Upload } from 'lucide-react';
 
 // Mock score data
@@ -44,7 +45,7 @@ const getGradingConfig = () => {
   }
 };
 
-function ScoreEntry({ selectedClass, selectedSubject, selectedTerm, gradingConfig }) {
+function ScoreEntry({ selectedClass, selectedSubject, selectedTerm, gradingConfig, scoreLabels }) {
   const { addToast } = useToast();
   const [scores, setScores] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -99,8 +100,9 @@ function ScoreEntry({ selectedClass, selectedSubject, selectedTerm, gradingConfi
   };
 
   const handleDownload = () => {
-    const caHeaders = Array.from({ length: gradingConfig.caCount }).map((_, i) => `CA${i+1}`);
-    const headers = ['Student', 'StudentNo', ...caHeaders, 'Exam'];
+    const caHeaders = Array.from({ length: gradingConfig.caCount }).map((_, i) => scoreLabels?.[`ca${i+1}`] || `CA ${i+1}`);
+    const examLabel = scoreLabels?.examScore || 'Exam';
+    const headers = ['Student', 'StudentNo', ...caHeaders, examLabel];
     const csvContent = [
       headers.join(','),
       ...scores.map(s => {
@@ -195,10 +197,10 @@ function ScoreEntry({ selectedClass, selectedSubject, selectedTerm, gradingConfi
               <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider whitespace-nowrap">Stu. No.</th>
               {Array.from({ length: gradingConfig.caCount }).map((_, i) => (
                 <th key={i} className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider whitespace-nowrap">
-                  CA{i+1} /{gradingConfig.caMaxScore}
+                  {scoreLabels?.[`ca${i+1}`] || `CA ${i+1}`} /{gradingConfig.caMaxScore}
                 </th>
               ))}
-              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider whitespace-nowrap">Exam /{gradingConfig.examMaxScore}</th>
+              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider whitespace-nowrap">{scoreLabels?.examScore || 'Exam'} /{gradingConfig.examMaxScore}</th>
               <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider whitespace-nowrap">Total</th>
               <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider whitespace-nowrap">Grade</th>
               <th className="px-4 py-3"></th>
@@ -354,6 +356,7 @@ export default function Scores() {
   const [selectedClass, setSelectedClass] = useState('');
   const [selectedTerm, setSelectedTerm] = useState('');
   const [selectedSubject, setSelectedSubject] = useState('');
+  const [scoreLabels, setScoreLabels] = useState(null);
   
   const { addToast } = useToast();
   const { user } = useAuth();
@@ -373,6 +376,11 @@ export default function Scores() {
       }).catch(() => {});
     });
     
+    // Fetch school to get custom score labels
+    getSchool().then(d => {
+      if (d?.scoreLabels) setScoreLabels(d.scoreLabels);
+    }).catch(() => {});
+
     // Default term
     setSelectedTerm('term1');
   }, []);
@@ -380,7 +388,7 @@ export default function Scores() {
   const gradingConfig = getGradingConfig();
 
   const allTabs = [
-    { label: 'Score Entry', content: <ScoreEntry selectedClass={selectedClass} selectedSubject={selectedSubject} selectedTerm={selectedTerm} gradingConfig={gradingConfig} />, roles: ['SUBJECT_TEACHER', 'CLASS_TEACHER', 'SCHOOL_ADMIN'] },
+    { label: 'Score Entry', content: <ScoreEntry selectedClass={selectedClass} selectedSubject={selectedSubject} selectedTerm={selectedTerm} gradingConfig={gradingConfig} scoreLabels={scoreLabels} />, roles: ['SUBJECT_TEACHER', 'CLASS_TEACHER', 'SCHOOL_ADMIN'] },
     { label: 'Class Summary', content: <ClassSummary selectedClass={selectedClass} />, roles: ['SCHOOL_ADMIN', 'CLASS_TEACHER', 'SUBJECT_TEACHER'] },
     { label: 'Submission Status', content: <SubmissionStatus selectedClass={selectedClass} />, roles: ['SCHOOL_ADMIN', 'CLASS_TEACHER'] },
   ];

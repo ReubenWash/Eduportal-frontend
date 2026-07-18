@@ -3,21 +3,21 @@ import { login, register, forgotPassword, resetPassword, verifyEmail } from '../
 
 const AuthContext = createContext();
 
-// Safely read a JSON value from sessionStorage without ever throwing
+// Safely read a JSON value from localStorage without ever throwing
 function safeGetJSON(key) {
-  const raw = sessionStorage.getItem(key);
+  const raw = localStorage.getItem(key);
   if (!raw || raw === 'undefined' || raw === 'null') return null;
   try {
     return JSON.parse(raw);
   } catch {
-    sessionStorage.removeItem(key); // clear corrupted data so this never loops
+    localStorage.removeItem(key); // clear corrupted data so this never loops
     return null;
   }
 }
 
-// Safely read a plain string value from sessionStorage
+// Safely read a plain string value from localStorage
 function safeGetString(key) {
-  const raw = sessionStorage.getItem(key);
+  const raw = localStorage.getItem(key);
   return raw && raw !== 'undefined' && raw !== 'null' ? raw : null;
 }
 
@@ -41,9 +41,10 @@ export function AuthProvider({ children }) {
 
       setAccessToken(data.accessToken);
       setUser(data.user);
-      // Persist to sessionStorage
-      sessionStorage.setItem('accessToken', data.accessToken);
-      sessionStorage.setItem('user', JSON.stringify(data.user));
+      // Persist to localStorage
+      localStorage.setItem('accessToken', data.accessToken);
+      localStorage.setItem('user', JSON.stringify(data.user));
+      localStorage.setItem('lastActivity', Date.now().toString());
       onSuccess?.(data.user);
     } catch (err) {
       setError(err.response?.data?.message || 'Login failed');
@@ -56,9 +57,10 @@ export function AuthProvider({ children }) {
   const handleLogout = useCallback(() => {
     setUser(null);
     setAccessToken(null);
-    // Clear sessionStorage
-    sessionStorage.removeItem('accessToken');
-    sessionStorage.removeItem('user');
+    // Clear localStorage
+    localStorage.removeItem('accessToken');
+    localStorage.removeItem('user');
+    localStorage.removeItem('lastActivity');
   }, []);
 
   const handleRegister = useCallback(async (userData) => {
@@ -69,11 +71,12 @@ export function AuthProvider({ children }) {
 
       if (data?.accessToken) {
         setAccessToken(data.accessToken);
-        sessionStorage.setItem('accessToken', data.accessToken);
+        localStorage.setItem('accessToken', data.accessToken);
+        localStorage.setItem('lastActivity', Date.now().toString());
       }
       if (data?.user) {
         setUser(data.user);
-        sessionStorage.setItem('user', JSON.stringify(data.user));
+        localStorage.setItem('user', JSON.stringify(data.user));
       }
     } catch (err) {
       setError(err.response?.data?.message || 'Registration failed');

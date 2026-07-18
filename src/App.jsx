@@ -13,6 +13,7 @@ const ForgotPasswordPage = lazy(() => import('./pages/auth/ForgotPassword'));
 const ResetPasswordPage = lazy(() => import('./pages/auth/ResetPassword'));
 const ChangePasswordPage = lazy(() => import('./pages/auth/ChangePassword'));
 const VerifyEmailPage = lazy(() => import('./pages/auth/VerifyEmail'));
+const KycSubmission = lazy(() => import('./pages/auth/KycSubmission'));
 const GenericPage = lazy(() => import('./pages/public/GenericPage'));
 const Dashboard = lazy(() => import('./pages/Dashboard'));
 const Settings = lazy(() => import('./pages/settings/Settings'));
@@ -87,7 +88,7 @@ export default function App() {
             <Route path="/forgot-password" element={<ForgotPasswordPage />} />
             <Route path="/reset-password/:token" element={<ResetPasswordPage />} />
             <Route path="/change-password" element={<ChangePasswordPage />} />
-            <Route path="/verify-email/:token" element={<VerifyEmailPage />} />
+            <Route path="/verify-email" element={<VerifyEmailPage />} />
 
             {/* Public Footer Links */}
             <Route path="/changelog" element={<GenericPage />} />
@@ -100,6 +101,14 @@ export default function App() {
             <Route path="/privacy" element={<GenericPage />} />
             <Route path="/terms-of-service" element={<GenericPage />} />
             <Route path="/data" element={<GenericPage />} />
+
+            <Route path="/kyc" element={
+              <ProtectedRoute allowedRoles={[]}>
+                <AppLayout />
+              </ProtectedRoute>
+            }>
+              <Route index element={<KycSubmission />} />
+            </Route>
 
             <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
               <Route path="/dashboard" element={<ProtectedRoute allowedRoles={STAFF_ROLES}><Dashboard /></ProtectedRoute>} />

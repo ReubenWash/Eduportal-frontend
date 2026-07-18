@@ -1,4 +1,6 @@
 import { Link, useLocation } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { getPublicSettings } from '../../api/authApi';
 
 // ─── Page Content ────────────────────────────────────────────────
 const PAGES = {
@@ -279,9 +281,23 @@ const colorMap = {
 
 export default function GenericPage() {
   const location = useLocation();
+  const [savedPages, setSavedPages] = useState({});
 
-  // Check for admin-saved overrides in localStorage
-  const savedPages = JSON.parse(localStorage.getItem('publicPages') || '{}');
+  useEffect(() => {
+    getPublicSettings()
+      .then(settings => {
+        if (settings?.cms_pages) {
+          setSavedPages(JSON.parse(settings.cms_pages));
+        }
+      })
+      .catch(() => {
+        try {
+          const local = JSON.parse(localStorage.getItem('publicPages') || '{}');
+          setSavedPages(local);
+        } catch { /* ignore */ }
+      });
+  }, []);
+
   const slugToKey = {
     '/team': 'Team', '/changelog': 'Changelog', '/roadmap': 'Roadmap',
     '/docs': 'Documentation', '/contact': 'Contact Us', '/status': 'System Status',

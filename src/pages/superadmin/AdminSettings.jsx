@@ -1,9 +1,12 @@
-import { useState } from 'react';
-import { Save, Globe, Mail, Shield, ShieldAlert, Palette, Image } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Save, Globe, Mail, Shield, ShieldAlert, Palette, Image, FileText } from 'lucide-react';
 import { useToast } from '../../context/ToastContext';
+import { getGlobalSettings, updateGlobalSettings } from '../../api/superAdminApi';
 
 export default function AdminSettings() {
   const { addToast } = useToast();
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   
   // Platform Brand settings
   const [platformName, setPlatformName] = useState('EduPortal');
@@ -20,10 +23,58 @@ export default function AdminSettings() {
   const [timeZone, setTimeZone] = useState('UTC');
   const [language, setLanguage] = useState('en');
 
-  const handleSave = (e) => {
-    e.preventDefault();
-    addToast('System settings saved successfully!', 'success');
+  // KYC Settings
+  const [kycDocs, setKycDocs] = useState([
+    { id: 'cert', name: 'School Registration Certificate', required: true },
+    { id: 'id', name: 'Headmaster Valid ID', required: true },
+    { id: 'tax', name: 'Tax Clearance Certificate', required: false },
+  ]);
+
+  useEffect(() => {
+    getGlobalSettings().then(settings => {
+      if (settings?.platformName) setPlatformName(settings.platformName);
+      if (settings?.theme) setTheme(settings.theme);
+      if (settings?.language) setLanguage(settings.language);
+      if (settings?.timeZone) setTimeZone(settings.timeZone);
+      if (settings?.smtpHost) setSmtpHost(settings.smtpHost);
+      if (settings?.smtpPort) setSmtpPort(settings.smtpPort);
+      if (settings?.smtpUser) setSmtpUser(settings.smtpUser);
+      // Skip smtpPass for security
+      if (settings?.kyc_requirements) {
+        setKycDocs(JSON.parse(settings.kyc_requirements));
+      }
+    }).finally(() => setLoading(false));
+  }, []);
+
+  const toggleKycDoc = (id) => {
+    setKycDocs(prev => prev.map(doc => doc.id === id ? { ...doc, required: !doc.required } : doc));
   };
+
+  const handleSave = async (e) => {
+    e.preventDefault();
+    setSaving(true);
+    try {
+      const payload = {
+        platformName,
+        theme,
+        language,
+        timeZone,
+        smtpHost,
+        smtpPort,
+        smtpUser,
+        smtpPass, // Might be omitted or handled securely backend
+        kyc_requirements: JSON.stringify(kycDocs),
+      };
+      await updateGlobalSettings(payload);
+      addToast('System settings saved successfully!', 'success');
+    } catch {
+      addToast('Failed to save system settings.', 'error');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (loading) return <div>Loading settings...</div>;
 
   return (
     <div className="space-y-6">
@@ -156,14 +207,36 @@ export default function AdminSettings() {
               </div>
             </div>
           </div>
+
+          {/* KYC Configuration */}
+          <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6 space-y-4 lg:col-span-2">
+            <h2 className="text-sm font-semibold text-gray-900 flex items-center gap-2 pb-2 border-b border-gray-100">
+              <FileText className="h-4 w-4 text-amber-500" /> KYC Requirements Configuration
+            </h2>
+            <p className="text-xs text-gray-500 mb-3">Select which documents are mandatory for a school to complete their registration.</p>
+            <div className="space-y-3">
+              {kycDocs.map(doc => (
+                <label key={doc.id} className="flex items-center gap-3 p-3 border border-gray-100 rounded-lg bg-gray-50 hover:bg-gray-100 cursor-pointer transition-colors">
+                  <input
+                    type="checkbox"
+                    checked={doc.required}
+                    onChange={() => toggleKycDoc(doc.id)}
+                    className="h-4 w-4 text-indigo-600 rounded border-gray-300 focus:ring-indigo-500"
+                  />
+                  <span className="text-sm font-medium text-gray-800">{doc.name}</span>
+                </label>
+              ))}
+            </div>
+          </div>
         </div>
 
         <div className="flex justify-end gap-3">
           <button type="button" className="px-5 py-2 text-sm font-semibold text-gray-700 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
             Discard Changes
           </button>
-          <button type="submit" className="flex items-center gap-2 px-6 py-2 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-500 rounded-lg transition-colors shadow-sm">
-            <Save className="h-4 w-4" /> Save System Settings
+          <button type="submit" disabled={saving} className="flex items-center gap-2 px-6 py-2 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-500 rounded-lg transition-colors shadow-sm disabled:opacity-60">
+            {saving ? <span className="animate-spin h-4 w-4 rounded-full border-2 border-white border-t-transparent"/> : <Save className="h-4 w-4" />}
+            Save System Settings
           </button>
         </div>
       </form>
