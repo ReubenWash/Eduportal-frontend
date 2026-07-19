@@ -7,7 +7,8 @@ import Badge from '../../components/ui/Badge';
 import Modal from '../../components/ui/Modal';
 import { useToast } from '../../context/ToastContext';
 import { getAllSchools, updateSchoolStatus as apiUpdateSchoolStatus, deleteSchool } from '../../api/schoolApi';
-import { updateSchoolDetails, updateSchoolPlan, sendWelcomeEmail } from '../../api/superAdminApi';
+import { updateSchoolDetails, updateSchoolPlan, sendWelcomeEmail, updateEnvConfig } from '../../api/superAdminApi';
+import { register } from '../../api/authApi';
 
 const statusVariant = { ACTIVE: 'success', PENDING: 'warning', REJECTED: 'danger', SUSPENDED: 'danger' };
 const statusIcon = {
@@ -29,6 +30,9 @@ export default function AdminSchools() {
   const [editSchool, setEditSchool] = useState(null);
   const [editForm, setEditForm] = useState({});
   const [editSaving, setEditSaving] = useState(false);
+  const [addSchoolModal, setAddSchoolModal] = useState(false);
+  const [addForm, setAddForm] = useState({ name: '', email: '', phone: '', address: '', plan: 'BASIC', password: '' });
+  const [addSaving, setAddSaving] = useState(false);
 
   const load = () => {
     setLoading(true);
@@ -98,6 +102,41 @@ export default function AdminSchools() {
     }
   };
 
+  const toggleVerify = async (school) => {
+    const isVerified = !school.isVerified;
+    try {
+      await updateSchoolDetails(school.id, { isVerified });
+      setSchools(prev => prev.map(s => s.id === school.id ? { ...s, isVerified } : s));
+      addToast(`${school.name} is now ${isVerified ? 'verified' : 'unverified'}`, 'success');
+    } catch {
+      // Local fallback
+      setSchools(prev => prev.map(s => s.id === school.id ? { ...s, isVerified } : s));
+      addToast(`Status updated locally (backend unavailable).`, 'warning');
+    }
+  };
+
+  const handleAddSchool = async (e) => {
+    e.preventDefault();
+    setAddSaving(true);
+    try {
+      const res = await register({
+        schoolName: addForm.name,
+        email: addForm.email,
+        password: addForm.password || 'password123',
+        phone: addForm.phone,
+        address: addForm.address,
+      });
+      addToast('School created successfully.', 'success');
+      setAddSchoolModal(false);
+      setAddForm({ name: '', email: '', phone: '', address: '', plan: 'BASIC', password: '' });
+      load(); // Reload list
+    } catch (err) {
+      addToast(err?.response?.data?.message || 'Failed to create school', 'error');
+    } finally {
+      setAddSaving(false);
+    }
+  };
+
   const openEdit = (school) => {
     setEditForm({
       name: school.name || '',
@@ -136,9 +175,14 @@ export default function AdminSchools() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900 tracking-tight">School Management</h1>
-        <p className="text-sm text-gray-500 mt-1">Review registrations, approve or reject schools, and manage their access.</p>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900 tracking-tight">School Management</h1>
+          <p className="text-sm text-gray-500 mt-1">Review registrations, approve or reject schools, and manage their access.</p>
+        </div>
+        <button onClick={() => setAddSchoolModal(true)} className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-colors shadow-sm">
+          <School className="h-4 w-4" /> Add School
+        </button>
       </div>
 
       {loadError && (
@@ -210,7 +254,10 @@ export default function AdminSchools() {
                         <School className="h-4 w-4 text-indigo-600" />
                       </div>
                       <div>
-                        <p className="text-sm font-semibold text-gray-900">{school.name}</p>
+                        <div className="flex items-center gap-1.5">
+                          <p className="text-sm font-semibold text-gray-900">{school.name}</p>
+                          {school.isVerified && <CheckCircle className="h-3 w-3 text-emerald-500" title="Verified" />}
+                        </div>
                         <p className="text-[11px] text-gray-500">{school.email}</p>
                       </div>
                     </div>
@@ -235,6 +282,9 @@ export default function AdminSchools() {
                     <div className="flex items-center gap-1">
                       <button onClick={() => setViewSchool(school)} className="p-1.5 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-md transition-colors" title="View Details">
                         <Eye className="h-4 w-4" />
+                      </button>
+                      <button onClick={() => toggleVerify(school)} className={`text-xs font-medium px-2 py-1 rounded-md transition-colors ${school.isVerified ? 'text-emerald-600 bg-emerald-50 hover:bg-emerald-100' : 'text-gray-500 bg-gray-50 hover:bg-gray-100'}`} title={school.isVerified ? 'Unverify' : 'Verify'}>
+                        {school.isVerified ? 'Verified' : 'Verify'}
                       </button>
                       <button onClick={() => openEdit(school)} className="p-1.5 text-gray-400 hover:text-violet-600 hover:bg-violet-50 rounded-md transition-colors" title="Edit School">
                         <Edit2 className="h-4 w-4" />
@@ -400,6 +450,43 @@ export default function AdminSchools() {
               </button>
             </div>
           </div>
+        </Modal>
+      )}
+
+      {/* Add School Modal */}
+      {addSchoolModal && (
+        <Modal isOpen onClose={() => setAddSchoolModal(false)} title="Add New School" subtitle="Manually register a new school.">
+          <form onSubmit={handleAddSchool} className="space-y-4 pt-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="sm:col-span-2">
+                <label className="block text-xs font-semibold text-gray-600 mb-1">School Name *</label>
+                <input required className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-300 outline-none" value={addForm.name} onChange={e => setAddForm(f => ({ ...f, name: e.target.value }))} />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-600 mb-1">Email *</label>
+                <input required type="email" className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-300 outline-none" value={addForm.email} onChange={e => setAddForm(f => ({ ...f, email: e.target.value }))} />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-600 mb-1">Phone</label>
+                <input type="tel" className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-300 outline-none" value={addForm.phone} onChange={e => setAddForm(f => ({ ...f, phone: e.target.value }))} />
+              </div>
+              <div className="sm:col-span-2">
+                <label className="block text-xs font-semibold text-gray-600 mb-1">Address / Location</label>
+                <input className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-300 outline-none" value={addForm.address} onChange={e => setAddForm(f => ({ ...f, address: e.target.value }))} />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-600 mb-1">Temporary Password *</label>
+                <input required minLength={6} type="password" placeholder="Min 6 chars" className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-300 outline-none" value={addForm.password} onChange={e => setAddForm(f => ({ ...f, password: e.target.value }))} />
+              </div>
+            </div>
+            <div className="flex gap-3 pt-4 border-t border-gray-100">
+              <button type="button" onClick={() => setAddSchoolModal(false)} className="flex-1 py-2 rounded-lg border border-gray-200 text-gray-700 text-sm font-semibold hover:bg-gray-50 transition-colors">Cancel</button>
+              <button type="submit" disabled={addSaving} className="flex-1 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold transition-colors flex items-center justify-center gap-2">
+                {addSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                {addSaving ? 'Creating…' : 'Create School'}
+              </button>
+            </div>
+          </form>
         </Modal>
       )}
     </div>

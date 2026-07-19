@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Save, Globe, Mail, Shield, ShieldAlert, Palette, Image, FileText } from 'lucide-react';
 import { useToast } from '../../context/ToastContext';
-import { getGlobalSettings, updateGlobalSettings } from '../../api/superAdminApi';
+import { getGlobalSettings, updateGlobalSettings, updateEnvConfig } from '../../api/superAdminApi';
 
 export default function AdminSettings() {
   const { addToast } = useToast();
@@ -66,6 +66,14 @@ export default function AdminSettings() {
         kyc_requirements: JSON.stringify(kycDocs),
       };
       await updateGlobalSettings(payload);
+      
+      // Also send SMTP settings as environment variables for the backend to use directly
+      await updateEnvConfig({
+        SMTP_HOST: smtpHost,
+        SMTP_PORT: smtpPort,
+        SMTP_USER: smtpUser,
+        SMTP_PASS: smtpPass,
+      });
       addToast('System settings saved successfully!', 'success');
     } catch {
       addToast('Failed to save system settings.', 'error');
@@ -166,8 +174,9 @@ export default function AdminSettings() {
           {/* SMTP Configuration */}
           <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6 space-y-4 lg:col-span-2">
             <h2 className="text-sm font-semibold text-gray-900 flex items-center gap-2 pb-2 border-b border-gray-100">
-              <Mail className="h-4 w-4 text-emerald-500" /> SMTP Configuration (Outgoing Mail)
+              <Mail className="h-4 w-4 text-emerald-500" /> SMTP Configuration (Gmail Supported)
             </h2>
+            <p className="text-xs text-gray-500 mb-3">If using Gmail, use `smtp.gmail.com` on port `587` or `465`, and generate an App Password in your Google Account security settings.</p>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-semibold text-gray-500 mb-1.5">SMTP Host</label>
