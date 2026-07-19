@@ -53,33 +53,48 @@ export default function AdminSettings() {
   const handleSave = async (e) => {
     e.preventDefault();
     setSaving(true);
+    let hasError = false;
+    let errorMsg = '';
+
+    const payload = {
+      platformName,
+      theme,
+      language,
+      timeZone,
+      smtpHost,
+      smtpPort,
+      smtpUser,
+      smtpPass,
+      kyc_requirements: JSON.stringify(kycDocs),
+    };
+
     try {
-      const payload = {
-        platformName,
-        theme,
-        language,
-        timeZone,
-        smtpHost,
-        smtpPort,
-        smtpUser,
-        smtpPass, // Might be omitted or handled securely backend
-        kyc_requirements: JSON.stringify(kycDocs),
-      };
       await updateGlobalSettings(payload);
-      
-      // Also send SMTP settings as environment variables for the backend to use directly
+    } catch (err) {
+      hasError = true;
+      errorMsg = err?.response?.data?.message || 'Settings API failed';
+      console.warn('updateGlobalSettings failed:', err);
+    }
+
+    try {
       await updateEnvConfig({
         SMTP_HOST: smtpHost,
         SMTP_PORT: smtpPort,
         SMTP_USER: smtpUser,
         SMTP_PASS: smtpPass,
       });
-      addToast('System settings saved successfully!', 'success');
-    } catch {
-      addToast('Failed to save system settings.', 'error');
-    } finally {
-      setSaving(false);
+    } catch (err) {
+      hasError = true;
+      errorMsg = err?.response?.data?.message || 'Env config API failed';
+      console.warn('updateEnvConfig failed:', err);
     }
+
+    if (!hasError) {
+      addToast('System settings saved successfully!', 'success');
+    } else {
+      addToast(`Saved locally, but backend sync failed: ${errorMsg}`, 'warning');
+    }
+    setSaving(false);
   };
 
   if (loading) return <div>Loading settings...</div>;
