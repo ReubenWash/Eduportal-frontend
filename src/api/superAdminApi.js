@@ -81,9 +81,64 @@ export const updateGlobalSettings = async (settings) => {
   return unwrapItem(res.data);
 };
 
+const buildSuperAdminDashboardFallbackPayload = ({ schools = [], users = [] }) => {
+  const normalizedSchools = Array.isArray(schools) ? schools : [];
+  const normalizedUsers = Array.isArray(users) ? users : [];
+
+  const activeSchools = normalizedSchools.filter((school) => (school?.status || '').toUpperCase() === 'ACTIVE').length;
+  const pendingSchools = normalizedSchools.filter((school) => (school?.status || '').toUpperCase() === 'PENDING').length;
+  const activeUsers = normalizedUsers.filter((user) => (user?.status || '').toUpperCase() === 'ACTIVE').length;
+  const suspendedUsers = normalizedUsers.filter((user) => (user?.status || '').toUpperCase() === 'SUSPENDED').length;
+
+  return {
+    stats: [
+      { label: 'Total Schools', value: normalizedSchools.length, icon: 'School', bg: 'bg-indigo-50', text: 'text-indigo-600', change: `${activeSchools} active` },
+      { label: 'Active Schools', value: activeSchools, icon: 'School', bg: 'bg-emerald-50', text: 'text-emerald-600', change: `${pendingSchools} pending` },
+      { label: 'Total Users', value: normalizedUsers.length, icon: 'Users', bg: 'bg-violet-50', text: 'text-violet-600', change: `${activeUsers} active` },
+      { label: 'Active Users', value: activeUsers, icon: 'Users', bg: 'bg-sky-50', text: 'text-sky-600', change: `${suspendedUsers} suspended` },
+      { label: 'Pending Schools', value: pendingSchools, icon: 'Clock', bg: 'bg-amber-50', text: 'text-amber-600', change: 'Awaiting review' },
+      { label: 'Suspended Accounts', value: suspendedUsers, icon: 'ShieldCheck', bg: 'bg-rose-50', text: 'text-rose-600', change: 'Needs attention' },
+    ],
+    registrationTrend: normalizedSchools.slice(0, 6).map((school, index) => ({
+      month: school?.createdAt ? new Date(school.createdAt).toLocaleString('en', { month: 'short' }) : `M${index + 1}`,
+      schools: 1,
+    })),
+    recentActivity: [
+      ...normalizedSchools.slice(0, 3).map((school) => ({
+        id: `school-${school.id}`,
+        type: 'approved',
+        text: `${school.name || 'A school'} was added to the platform`,
+        time: school.createdAt ? new Date(school.createdAt).toLocaleDateString('en-GB') : 'Recently added',
+      })),
+      ...normalizedUsers.slice(0, 3).map((user) => ({
+        id: `user-${user.id}`,
+        type: 'user',
+        text: `${user.name || user.email || 'A user'} was updated in the system`,
+        time: user.joinedAt ? new Date(user.joinedAt).toLocaleDateString('en-GB') : 'Recently updated',
+      })),
+    ].slice(0, 6),
+  };
+};
+
 export const getSuperAdminDashboard = async () => {
-  const res = await api.get('/schools/admin/dashboard');
-  return unwrapItem(res.data);
+  try {
+    const res = await api.get('/schools/admin/dashboard');
+    return unwrapItem(res.data);
+  } catch (error) {
+    if (error?.response?.status !== 404) {
+      throw error;
+    }
+
+    const [schoolsResponse, usersResponse] = await Promise.all([
+      api.get('/schools'),
+      api.get('/admin/users'),
+    ]);
+
+    return buildSuperAdminDashboardFallbackPayload({
+      schools: unwrapList(schoolsResponse.data),
+      users: unwrapList(usersResponse.data),
+    });
+  }
 };
 
 // ─── Users (Super Admin) ──────────────────────────────────────────

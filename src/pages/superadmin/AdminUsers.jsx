@@ -11,6 +11,9 @@ const roleConfig = {
   SCHOOL_ADMIN:    { label: 'School Admin',    icon: ShieldCheck, color: 'text-indigo-600', bg: 'bg-indigo-50', variant: 'primary'  },
   CLASS_TEACHER:   { label: 'Class Teacher',   icon: BookOpen,    color: 'text-emerald-600',bg: 'bg-emerald-50',variant: 'success'  },
   SUBJECT_TEACHER: { label: 'Subject Teacher', icon: GraduationCap,color:'text-violet-600', bg: 'bg-violet-50', variant: 'default'  },
+  PARENT:          { label: 'Parent',          icon: Shield,      color: 'text-amber-600', bg: 'bg-amber-50', variant: 'default'  },
+  STUDENT:         { label: 'Student',         icon: GraduationCap,color:'text-sky-600', bg: 'bg-sky-50', variant: 'default'  },
+  SUPER_ADMIN:     { label: 'Super Admin',     icon: ShieldCheck, color: 'text-violet-600', bg: 'bg-violet-50', variant: 'default'  },
 };
 
 export default function AdminUsers() {
@@ -29,8 +32,12 @@ export default function AdminUsers() {
   useEffect(() => {
     Promise.all([getAdminUsers(), getAllSchools()])
       .then(([usersData, schoolsData]) => {
-        setUsers(usersData || []);
-        const activeSchools = (schoolsData || []).filter(s => s.status === 'ACTIVE').map(s => s.name);
+        const realUsers = Array.isArray(usersData) ? usersData : [];
+        const activeSchools = (Array.isArray(schoolsData) ? schoolsData : [])
+          .filter(s => s.status === 'ACTIVE')
+          .map(s => ({ id: s.id, name: s.name }));
+
+        setUsers(realUsers);
         setSchools(activeSchools);
       })
       .catch(() => addToast('Failed to load data', 'error'))
@@ -40,8 +47,9 @@ export default function AdminUsers() {
   const filtered = useMemo(() => users.filter(u => {
     // If Super Admin hasn't selected a school, they don't see any users (per requirements)
     if (!selectedSchool) return false;
-    if (u.school !== selectedSchool) return false;
-    
+    if (u.schoolId && u.schoolId !== selectedSchool) return false;
+    if (!u.schoolId && u.school !== selectedSchool) return false;
+
     if (keyword && !u.name.toLowerCase().includes(keyword.toLowerCase()) && !u.email.toLowerCase().includes(keyword.toLowerCase())) return false;
     if (roleFilter && u.role !== roleFilter) return false;
     return true;
@@ -107,7 +115,7 @@ export default function AdminUsers() {
             className="border border-gray-200 rounded-lg px-4 py-2 text-sm bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
           >
             <option value="">-- Select a School --</option>
-            {schools.map(s => <option key={s} value={s}>{s}</option>)}
+            {schools.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
           </select>
           
           <button 
@@ -131,6 +139,8 @@ export default function AdminUsers() {
           { label: 'School Admins',   count: users.filter(u=>u.role==='SCHOOL_ADMIN').length,   filter: 'SCHOOL_ADMIN',   color: 'bg-indigo-50 text-indigo-700 border-indigo-200' },
           { label: 'Class Teachers',  count: users.filter(u=>u.role==='CLASS_TEACHER').length,  filter: 'CLASS_TEACHER',  color: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
           { label: 'Subject Teachers',count: users.filter(u=>u.role==='SUBJECT_TEACHER').length,filter: 'SUBJECT_TEACHER',color: 'bg-violet-50 text-violet-700 border-violet-200' },
+          { label: 'Parents',         count: users.filter(u=>u.role==='PARENT').length,         filter: 'PARENT',         color: 'bg-amber-50 text-amber-700 border-amber-200' },
+          { label: 'Students',        count: users.filter(u=>u.role==='STUDENT').length,        filter: 'STUDENT',        color: 'bg-sky-50 text-sky-700 border-sky-200' },
           { label: 'Suspended',       count: users.filter(u=>u.status==='SUSPENDED').length,    filter: '__SUSPENDED__',  color: 'bg-red-50 text-red-700 border-red-200' },
         ].map(p => (
           <button
