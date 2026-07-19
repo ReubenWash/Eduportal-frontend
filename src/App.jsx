@@ -70,6 +70,16 @@ const LoadingFallback = () => (
   </div>
 );
 
+// Full-screen spinner shown while the app bootstraps (auth state being read)
+const AppLoadingScreen = () => (
+  <div className="fixed inset-0 flex items-center justify-center bg-white z-50">
+    <div className="flex flex-col items-center gap-4">
+      <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-indigo-600" />
+      <p className="text-sm text-gray-500">Loading EduPortal…</p>
+    </div>
+  </div>
+);
+
 // Role groups, matching EduTrack JHS Project Documentation section 5
 const ADMIN_ROLES = ['SUPER_ADMIN', 'SCHOOL_ADMIN'];
 const STAFF_ROLES = ['SUPER_ADMIN', 'SCHOOL_ADMIN', 'CLASS_TEACHER', 'SUBJECT_TEACHER'];
@@ -80,8 +90,20 @@ export default function App() {
     <AuthProvider>
       <ToastProvider>
         <ToastContainer />
-        <Suspense fallback={<LoadingFallback />}>
-          <Routes>
+        <AppRoutes />
+      </ToastProvider>
+    </AuthProvider>
+  );
+}
+
+function AppRoutes() {
+  const { initializing } = useAuth();
+
+  if (initializing) return <AppLoadingScreen />;
+
+  return (
+    <Suspense fallback={<LoadingFallback />}>
+      <Routes>
             <Route path="/" element={<LandingPage />} />
             <Route path="/landing" element={<Navigate to="/" replace />} />
             <Route path="/login" element={<LoginPage />} />
@@ -171,7 +193,5 @@ export default function App() {
             <Route path="*" element={<CatchAll />} />
           </Routes>
         </Suspense>
-      </ToastProvider>
-    </AuthProvider>
   );
 }

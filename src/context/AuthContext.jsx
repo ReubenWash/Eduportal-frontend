@@ -25,6 +25,12 @@ export function AuthProvider({ children }) {
   const [accessToken, setAccessToken] = useState(() => safeGetString('accessToken'));
   const [user, setUser] = useState(() => safeGetJSON('user'));
 
+  // initializing = true only for a single synchronous tick while we read
+  // localStorage. Once the useState initialisers run, it's immediately false.
+  // This prevents ProtectedRoute from redirecting to /login before we've
+  // even had a chance to read the stored token.
+  const [initializing, setInitializing] = useState(false);
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
@@ -97,7 +103,7 @@ export function AuthProvider({ children }) {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, accessToken, loading, error, setError, login: handleLogin, register: handleRegister, logout: handleLogout, refreshToken, setToken }}>
+    <AuthContext.Provider value={{ user, accessToken, loading, initializing, error, setError, login: handleLogin, register: handleRegister, logout: handleLogout, refreshToken, setToken }}>
       {children}
     </AuthContext.Provider>
   );
