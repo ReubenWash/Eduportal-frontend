@@ -26,10 +26,21 @@ export default function Staff() {
   const [selectedSubj, setSelectedSubj] = useState([]);
   const [keyword, setKeyword] = useState('');
   const [roleFilter, setRoleFilter] = useState('');
-  const [form, setForm] = useState({ name: '', email: '', role: 'SUBJECT_TEACHER', phone: '' });
+  const [form, setForm] = useState({ firstName: '', lastName: '', email: '', role: 'SUBJECT_TEACHER', phone: '' });
   const { addToast } = useToast();
 
-  const load = () => getStaff().then(d => { setData(Array.isArray(d) ? d : []); setLoading(false); }).catch(() => setLoading(false));
+  // Map backend shape { firstName, lastName, user: { email, role } } → flat display shape
+  const mapStaff = (s) => ({
+    ...s,
+    name: `${s.firstName || ''} ${s.lastName || ''}`.trim(),
+    email: s.user?.email || s.email || '',
+    role:  s.user?.role  || s.role  || '',
+  });
+
+  const load = () => getStaff().then(d => {
+    setData(Array.isArray(d) ? d.map(mapStaff) : []);
+    setLoading(false);
+  }).catch(() => setLoading(false));
   useEffect(() => { load(); }, []);
 
   const filtered = useMemo(() => {
@@ -40,8 +51,8 @@ export default function Staff() {
     });
   }, [data, keyword, roleFilter]);
 
-  const openCreate = () => { setEditing(null); setForm({ name: '', email: '', role: 'SUBJECT_TEACHER', phone: '' }); setDrawerOpen(true); };
-  const openEdit = (s) => { setEditing(s); setForm({ name: s.name, email: s.email, role: s.role, phone: s.phone || '' }); setDrawerOpen(true); };
+  const openCreate = () => { setEditing(null); setForm({ firstName: '', lastName: '', email: '', role: 'SUBJECT_TEACHER', phone: '' }); setDrawerOpen(true); };
+  const openEdit = (s) => { setEditing(s); setForm({ firstName: s.firstName || '', lastName: s.lastName || '', email: s.email, role: s.role, phone: s.phone || '' }); setDrawerOpen(true); };
   const openSubjects = async (s) => {
     const subs = await getSubjects();
     setSubjects(subs);
@@ -52,12 +63,22 @@ export default function Staff() {
   const handleSave = async (e) => {
     e.preventDefault();
     try {
-      if (editing) await updateStaff(editing.id, form);
-      else await createStaff(form);
-      addToast(editing ? 'Staff member updated' : 'Staff member added', 'success');
+      const payload = {
+        firstName: form.firstName.trim(),
+        lastName:  form.lastName.trim(),
+        email:     form.email.trim(),
+        role:      form.role,
+        phone:     form.phone || undefined,
+      };
+      if (editing) await updateStaff(editing.id, payload);
+      else await createStaff(payload);
+      addToast(editing ? 'Staff member updated' : `Staff added! A welcome email with login details has been sent to ${form.email}`, 'success');
       setDrawerOpen(false);
       load();
-    } catch { addToast('Failed to save staff details', 'error'); }
+    } catch (err) {
+      const msg = err?.response?.data?.message || 'Failed to save staff details';
+      addToast(msg, 'error');
+    }
   };
 
   const handleDelete = async () => {
@@ -184,8 +205,12 @@ export default function Staff() {
         subtitle={editing ? `Updating details for ${editing.name}` : 'Enter the details of the new staff member below.'}
       >
         <form onSubmit={handleSave} className="space-y-4">
-          <Input label="Full Name" value={form.name} onChange={e => setForm({...form, name: e.target.value})} required placeholder="Jane Doe" />
-          <Input label="Email Address" type="email" value={form.email} onChange={e => setForm({...form, email: e.target.value})} required placeholder="jane@school.edu.gh" />
+          <div className="grid grid-cols-2 gap-4">
+            <Input label="First Name" value={form.firstName} onChange={e => setForm({...form, firstName: e.target.value})} required placeholder="Jane" />
+            <Input label="Last Name" value={form.lastName} onChange={e => setForm({...form, lastName: e.target.value})} required placeholder="Doe" />
+          </div>
+          <Input label="Email Address" type="email" value={form.email} onChange={e => setForm({...form, email: e.target.value})} required placeholder="jane@school.edu.gh" disabled={!!editing} />
+          {!editing && <p className="text-xs text-indigo-600 bg-indigo-50 rounded-lg px-3 py-2">📧 A welcome email with a temporary password will be sent to this address.</p>}
           <Input label="Phone Number" value={form.phone} onChange={e => setForm({...form, phone: e.target.value})} placeholder="e.g. +233 24 000 0000" />
           <Select
             label="System Role"
