@@ -81,6 +81,11 @@ export const updateGlobalSettings = async (settings) => {
   return unwrapItem(res.data);
 };
 
+export const getSuperAdminDashboard = async () => {
+  const res = await api.get('/schools/admin/dashboard');
+  return unwrapItem(res.data);
+};
+
 // ─── Users (Super Admin) ──────────────────────────────────────────
 export const getAdminUsers = async () => {
   const res = await api.get('/admin/users');

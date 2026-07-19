@@ -1,25 +1,11 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   School, Users, CheckCircle, XCircle, Clock, TrendingUp,
   Activity, Globe, ShieldCheck, AlertTriangle, ArrowUpRight,
 } from 'lucide-react';
 import { AreaChart, Area, ResponsiveContainer, Tooltip, XAxis } from 'recharts';
-
-const registrationTrend = [
-  { month: 'Jan', schools: 12 }, { month: 'Feb', schools: 19 },
-  { month: 'Mar', schools: 25 }, { month: 'Apr', schools: 31 },
-  { month: 'May', schools: 28 }, { month: 'Jun', schools: 42 },
-];
-
-const recentActivity = [
-  { id: 1, type: 'approved',  text: 'Approved Sunshine Academy',      time: '2 min ago',   color: 'emerald' },
-  { id: 2, type: 'pending',   text: 'New registration: Hilltop School', time: '14 min ago', color: 'amber'   },
-  { id: 3, type: 'rejected',  text: 'Rejected East Bay College',       time: '1 hr ago',    color: 'red'     },
-  { id: 4, type: 'user',      text: 'New admin user: admin@riverside.edu', time: '2 hr ago', color: 'indigo' },
-  { id: 5, type: 'approved',  text: 'Approved Riverside JHS',          time: '3 hr ago',    color: 'emerald' },
-  { id: 6, type: 'pending',   text: 'New registration: Lakewood Academy', time: '5 hr ago', color: 'amber'   },
-];
+import { getSuperAdminDashboard } from '../../api/superAdminApi';
 
 const activityIcon = {
   approved: <CheckCircle className="h-4 w-4 text-emerald-500" />,
@@ -28,16 +14,56 @@ const activityIcon = {
   user:     <Users className="h-4 w-4 text-indigo-500" />,
 };
 
-const stats = [
-  { label: 'Total Schools',     value: '247',   change: '+12 this month',  icon: School,      color: 'indigo', bg: 'bg-indigo-50',  text: 'text-indigo-600' },
-  { label: 'Active Schools',    value: '229',   change: '92.7% of total',   icon: Activity,    color: 'emerald',bg: 'bg-emerald-50', text: 'text-emerald-600'},
-  { label: 'Total Students',    value: '94,320',change: '+1,840 this month',icon: Users,       color: 'violet', bg: 'bg-violet-50',  text: 'text-violet-600' },
-  { label: 'Total Staff',       value: '3,420', change: '+120 this month', icon: Users,       color: 'sky',    bg: 'bg-sky-50',     text: 'text-sky-600'    },
-  { label: 'System Health',     value: '99.98%',change: 'All services active',icon: ShieldCheck,color: 'emerald',bg: 'bg-emerald-50', text: 'text-emerald-600'},
-  { label: 'Pending Applications',value: '18',  change: '5 require review',icon: Clock,       color: 'amber',  bg: 'bg-amber-50',   text: 'text-amber-600'  },
-];
+const iconMap = {
+  School,
+  Users,
+  Activity,
+  ShieldCheck,
+  Clock,
+};
+
+const formatValue = (value) => {
+  if (typeof value === 'number') return new Intl.NumberFormat().format(value);
+  return value ?? '—';
+};
 
 export default function SuperAdminDashboard() {
+  const [dashboardData, setDashboardData] = useState({ stats: [], registrationTrend: [], recentActivity: [] });
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
+
+  useEffect(() => {
+    let mounted = true;
+
+    const loadDashboard = async () => {
+      try {
+        const data = await getSuperAdminDashboard();
+        if (mounted) {
+          setDashboardData(data || { stats: [], registrationTrend: [], recentActivity: [] });
+          setLoadError(false);
+        }
+      } catch (error) {
+        console.error('Failed to load super admin dashboard', error);
+        if (mounted) {
+          setLoadError(true);
+        }
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    };
+
+    loadDashboard();
+    return () => { mounted = false; };
+  }, []);
+
+  const registrationTrend = (dashboardData.registrationTrend || []).map((item) => ({
+    month: item.month || '—',
+    schools: Number(item.schools ?? item.count ?? 0),
+  }));
+
+  const recentActivity = dashboardData.recentActivity || [];
+  const stats = dashboardData.stats || [];
+
   return (
     <div className="space-y-8">
       {/* Header */}
@@ -51,23 +77,39 @@ export default function SuperAdminDashboard() {
       </div>
 
       {/* Stat Cards */}
+      {loadError ? (
+        <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+          We could not load the latest platform figures from the server. Please refresh or contact support.
+        </div>
+      ) : null}
+
       <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4">
-        {stats.map((s) => {
-          const Icon = s.icon;
-          return (
-            <div key={s.label} className="bg-white rounded-xl border border-gray-200 shadow-sm p-5 hover:shadow-md transition-shadow">
-              <div className="flex items-start justify-between">
-                <div className={`h-10 w-10 rounded-xl ${s.bg} flex items-center justify-center`}>
-                  <Icon className={`h-5 w-5 ${s.text}`} />
-                </div>
-                <ArrowUpRight className="h-4 w-4 text-gray-300" />
-              </div>
-              <p className="mt-4 text-2xl font-bold text-gray-900">{s.value}</p>
-              <p className="text-sm font-medium text-gray-600 mt-0.5">{s.label}</p>
-              <p className="text-xs text-gray-400 mt-1">{s.change}</p>
+        {loading ? (
+          Array.from({ length: 6 }).map((_, index) => (
+            <div key={index} className="bg-white rounded-xl border border-gray-200 shadow-sm p-5 animate-pulse">
+              <div className="h-10 w-10 rounded-xl bg-gray-200" />
+              <div className="mt-4 h-7 w-16 rounded bg-gray-200" />
+              <div className="mt-2 h-4 w-24 rounded bg-gray-100" />
             </div>
-          );
-        })}
+          ))
+        ) : (
+          stats.map((s) => {
+            const Icon = iconMap[s.icon] || ShieldCheck;
+            return (
+              <div key={s.label} className="bg-white rounded-xl border border-gray-200 shadow-sm p-5 hover:shadow-md transition-shadow">
+                <div className="flex items-start justify-between">
+                  <div className={`h-10 w-10 rounded-xl ${s.bg} flex items-center justify-center`}>
+                    <Icon className={`h-5 w-5 ${s.text}`} />
+                  </div>
+                  <ArrowUpRight className="h-4 w-4 text-gray-300" />
+                </div>
+                <p className="mt-4 text-2xl font-bold text-gray-900">{formatValue(s.value)}</p>
+                <p className="text-sm font-medium text-gray-600 mt-0.5">{s.label}</p>
+                <p className="text-xs text-gray-400 mt-1">{s.change}</p>
+              </div>
+            );
+          })
+        )}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -101,15 +143,17 @@ export default function SuperAdminDashboard() {
         <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
           <h2 className="text-base font-semibold text-gray-900 mb-4">Recent Activity</h2>
           <div className="space-y-4">
-            {recentActivity.map((a) => (
+            {recentActivity.length ? recentActivity.map((a) => (
               <div key={a.id} className="flex items-start gap-3">
-                <div className="mt-0.5 flex-shrink-0">{activityIcon[a.type]}</div>
+                <div className="mt-0.5 flex-shrink-0">{activityIcon[a.type] || activityIcon.approved}</div>
                 <div className="flex-1 min-w-0">
                   <p className="text-[13px] text-gray-700 leading-tight">{a.text}</p>
                   <p className="text-[11px] text-gray-400 mt-0.5">{a.time}</p>
                 </div>
               </div>
-            ))}
+            )) : (
+              <p className="text-sm text-gray-500">No recent activity yet.</p>
+            )}
           </div>
         </div>
       </div>
