@@ -172,43 +172,45 @@ export default function Attendance() {
           ) : records.length === 0 ? (
             <div className="py-16 text-center text-sm text-gray-400">No students enrolled in this class yet.</div>
           ) : (
-            <div className="divide-y divide-gray-100">
-              {records.map((row) => (
-                <div key={row.id} className="flex items-center gap-4 px-5 py-3.5 hover:bg-gray-50/60 transition-colors">
-                  <Avatar src={row.photo} name={row.name} size="sm" />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-gray-900 truncate">{row.name}</p>
-                    <p className="text-xs text-gray-500">{row.studentNo}</p>
+            <div className="overflow-x-auto">
+              <div className="divide-y divide-gray-100 min-w-[700px]">
+                {records.map((row) => (
+                  <div key={row.id} className="flex items-center gap-4 px-5 py-3.5 hover:bg-gray-50/60 transition-colors">
+                    <Avatar src={row.photo} name={row.name} size="sm" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-gray-900 truncate">{row.name}</p>
+                      <p className="text-xs text-gray-500">{row.studentNo}</p>
+                    </div>
+                    {/* Status toggles */}
+                    <div className="flex items-center gap-1">
+                      {Object.entries(STATUS).map(([key, val]) => {
+                        const cfg = statusConfig[val];
+                        const isActive = row.status === val;
+                        return (
+                          <button
+                            key={key}
+                            onClick={() => setStatus(row.id, val)}
+                            className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg border text-xs font-medium transition-all ${
+                              isActive ? `${cfg.bg} ${cfg.color}` : 'bg-gray-50 border-gray-200 text-gray-400 hover:border-gray-300'
+                            }`}
+                          >
+                            <cfg.icon className="h-3 w-3" />
+                            {cfg.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    {/* Notes */}
+                    <input
+                      type="text"
+                      value={row.notes}
+                      onChange={e => setNote(row.id, e.target.value)}
+                      placeholder="Notes..."
+                      className="w-28 text-xs border border-gray-200 rounded-md px-2 py-1.5 text-gray-700 placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-indigo-300"
+                    />
                   </div>
-                  {/* Status toggles */}
-                  <div className="flex items-center gap-1">
-                    {Object.entries(STATUS).map(([key, val]) => {
-                      const cfg = statusConfig[val];
-                      const isActive = row.status === val;
-                      return (
-                        <button
-                          key={key}
-                          onClick={() => setStatus(row.id, val)}
-                          className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg border text-xs font-medium transition-all ${
-                            isActive ? `${cfg.bg} ${cfg.color}` : 'bg-gray-50 border-gray-200 text-gray-400 hover:border-gray-300'
-                          }`}
-                        >
-                          <cfg.icon className="h-3 w-3" />
-                          {cfg.label}
-                        </button>
-                      );
-                    })}
-                  </div>
-                  {/* Notes */}
-                  <input
-                    type="text"
-                    value={row.notes}
-                    onChange={e => setNote(row.id, e.target.value)}
-                    placeholder="Notes..."
-                    className="w-28 text-xs border border-gray-200 rounded-md px-2 py-1.5 text-gray-700 placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-indigo-300"
-                  />
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
           )}
         </div>
