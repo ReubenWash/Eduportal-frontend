@@ -113,9 +113,9 @@ export default function Attendance() {
         }
         action={
           canEdit ? (
-            <div className="flex items-center gap-2">
-              <Button variant="secondary" onClick={markAllPresent} disabled={records.length === 0}>Mark All Present</Button>
-              <Button icon={Save} loading={saving} onClick={handleSave} disabled={records.length === 0}>Save Attendance</Button>
+            <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+              <Button variant="secondary" className="flex-1 sm:flex-none" onClick={markAllPresent} disabled={records.length === 0}>Mark All Present</Button>
+              <Button icon={Save} loading={saving} className="flex-1 sm:flex-none" onClick={handleSave} disabled={records.length === 0}>Save Attendance</Button>
             </div>
           ) : null
         }
