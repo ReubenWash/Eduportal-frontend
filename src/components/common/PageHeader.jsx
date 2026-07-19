@@ -1,7 +1,7 @@
 export default function PageHeader({ title, subtitle, action, breadcrumb }) {
   return (
     <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-7 gap-4">
-      <div className="w-full">
+      <div className="flex-1 min-w-0">
         {breadcrumb && (
           <p className="text-xs font-medium text-gray-400 uppercase tracking-wider mb-1.5">{breadcrumb}</p>
         )}
