@@ -80,3 +80,24 @@ export const updateGlobalSettings = async (settings) => {
   const res = await api.put('/admin/config/settings', { settings });
   return unwrapItem(res.data);
 };
+
+// ─── Users (Super Admin) ──────────────────────────────────────────
+export const getAdminUsers = async () => {
+  const res = await api.get('/admin/users');
+  return unwrapList(res.data);
+};
+
+export const addAdminUser = async (data) => {
+  const res = await api.post('/admin/users', data);
+  return unwrapItem(res.data);
+};
+
+export const updateAdminUserStatus = async (id, status) => {
+  const res = await api.patch(`/admin/users/${id}/status`, { status });
+  return unwrapItem(res.data);
+};
+
+export const deleteAdminUser = async (id) => {
+  const res = await api.delete(`/admin/users/${id}`);
+  return unwrapItem(res.data);
+};

@@ -10,14 +10,7 @@ import { getClasses } from '../../api/classesApi';
 import { getSchool } from '../../api/schoolApi';
 import { Calculator, Save, CheckCircle2, Download, Upload } from 'lucide-react';
 
-// Mock score data
-const mockStudents = [
-  { id: '1', name: 'Ama Mensah', studentNo: 'STU/001' },
-  { id: '2', name: 'Kofi Boateng', studentNo: 'STU/002' },
-  { id: '3', name: 'Akua Sarpong', studentNo: 'STU/003' },
-  { id: '4', name: 'Kwame Asante', studentNo: 'STU/004' },
-  { id: '5', name: 'Abena Osei', studentNo: 'STU/005' },
-];
+
 
 function computeGrade(total, boundaries) {
   if (!boundaries) {
@@ -60,13 +53,13 @@ function ScoreEntry({ selectedClass, selectedSubject, selectedTerm, gradingConfi
     // Dynamically import the API to prevent circular dependencies if any
     import('../../api/studentsApi').then(({ getStudents }) => {
       getStudents({ classId: selectedClass }).then(data => {
-        const list = Array.isArray(data) && data.length > 0 ? data : mockStudents;
+        const list = Array.isArray(data) ? data : [];
         setScores(list.map(s => ({
           ...s,
           ca1: '', ca2: '', ca3: '', exam: '', saving: false
         })));
       }).catch(() => {
-        setScores(mockStudents.map(s => ({ ...s, ca1: '', ca2: '', ca3: '', exam: '', saving: false })));
+        setScores([]);
       }).finally(() => {
         setLoading(false);
       });
@@ -266,9 +259,9 @@ function ClassSummary({ selectedClass }) {
     setLoading(true);
     import('../../api/studentsApi').then(({ getStudents }) => {
       getStudents({ classId: selectedClass }).then(data => {
-        setStudents(Array.isArray(data) && data.length > 0 ? data : mockStudents);
+        setStudents(Array.isArray(data) ? data : []);
       }).catch(() => {
-        setStudents(mockStudents);
+        setStudents([]);
       }).finally(() => {
         setLoading(false);
       });
@@ -292,14 +285,14 @@ function ClassSummary({ selectedClass }) {
             <tr><td colSpan={7} className="px-4 py-8 text-center text-gray-500 text-sm">No students found in this class.</td></tr>
           ) : (
             students.map((s) => {
-              const scores = [78, 82, 75, 90]; // Still mock scores until backend supports it
-              const avg = Math.round(scores.reduce((a, b) => a + b, 0) / scores.length);
+              const scores = s.scores || []; // Real scores logic needed eventually
+              const avg = scores.length ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : 0;
               const { grade, color } = computeGrade(avg, gradingConfig.boundaries);
               return (
                 <tr key={s.id} className="hover:bg-gray-50/80 transition-colors">
                   <td className="px-4 py-3 text-sm font-medium text-gray-900">{s.name}</td>
-                  {scores.map((sc, i) => (
-                    <td key={i} className="px-4 py-3 text-sm text-gray-700">{sc}</td>
+                  {[...Array(4)].map((_, i) => (
+                    <td key={i} className="px-4 py-3 text-sm text-gray-700">{scores[i] || '—'}</td>
                   ))}
                   <td className="px-4 py-3 text-sm font-bold text-gray-900">{avg}</td>
                   <td className="px-4 py-3"><Badge variant={color}>{grade}</Badge></td>
@@ -314,12 +307,7 @@ function ClassSummary({ selectedClass }) {
 }
 
 function SubmissionStatus() {
-  const submissions = [
-    { teacher: 'Mr. Kofi Adu', subject: 'Mathematics', class: 'JHS1 A', submitted: true, date: '12 Jun 2025' },
-    { teacher: 'Mrs. Abena Mensah', subject: 'English', class: 'JHS1 A', submitted: true, date: '11 Jun 2025' },
-    { teacher: 'Mr. Kwame Boateng', subject: 'Science', class: 'JHS1 A', submitted: false, date: null },
-    { teacher: 'Mrs. Akua Osei', subject: 'Social Studies', class: 'JHS1 A', submitted: false, date: null },
-  ];
+  const submissions = []; // Backend submissions logic here
 
   return (
     <div className="overflow-x-auto rounded-xl border border-gray-200">

@@ -1,22 +1,11 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Search, Eye, Trash2, UserX, UserCheck, ShieldCheck, Shield, BookOpen, GraduationCap } from 'lucide-react';
 import Badge from '../../components/ui/Badge';
 import Avatar from '../../components/ui/Avatar';
 import Modal from '../../components/ui/Modal';
 import { useToast } from '../../context/ToastContext';
-
-const MOCK_USERS = [
-  { id: '1',  name: 'Dr. Kwame Boateng',   email: 'kwame@sunshine.edu.gh',    role: 'SCHOOL_ADMIN',    school: 'Sunshine Academy',    status: 'ACTIVE',    joinedAt: '2024-01-15' },
-  { id: '2',  name: 'Mr. Kofi Mensah',      email: 'kofi@sunshine.edu.gh',     role: 'CLASS_TEACHER',   school: 'Sunshine Academy',    status: 'ACTIVE',    joinedAt: '2024-01-20' },
-  { id: '3',  name: 'Ms. Ama Asante',       email: 'ama@sunshine.edu.gh',      role: 'SUBJECT_TEACHER', school: 'Sunshine Academy',    status: 'ACTIVE',    joinedAt: '2024-02-01' },
-  { id: '4',  name: 'Mr. Emmanuel Darko',   email: 'edarko@riverside.edu.gh',  role: 'SCHOOL_ADMIN',    school: 'Riverside JHS',       status: 'ACTIVE',    joinedAt: '2024-03-01' },
-  { id: '5',  name: 'Ms. Grace Ofori',      email: 'grace@riverside.edu.gh',   role: 'CLASS_TEACHER',   school: 'Riverside JHS',       status: 'SUSPENDED', joinedAt: '2024-03-10' },
-  { id: '6',  name: 'Mr. Peter Acquah',     email: 'peter@golden.edu.gh',      role: 'SCHOOL_ADMIN',    school: 'Golden Gate School',  status: 'ACTIVE',    joinedAt: '2023-09-10' },
-  { id: '7',  name: 'Ms. Janet Boakye',     email: 'janet@golden.edu.gh',      role: 'SUBJECT_TEACHER', school: 'Golden Gate School',  status: 'ACTIVE',    joinedAt: '2023-10-05' },
-  { id: '8',  name: 'Mr. Isaac Tetteh',     email: 'isaac@startsea.edu.gh',    role: 'CLASS_TEACHER',   school: 'Star of the Sea',     status: 'ACTIVE',    joinedAt: '2024-02-14' },
-  { id: '9',  name: 'Ms. Linda Owusu',      email: 'linda@startsea.edu.gh',    role: 'SUBJECT_TEACHER', school: 'Star of the Sea',     status: 'ACTIVE',    joinedAt: '2024-02-20' },
-  { id: '10', name: 'Mr. Bright Amankwah',  email: 'bright@startsea.edu.gh',   role: 'SCHOOL_ADMIN',    school: 'Star of the Sea',     status: 'SUSPENDED', joinedAt: '2024-03-01' },
-];
+import { getAdminUsers, addAdminUser, updateAdminUserStatus, deleteAdminUser } from '../../api/superAdminApi';
+import { getAllSchools } from '../../api/schoolApi';
 
 const roleConfig = {
   SCHOOL_ADMIN:    { label: 'School Admin',    icon: ShieldCheck, color: 'text-indigo-600', bg: 'bg-indigo-50', variant: 'primary'  },
@@ -26,8 +15,9 @@ const roleConfig = {
 
 export default function AdminUsers() {
   const { addToast } = useToast();
-  const [users, setUsers] = useState(MOCK_USERS);
-  const [schools] = useState(['Sunshine Academy', 'Riverside JHS', 'Golden Gate School', 'Star of the Sea']);
+  const [users, setUsers] = useState([]);
+  const [schools, setSchools] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [selectedSchool, setSelectedSchool] = useState('');
   
   const [keyword, setKeyword] = useState('');
@@ -35,6 +25,17 @@ export default function AdminUsers() {
   const [viewUser, setViewUser] = useState(null);
   const [addUserModal, setAddUserModal] = useState(false);
   const [addForm, setAddForm] = useState({ name: '', email: '', role: 'CLASS_TEACHER' });
+
+  useEffect(() => {
+    Promise.all([getAdminUsers(), getAllSchools()])
+      .then(([usersData, schoolsData]) => {
+        setUsers(usersData || []);
+        const activeSchools = (schoolsData || []).filter(s => s.status === 'ACTIVE').map(s => s.name);
+        setSchools(activeSchools);
+      })
+      .catch(() => addToast('Failed to load data', 'error'))
+      .finally(() => setLoading(false));
+  }, []);
 
   const filtered = useMemo(() => users.filter(u => {
     // If Super Admin hasn't selected a school, they don't see any users (per requirements)
@@ -46,37 +47,47 @@ export default function AdminUsers() {
     return true;
   }), [users, keyword, roleFilter, selectedSchool]);
 
-  const toggleSuspend = (user) => {
+  const toggleSuspend = async (user) => {
     const newStatus = user.status === 'SUSPENDED' ? 'ACTIVE' : 'SUSPENDED';
-    setUsers(prev => prev.map(u => u.id === user.id ? { ...u, status: newStatus } : u));
-    addToast(newStatus === 'SUSPENDED' ? `${user.name} suspended` : `${user.name} re-activated`, newStatus === 'SUSPENDED' ? 'error' : 'success');
-    setViewUser(null);
+    try {
+      await updateAdminUserStatus(user.id, newStatus);
+      setUsers(prev => prev.map(u => u.id === user.id ? { ...u, status: newStatus } : u));
+      addToast(newStatus === 'SUSPENDED' ? `${user.name} suspended` : `${user.name} re-activated`, newStatus === 'SUSPENDED' ? 'error' : 'success');
+      setViewUser(null);
+    } catch {
+      addToast('Failed to update status', 'error');
+    }
   };
 
-  const deleteUser = (user) => {
-    setUsers(prev => prev.filter(u => u.id !== user.id));
-    addToast(`${user.name} removed from platform`, 'success');
-    setViewUser(null);
+  const deleteUser = async (user) => {
+    try {
+      await deleteAdminUser(user.id);
+      setUsers(prev => prev.filter(u => u.id !== user.id));
+      addToast(`${user.name} removed from platform`, 'success');
+      setViewUser(null);
+    } catch {
+      addToast('Failed to delete user', 'error');
+    }
   };
 
-  const handleAddUser = (e) => {
+  const handleAddUser = async (e) => {
     e.preventDefault();
     if (!selectedSchool) return addToast("Please select a school first", "error");
     
-    const newUser = {
-      id: Math.random().toString(),
-      name: addForm.name,
-      email: addForm.email,
-      role: addForm.role,
-      school: selectedSchool,
-      status: 'ACTIVE',
-      joinedAt: new Date().toISOString()
-    };
-    
-    setUsers([...users, newUser]);
-    addToast(`${addForm.name} added to ${selectedSchool}`, 'success');
-    setAddUserModal(false);
-    setAddForm({ name: '', email: '', role: 'CLASS_TEACHER' });
+    try {
+      const newUser = await addAdminUser({
+        name: addForm.name,
+        email: addForm.email,
+        role: addForm.role,
+        schoolName: selectedSchool
+      });
+      setUsers([...users, newUser]);
+      addToast(`${addForm.name} added to ${selectedSchool}`, 'success');
+      setAddUserModal(false);
+      setAddForm({ name: '', email: '', role: 'CLASS_TEACHER' });
+    } catch (err) {
+      addToast(err?.response?.data?.message || 'Failed to add user', 'error');
+    }
   };
 
   return (
@@ -157,7 +168,9 @@ export default function AdminUsers() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {!selectedSchool ? (
+              {loading ? (
+                <tr><td colSpan={6} className="py-16 text-center text-sm text-gray-500 font-medium">Loading users...</td></tr>
+              ) : !selectedSchool ? (
                 <tr><td colSpan={6} className="py-16 text-center text-sm text-gray-500 font-medium">Please select a school from the dropdown above to view and manage its users.</td></tr>
               ) : filtered.length === 0 ? (
                 <tr><td colSpan={6} className="py-16 text-center text-sm text-gray-400">No users found for {selectedSchool}.</td></tr>
