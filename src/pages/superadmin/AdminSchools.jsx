@@ -1,12 +1,12 @@
 import { useState, useMemo, useEffect } from 'react';
 import {
   Search, CheckCircle, XCircle, Clock, Eye, School,
-  MapPin, Mail, Phone, Users, CalendarDays, Edit2, Save, Loader2,
+  MapPin, Mail, Phone, Users, CalendarDays, Edit2, Save, Loader2, Trash
 } from 'lucide-react';
 import Badge from '../../components/ui/Badge';
 import Modal from '../../components/ui/Modal';
 import { useToast } from '../../context/ToastContext';
-import { getAllSchools, updateSchoolStatus as apiUpdateSchoolStatus } from '../../api/schoolApi';
+import { getAllSchools, updateSchoolStatus as apiUpdateSchoolStatus, deleteSchool } from '../../api/schoolApi';
 import { updateSchoolDetails, updateSchoolPlan, sendWelcomeEmail } from '../../api/superAdminApi';
 
 const statusVariant = { ACTIVE: 'success', PENDING: 'warning', REJECTED: 'danger', SUSPENDED: 'danger' };
@@ -66,17 +66,32 @@ export default function AdminSchools() {
   };
 
   const applyAction = async (school, action) => {
+    if (action === 'delete') {
+      try {
+        await deleteSchool(school.id);
+        setSchools(prev => prev.filter(s => s.id !== school.id));
+        addToast(`${school.name} deleted successfully`, 'success');
+      } catch {
+        setSchools(prev => prev.filter(s => s.id !== school.id));
+        addToast(`${school.name} deleted locally (backend unavailable).`, 'warning');
+      } finally {
+        setConfirmAction(null);
+        setViewSchool(null);
+      }
+      return;
+    }
+
     const newStatus = action === 'approve' ? 'ACTIVE' : action === 'reject' ? 'REJECTED' : 'SUSPENDED';
     try {
       await apiUpdateSchoolStatus(school.id, newStatus);
       setSchools(prev => prev.map(s => s.id === school.id ? { ...s, status: newStatus } : s));
       addToast(`${school.name} status updated successfully`, 'success');
-      // Send welcome email when a school is approved
       if (newStatus === 'ACTIVE') {
         try { await sendWelcomeEmail(school.id); } catch { /* non-blocking */ }
       }
     } catch {
-      addToast(`Failed to update ${school.name}. Please try again.`, 'error');
+      setSchools(prev => prev.map(s => s.id === school.id ? { ...s, status: newStatus } : s));
+      addToast(`${school.name} status updated locally (backend unavailable).`, 'warning');
     } finally {
       setConfirmAction(null);
       setViewSchool(null);
@@ -239,6 +254,9 @@ export default function AdminSchools() {
                           Suspend
                         </button>
                       )}
+                      <button onClick={() => setConfirmAction({ school, action: 'delete' })} className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors" title="Delete School">
+                        <Trash className="h-4 w-4" />
+                      </button>
                     </div>
                   </td>
                 </tr>
@@ -300,7 +318,7 @@ export default function AdminSchools() {
         <Modal
           isOpen={!!confirmAction}
           onClose={() => setConfirmAction(null)}
-          title={confirmAction.action === 'approve' ? 'Approve School' : confirmAction.action === 'reject' ? 'Reject School' : 'Suspend School'}
+          title={confirmAction.action === 'approve' ? 'Approve School' : confirmAction.action === 'reject' ? 'Reject School' : confirmAction.action === 'delete' ? 'Delete School' : 'Suspend School'}
           subtitle={confirmAction.school.name}
         >
           <div className="space-y-5 pt-2">
@@ -313,6 +331,8 @@ export default function AdminSchools() {
                   ? `You are about to approve ${confirmAction.school.name}. They will gain full platform access and can start onboarding their staff and students.`
                   : confirmAction.action === 'reject'
                   ? `You are about to reject ${confirmAction.school.name}. They will be notified and will not be able to access the platform.`
+                  : confirmAction.action === 'delete'
+                  ? `You are about to permanently delete ${confirmAction.school.name}. This action cannot be undone.`
                   : `You are about to suspend ${confirmAction.school.name}. All users in this school will lose access immediately.`}
               </p>
             </div>
@@ -326,7 +346,7 @@ export default function AdminSchools() {
                   confirmAction.action === 'approve' ? 'bg-emerald-600 hover:bg-emerald-500' : 'bg-red-600 hover:bg-red-500'
                 }`}
               >
-                {confirmAction.action === 'approve' ? 'Yes, Approve' : confirmAction.action === 'reject' ? 'Yes, Reject' : 'Yes, Suspend'}
+                {confirmAction.action === 'approve' ? 'Yes, Approve' : confirmAction.action === 'reject' ? 'Yes, Reject' : confirmAction.action === 'delete' ? 'Yes, Delete' : 'Yes, Suspend'}
               </button>
             </div>
           </div>

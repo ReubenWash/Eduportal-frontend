@@ -40,3 +40,8 @@ export const updateSchoolStatus = async (id, status) => {
   const res = await api.patch(`/schools/${id}/status`, { status });
   return unwrapItem(res.data);
 };
+
+export const deleteSchool = async (id) => {
+  const res = await api.delete(`/schools/${id}`);
+  return unwrapItem(res.data);
+};

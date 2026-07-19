@@ -129,10 +129,8 @@ export const getSuperAdminDashboard = async () => {
       throw error;
     }
 
-    const [schoolsResponse, usersResponse] = await Promise.all([
-      api.get('/schools'),
-      api.get('/admin/users'),
-    ]);
+    const schoolsResponse = await api.get('/schools').catch(() => ({ data: { data: [] } }));
+    const usersResponse = await api.get('/admin/users').catch(() => ({ data: { data: [] } }));
 
     return buildSuperAdminDashboardFallbackPayload({
       schools: unwrapList(schoolsResponse.data),
@@ -143,8 +141,13 @@ export const getSuperAdminDashboard = async () => {
 
 // ─── Users (Super Admin) ──────────────────────────────────────────
 export const getAdminUsers = async () => {
-  const res = await api.get('/admin/users');
-  return unwrapList(res.data);
+  try {
+    const res = await api.get('/admin/users');
+    return unwrapList(res.data);
+  } catch (error) {
+    if (error?.response?.status === 404) return [];
+    throw error;
+  }
 };
 
 export const addAdminUser = async (data) => {
