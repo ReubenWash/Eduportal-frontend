@@ -81,7 +81,7 @@ api.interceptors.response.use(
         localStorage.removeItem('user');
         localStorage.removeItem('lastActivity');
 
-        if (window.location.pathname !== '/login') {
+        if (window.location.pathname !== '/login' && window.location.pathname !== '/') {
           window.location.href = '/login';
         }
       }

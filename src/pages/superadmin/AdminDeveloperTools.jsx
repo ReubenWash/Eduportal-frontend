@@ -32,17 +32,19 @@ export default function AdminDeveloperTools() {
       case 'webhooks':
         return (
           <div className="space-y-4 pt-2">
-            <div className="flex justify-end"><Button size="sm">Add Webhook</Button></div>
+            <div className="flex justify-end"><Button size="sm" onClick={() => addToast('Feature coming soon.', 'info')}>Add Webhook</Button></div>
             <div className="border border-gray-200 rounded-lg overflow-hidden">
-              <table className="min-w-full divide-y divide-gray-200 text-sm">
-                <thead className="bg-gray-50">
-                  <tr><th className="px-4 py-2 text-left">Endpoint</th><th className="px-4 py-2 text-left">Status</th><th className="px-4 py-2 text-right">Actions</th></tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  <tr><td className="px-4 py-3 font-mono">https://api.school.com/hook</td><td className="px-4 py-3 text-green-600">Active</td><td className="px-4 py-3 text-right"><Button variant="outline" size="sm">Edit</Button></td></tr>
-                  <tr><td className="px-4 py-3 font-mono">https://payments.school.com/v1</td><td className="px-4 py-3 text-red-600">Failing</td><td className="px-4 py-3 text-right"><Button variant="outline" size="sm">Edit</Button></td></tr>
-                </tbody>
-              </table>
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200 text-sm">
+                  <thead className="bg-gray-50">
+                    <tr><th className="px-4 py-2 text-left">Endpoint</th><th className="px-4 py-2 text-left">Status</th><th className="px-4 py-2 text-right">Actions</th></tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    <tr><td className="px-4 py-3 font-mono">https://api.school.com/hook</td><td className="px-4 py-3 text-green-600">Active</td><td className="px-4 py-3 text-right"><Button variant="outline" size="sm" onClick={() => addToast('Edit feature coming soon.', 'info')}>Edit</Button></td></tr>
+                    <tr><td className="px-4 py-3 font-mono">https://payments.school.com/v1</td><td className="px-4 py-3 text-red-600">Failing</td><td className="px-4 py-3 text-right"><Button variant="outline" size="sm" onClick={() => addToast('Edit feature coming soon.', 'info')}>Edit</Button></td></tr>
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
         );
@@ -60,20 +62,20 @@ export default function AdminDeveloperTools() {
       case 'apikeys':
         return (
           <div className="space-y-4 pt-2">
-            <div className="flex justify-end"><Button size="sm">Generate New Key</Button></div>
+            <div className="flex justify-end"><Button size="sm" onClick={() => addToast('Key generation coming soon.', 'info')}>Generate New Key</Button></div>
             <div className="border border-gray-200 rounded-lg p-4 space-y-3 bg-gray-50">
               <div>
                 <label className="text-xs font-semibold text-gray-500 uppercase">Production Key</label>
                 <div className="flex items-center gap-2 mt-1">
                   <input type="password" value="sk_live_abc123def456" readOnly className="flex-1 bg-white border border-gray-200 rounded px-2 py-1 text-sm font-mono" />
-                  <Button variant="outline" size="sm">Copy</Button>
+                  <Button variant="outline" size="sm" onClick={() => { navigator.clipboard.writeText('sk_live_abc123def456'); addToast('Copied to clipboard', 'success'); }}>Copy</Button>
                 </div>
               </div>
               <div>
                 <label className="text-xs font-semibold text-gray-500 uppercase">Test Key</label>
                 <div className="flex items-center gap-2 mt-1">
                   <input type="password" value="sk_test_xyz987" readOnly className="flex-1 bg-white border border-gray-200 rounded px-2 py-1 text-sm font-mono" />
-                  <Button variant="outline" size="sm">Copy</Button>
+                  <Button variant="outline" size="sm" onClick={() => { navigator.clipboard.writeText('sk_test_xyz987'); addToast('Copied to clipboard', 'success'); }}>Copy</Button>
                 </div>
               </div>
             </div>
@@ -107,15 +109,17 @@ export default function AdminDeveloperTools() {
               <div className="bg-red-50 text-red-700 p-3 rounded-lg text-center"><p className="text-2xl font-bold">3</p><p className="text-xs font-medium">Failed</p></div>
             </div>
             <div className="border border-gray-200 rounded-lg overflow-hidden">
-              <table className="min-w-full divide-y divide-gray-200 text-sm">
-                <thead className="bg-gray-50">
-                  <tr><th className="px-4 py-2 text-left">Job Type</th><th className="px-4 py-2 text-left">Status</th></tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  <tr><td className="px-4 py-3">SendReportCardsEmail</td><td className="px-4 py-3 text-amber-600">Processing...</td></tr>
-                  <tr><td className="px-4 py-3">GenerateDailyBackup</td><td className="px-4 py-3 text-red-600">Failed</td></tr>
-                </tbody>
-              </table>
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200 text-sm">
+                  <thead className="bg-gray-50">
+                    <tr><th className="px-4 py-2 text-left">Job Type</th><th className="px-4 py-2 text-left">Status</th></tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    <tr><td className="px-4 py-3">SendReportCardsEmail</td><td className="px-4 py-3 text-amber-600">Processing...</td></tr>
+                    <tr><td className="px-4 py-3">GenerateDailyBackup</td><td className="px-4 py-3 text-red-600">Failed</td></tr>
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
         );

@@ -145,7 +145,7 @@ export default function AdminCMS() {
       case 'Features Section':
         return (
           <div className="space-y-4 pt-2">
-             <div className="flex justify-end"><Button size="sm" icon={Plus}>Add Feature</Button></div>
+             <div className="flex justify-end"><Button size="sm" icon={Plus} onClick={() => addToast('Feature creation coming soon.', 'info')}>Add Feature</Button></div>
              <div className="space-y-3">
                {[
                  { title: 'Role-based Access', desc: 'Secure portals for Admins, Teachers, Students.' },
@@ -175,7 +175,7 @@ export default function AdminCMS() {
                     <input type="text" className="mt-2 w-full border border-gray-200 rounded px-2 py-1 text-sm font-bold" defaultValue={plan === 'Basic' ? '$0' : plan === 'Standard' ? '$49' : '$99'} />
                     <p className="text-xs text-gray-500 mt-1">per month</p>
                   </div>
-                  <Button variant="outline" size="sm" className="mt-4 w-full">Edit Features</Button>
+                  <Button variant="outline" size="sm" className="mt-4 w-full" onClick={() => addToast('Pricing editor coming soon.', 'info')}>Edit Features</Button>
                 </div>
               ))}
             </div>

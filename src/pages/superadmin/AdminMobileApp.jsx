@@ -19,32 +19,34 @@ export default function AdminMobileApp() {
           <div className="space-y-4 pt-2">
             <div className="flex justify-between items-center">
               <p className="text-sm text-gray-500">Manage promotional banners on the mobile app home screen.</p>
-              <Button size="sm" icon={Plus}>Add Banner</Button>
+              <Button size="sm" icon={Plus} onClick={() => addToast('Feature coming soon.', 'info')}>Add Banner</Button>
             </div>
             <div className="border border-gray-200 rounded-lg overflow-hidden">
-              <table className="min-w-full divide-y divide-gray-200 text-sm">
-                <thead className="bg-gray-50">
-                  <tr><th className="px-4 py-2 text-left">Banner Name</th><th className="px-4 py-2 text-left">Status</th><th className="px-4 py-2 text-right">Actions</th></tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  <tr>
-                    <td className="px-4 py-3 font-medium text-gray-900">Term 3 Registration Promo</td>
-                    <td className="px-4 py-3"><span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full">Active</span></td>
-                    <td className="px-4 py-3 text-right flex justify-end gap-2">
-                      <button className="text-indigo-600 hover:text-indigo-900"><Edit2 className="h-4 w-4" /></button>
-                      <button className="text-red-600 hover:text-red-900"><Trash2 className="h-4 w-4" /></button>
-                    </td>
-                  </tr>
-                  <tr>
-                    <td className="px-4 py-3 font-medium text-gray-900">Holiday Special Discount</td>
-                    <td className="px-4 py-3"><span className="text-xs bg-gray-100 text-gray-800 px-2 py-1 rounded-full">Draft</span></td>
-                    <td className="px-4 py-3 text-right flex justify-end gap-2">
-                      <button className="text-indigo-600 hover:text-indigo-900"><Edit2 className="h-4 w-4" /></button>
-                      <button className="text-red-600 hover:text-red-900"><Trash2 className="h-4 w-4" /></button>
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200 text-sm">
+                  <thead className="bg-gray-50">
+                    <tr><th className="px-4 py-2 text-left">Banner Name</th><th className="px-4 py-2 text-left">Status</th><th className="px-4 py-2 text-right">Actions</th></tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    <tr>
+                      <td className="px-4 py-3 font-medium text-gray-900">Term 3 Registration Promo</td>
+                      <td className="px-4 py-3"><span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full">Active</span></td>
+                      <td className="px-4 py-3 text-right flex justify-end gap-2">
+                        <button className="text-indigo-600 hover:text-indigo-900"><Edit2 className="h-4 w-4" /></button>
+                        <button className="text-red-600 hover:text-red-900"><Trash2 className="h-4 w-4" /></button>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td className="px-4 py-3 font-medium text-gray-900">Holiday Special Discount</td>
+                      <td className="px-4 py-3"><span className="text-xs bg-gray-100 text-gray-800 px-2 py-1 rounded-full">Draft</span></td>
+                      <td className="px-4 py-3 text-right flex justify-end gap-2">
+                        <button className="text-indigo-600 hover:text-indigo-900"><Edit2 className="h-4 w-4" /></button>
+                        <button className="text-red-600 hover:text-red-900"><Trash2 className="h-4 w-4" /></button>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
         );
@@ -53,26 +55,26 @@ export default function AdminMobileApp() {
           <div className="space-y-4 pt-2">
             <p className="text-sm text-gray-500">Configure how web URLs open inside the mobile application.</p>
             <div className="bg-gray-50 p-4 rounded-lg border border-gray-200 space-y-3">
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between border-t border-gray-200 pt-3">
                 <div>
                   <p className="font-semibold text-sm text-gray-900">App Scheme</p>
                   <p className="text-xs text-gray-500">eduportal://</p>
                 </div>
-                <Button variant="outline" size="sm">Edit</Button>
+                <Button variant="outline" size="sm" onClick={() => addToast('Edit feature coming soon.', 'info')}>Edit</Button>
               </div>
               <div className="flex items-center justify-between border-t border-gray-200 pt-3">
                 <div>
-                  <p className="font-semibold text-sm text-gray-900">Universal Links (iOS)</p>
+                  <p className="font-semibold text-sm text-gray-900">Universal Links</p>
                   <p className="text-xs text-green-600 flex items-center gap-1"><CheckCircle2 className="h-3 w-3" /> Configured correctly</p>
                 </div>
-                <Button variant="outline" size="sm">Verify</Button>
+                <Button variant="outline" size="sm" onClick={() => addToast('Verification feature coming soon.', 'info')}>Verify</Button>
               </div>
               <div className="flex items-center justify-between border-t border-gray-200 pt-3">
                 <div>
                   <p className="font-semibold text-sm text-gray-900">App Links (Android)</p>
                   <p className="text-xs text-amber-600 flex items-center gap-1"><ShieldAlert className="h-3 w-3" /> Needs attention</p>
                 </div>
-                <Button variant="outline" size="sm">Verify</Button>
+                <Button variant="outline" size="sm" onClick={() => addToast('Verification feature coming soon.', 'info')}>Verify</Button>
               </div>
             </div>
           </div>
@@ -80,18 +82,21 @@ export default function AdminMobileApp() {
       case 'push':
         return (
           <div className="space-y-4 pt-2">
-            <p className="text-sm text-gray-500">Configure Firebase Cloud Messaging (FCM) credentials.</p>
-            <div className="space-y-3">
+            <div className="bg-indigo-50 text-indigo-700 p-3 rounded-lg flex items-start gap-2 mb-4">
+              <Smartphone className="h-5 w-5 flex-shrink-0 mt-0.5" />
+              <p className="text-sm">Configure FCM (Firebase Cloud Messaging) or APNs for push notifications.</p>
+            </div>
+            <div className="border border-gray-200 rounded-lg p-4 bg-gray-50 space-y-3">
               <div>
-                <label className="block text-sm font-medium text-gray-700">FCM Server Key</label>
-                <input type="password" value="************************" readOnly className="mt-1 w-full bg-gray-50 border border-gray-200 rounded px-3 py-2 text-sm font-mono" />
+                <label className="text-xs font-semibold text-gray-500 uppercase">FCM Server Key</label>
+                <input type="password" value="AIzaSyA..." readOnly className="mt-1 w-full bg-white border border-gray-200 rounded px-3 py-2 text-sm font-mono" />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700">Sender ID</label>
-                <input type="text" value="987654321012" readOnly className="mt-1 w-full bg-gray-50 border border-gray-200 rounded px-3 py-2 text-sm font-mono" />
+                <label className="text-xs font-semibold text-gray-500 uppercase">FCM Sender ID</label>
+                <input type="text" value="987654321012" readOnly className="mt-1 w-full bg-white border border-gray-200 rounded px-3 py-2 text-sm font-mono" />
               </div>
               <div className="pt-2">
-                <Button variant="outline" className="w-full">Test Push Notification</Button>
+                <Button variant="outline" className="w-full" onClick={() => addToast('Test push notification sent!', 'success')}>Test Push Notification</Button>
               </div>
             </div>
           </div>
