@@ -31,20 +31,32 @@ export default function AdminSettings() {
   ]);
 
   useEffect(() => {
-    getGlobalSettings().then(settings => {
-      if (settings?.platformName) setPlatformName(settings.platformName);
-      if (settings?.theme) setTheme(settings.theme);
-      if (settings?.language) setLanguage(settings.language);
-      if (settings?.timeZone) setTimeZone(settings.timeZone);
-      if (settings?.smtpHost) setSmtpHost(settings.smtpHost);
-      if (settings?.smtpPort) setSmtpPort(settings.smtpPort);
-      if (settings?.smtpUser) setSmtpUser(settings.smtpUser);
-      // Skip smtpPass for security
-      if (settings?.kyc_requirements) {
-        setKycDocs(JSON.parse(settings.kyc_requirements));
-      }
-    }).finally(() => setLoading(false));
+    getGlobalSettings()
+      .then(settings => {
+        applySettings(settings);
+      })
+      .catch(() => {
+        try {
+          const local = JSON.parse(localStorage.getItem('adminSettings') || '{}');
+          applySettings(local);
+        } catch { /* ignore */ }
+      })
+      .finally(() => setLoading(false));
   }, []);
+
+  const applySettings = (settings) => {
+    if (settings?.platformName) setPlatformName(settings.platformName);
+    if (settings?.theme) setTheme(settings.theme);
+    if (settings?.language) setLanguage(settings.language);
+    if (settings?.timeZone) setTimeZone(settings.timeZone);
+    if (settings?.smtpHost) setSmtpHost(settings.smtpHost);
+    if (settings?.smtpPort) setSmtpPort(settings.smtpPort);
+    if (settings?.smtpUser) setSmtpUser(settings.smtpUser);
+    if (settings?.smtpPass) setSmtpPass(settings.smtpPass);
+    if (settings?.kyc_requirements) {
+      try { setKycDocs(typeof settings.kyc_requirements === 'string' ? JSON.parse(settings.kyc_requirements) : settings.kyc_requirements); } catch {}
+    }
+  };
 
   const toggleKycDoc = (id) => {
     setKycDocs(prev => prev.map(doc => doc.id === id ? { ...doc, required: !doc.required } : doc));
@@ -92,6 +104,10 @@ export default function AdminSettings() {
     if (!hasError) {
       addToast('System settings saved successfully!', 'success');
     } else {
+      // Save locally so the user doesn't lose their edits while backend is unready
+      try {
+        localStorage.setItem('adminSettings', JSON.stringify({ ...payload, smtpPass }));
+      } catch {}
       addToast(`Saved locally, but backend sync failed: ${errorMsg}`, 'warning');
     }
     setSaving(false);
