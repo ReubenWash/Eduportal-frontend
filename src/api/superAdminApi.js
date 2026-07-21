@@ -164,3 +164,104 @@ export const deleteAdminUser = async (id) => {
   const res = await api.delete(`/admin/users/${id}`);
   return unwrapItem(res.data);
 };
+
+// ─── Phase 1: Security & Audit ────────────────────────────────────
+export const getAuditLogs = async (params) => {
+  const res = await api.get('/admin/audit', { params });
+  return unwrapItem(res.data);
+};
+
+export const getSecuritySettings = async () => {
+  const res = await api.get('/admin/security/settings');
+  return unwrapItem(res.data);
+};
+
+export const updateSecuritySettings = async (settings) => {
+  const res = await api.patch('/admin/security/settings', { settings });
+  return unwrapItem(res.data);
+};
+
+export const getLoginAttempts = async (params) => {
+  const res = await api.get('/admin/security/login-attempts', { params });
+  return unwrapItem(res.data);
+};
+
+export const toggleMaintenanceMode = async (enabled, message) => {
+  const res = await api.post('/admin/security/maintenance', { enabled, message });
+  return unwrapItem(res.data);
+};
+
+// ─── Phase 2: Subscriptions & Billing ─────────────────────────────
+export const getSubscriptions = async (params) => {
+  const res = await api.get('/admin/subscriptions', { params });
+  return unwrapItem(res.data);
+};
+
+export const getRevenueAnalytics = async (params) => {
+  const res = await api.get('/admin/revenue', { params });
+  return unwrapItem(res.data);
+};
+
+// ─── Phase 3: Support System ──────────────────────────────────────
+export const getSupportTickets = async (params) => {
+  const res = await api.get('/admin/support/tickets', { params });
+  return unwrapItem(res.data);
+};
+
+// ─── Phase 4: CMS & Content ───────────────────────────────────────
+export const getCmsPages = async (params) => {
+  const res = await api.get('/admin/cms/pages', { params });
+  return unwrapItem(res.data);
+};
+
+export const getLegalDocuments = async (params) => {
+  const res = await api.get('/admin/cms/legal', { params });
+  return unwrapList(res.data);
+};
+
+// ─── Phase 5: Integrations & API Keys ─────────────────────────────
+export const getIntegrations = async (params) => {
+  const res = await api.get('/admin/integrations', { params });
+  return unwrapList(res.data);
+};
+
+export const updateIntegration = async (id, data) => {
+  const res = await api.patch(`/admin/integrations/${id}`, data);
+  return unwrapItem(res.data);
+};
+
+export const getApiKeys = async (params) => {
+  const res = await api.get('/admin/integrations/api-keys', { params });
+  return unwrapItem(res.data);
+};
+
+export const createApiKey = async (data) => {
+  const res = await api.post('/admin/integrations/api-keys', data);
+  return unwrapItem(res.data);
+};
+
+// ─── Phase 6: System & Monitoring ─────────────────────────────────
+export const getSystemMetrics = async () => {
+  const res = await api.get('/admin/system/metrics/current');
+  return unwrapItem(res.data);
+};
+
+export const getServiceHealth = async () => {
+  const res = await api.get('/admin/system/health');
+  return unwrapList(res.data);
+};
+
+export const getSystemBackups = async (params) => {
+  const res = await api.get('/admin/system/backups', { params });
+  return unwrapItem(res.data);
+};
+
+export const getDeveloperSettings = async () => {
+  const res = await api.get('/admin/system/developer');
+  return unwrapItem(res.data);
+};
+
+export const updateDeveloperSetting = async (key, value) => {
+  const res = await api.post('/admin/system/developer', { key, value });
+  return unwrapItem(res.data);
+};
