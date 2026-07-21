@@ -225,6 +225,11 @@ export const getIntegrations = async (params) => {
   return unwrapList(res.data);
 };
 
+export const createIntegration = async (data) => {
+  const res = await api.post('/admin/integrations', data);
+  return unwrapItem(res.data);
+};
+
 export const updateIntegration = async (id, data) => {
   const res = await api.patch(`/admin/integrations/${id}`, data);
   return unwrapItem(res.data);

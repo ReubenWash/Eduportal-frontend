@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Save, Globe, Mail, Shield, ShieldAlert, Palette, Image, FileText } from 'lucide-react';
 import { useToast } from '../../context/ToastContext';
-import { getGlobalSettings, updateGlobalSettings, updateEnvConfig } from '../../api/superAdminApi';
+import { getGlobalSettings, updateGlobalSettings, updateEnvConfig, updateIntegration, createIntegration, getIntegrations } from '../../api/superAdminApi';
 
 export default function AdminSettings() {
   const { addToast } = useToast();
@@ -18,6 +18,7 @@ export default function AdminSettings() {
   const [smtpPort, setSmtpPort] = useState('587');
   const [smtpUser, setSmtpUser] = useState('apikey');
   const [smtpPass, setSmtpPass] = useState('SG.xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx');
+  const [smtpIntegrationId, setSmtpIntegrationId] = useState(null);
 
   // Regional settings
   const [timeZone, setTimeZone] = useState('UTC');
@@ -31,15 +32,28 @@ export default function AdminSettings() {
   ]);
 
   useEffect(() => {
-    getGlobalSettings()
-      .then(settings => {
-        applySettings(settings);
-      })
-      .catch(() => {
-        try {
-          const local = JSON.parse(localStorage.getItem('adminSettings') || '{}');
-          applySettings(local);
-        } catch { /* ignore */ }
+    Promise.allSettled([getGlobalSettings(), getIntegrations()])
+      .then(([settingsResult, integrationsResult]) => {
+        if (settingsResult.status === 'fulfilled') {
+          applySettings(settingsResult.value);
+        } else {
+          console.error('Failed to load global settings from DB:', settingsResult.reason);
+          addToast('Failed to load general settings from server', 'error');
+        }
+
+        if (integrationsResult.status === 'fulfilled') {
+          const integrations = integrationsResult.value || [];
+          const sendgrid = integrations.find(i => i.key === 'sendgrid');
+          if (sendgrid) {
+            setSmtpIntegrationId(sendgrid.id);
+            if (sendgrid.config) {
+              if (sendgrid.config.host) setSmtpHost(sendgrid.config.host);
+              if (sendgrid.config.port) setSmtpPort(sendgrid.config.port);
+              if (sendgrid.config.username) setSmtpUser(sendgrid.config.username);
+              if (sendgrid.config.password) setSmtpPass(sendgrid.config.password);
+            }
+          }
+        }
       })
       .finally(() => setLoading(false));
   }, []);
@@ -68,20 +82,15 @@ export default function AdminSettings() {
     let hasError = false;
     let errorMsg = '';
 
-    const payload = {
-      platformName,
-      theme,
-      language,
-      timeZone,
-      smtpHost,
-      smtpPort,
-      smtpUser,
-      smtpPass,
-      kyc_requirements: JSON.stringify(kycDocs),
-    };
-
     try {
-      await updateGlobalSettings(payload);
+      // Save general settings using the existing config API
+      await updateGlobalSettings({
+        platformName,
+        theme,
+        language,
+        timeZone,
+        kyc_requirements: JSON.stringify(kycDocs),
+      });
     } catch (err) {
       hasError = true;
       errorMsg = err?.response?.data?.message || 'Settings API failed';
@@ -89,6 +98,38 @@ export default function AdminSettings() {
     }
 
     try {
+      // Save SMTP settings to the database via the new Integrations API
+      const integrationData = {
+        name: 'SendGrid Email',
+        description: 'Email delivery service',
+        isEnabled: true,
+        config: {
+          host: smtpHost,
+          port: parseInt(smtpPort, 10),
+          username: smtpUser,
+          password: smtpPass,
+        },
+      };
+
+      if (smtpIntegrationId) {
+        await updateIntegration(smtpIntegrationId, integrationData);
+      } else {
+        const newIntegration = await createIntegration({
+          key: 'sendgrid',
+          type: 'EMAIL',
+          ...integrationData,
+        });
+        setSmtpIntegrationId(newIntegration.id);
+      }
+    } catch (err) {
+      hasError = true;
+      // We don't overwrite errorMsg if the previous request also failed
+      errorMsg = errorMsg || err?.response?.data?.message || 'Integrations API failed';
+      console.warn('update/create integration failed:', err);
+    }
+
+    try {
+      // Temporarily sync to ENV so the backend can still use it directly if it hasn't fully migrated
       await updateEnvConfig({
         SMTP_HOST: smtpHost,
         SMTP_PORT: smtpPort,
@@ -96,19 +137,14 @@ export default function AdminSettings() {
         SMTP_PASS: smtpPass,
       });
     } catch (err) {
-      hasError = true;
-      errorMsg = err?.response?.data?.message || 'Env config API failed';
+      // We can ignore env sync errors if the DB saved successfully, but let's log it
       console.warn('updateEnvConfig failed:', err);
     }
 
     if (!hasError) {
       addToast('System settings saved successfully!', 'success');
     } else {
-      // Save locally so the user doesn't lose their edits while backend is unready
-      try {
-        localStorage.setItem('adminSettings', JSON.stringify({ ...payload, smtpPass }));
-      } catch {}
-      addToast(`Saved locally, but backend sync failed: ${errorMsg}`, 'warning');
+      addToast(`Backend sync failed: ${errorMsg}`, 'error');
     }
     setSaving(false);
   };
