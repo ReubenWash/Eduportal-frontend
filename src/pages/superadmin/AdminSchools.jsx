@@ -1,0 +1,494 @@
+import { useState, useMemo, useEffect } from 'react';
+import {
+  Search, CheckCircle, XCircle, Clock, Eye, School,
+  MapPin, Mail, Phone, Users, CalendarDays, Edit2, Save, Loader2, Trash
+} from 'lucide-react';
+import Badge from '../../components/ui/Badge';
+import Modal from '../../components/ui/Modal';
+import { useToast } from '../../context/ToastContext';
+import { getAllSchools, updateSchoolStatus as apiUpdateSchoolStatus, deleteSchool } from '../../api/schoolApi';
+import { updateSchoolDetails, updateSchoolPlan, sendWelcomeEmail, updateEnvConfig } from '../../api/superAdminApi';
+import { register } from '../../api/authApi';
+
+const statusVariant = { ACTIVE: 'success', PENDING: 'warning', REJECTED: 'danger', SUSPENDED: 'danger' };
+const statusIcon = {
+  ACTIVE:   <CheckCircle className="h-4 w-4 text-emerald-500" />,
+  PENDING:  <Clock className="h-4 w-4 text-amber-500" />,
+  REJECTED: <XCircle className="h-4 w-4 text-red-500" />,
+  SUSPENDED: <XCircle className="h-4 w-4 text-red-500" />,
+};
+
+export default function AdminSchools() {
+  const { addToast } = useToast();
+  const [schools, setSchools] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
+  const [keyword, setKeyword] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
+  const [viewSchool, setViewSchool] = useState(null);
+  const [confirmAction, setConfirmAction] = useState(null);
+  const [editSchool, setEditSchool] = useState(null);
+  const [editForm, setEditForm] = useState({});
+  const [editSaving, setEditSaving] = useState(false);
+  const [addSchoolModal, setAddSchoolModal] = useState(false);
+  const [addForm, setAddForm] = useState({ name: '', email: '', phone: '', address: '', plan: 'BASIC', password: '' });
+  const [addSaving, setAddSaving] = useState(false);
+
+  const load = () => {
+    setLoading(true);
+    getAllSchools()
+      .then(list => {
+        const fetchedSchools = (Array.isArray(list) ? list : []).map(s => ({
+          ...s,
+          location: s.district && s.region ? `${s.district}, ${s.region}` : s.address || 'Unknown',
+          students: s._count?.students || 0,
+          registeredAt: s.createdAt || new Date().toISOString(),
+        }));
+        setSchools(fetchedSchools);
+        setLoadError(false);
+      })
+      .catch(err => {
+        setLoadError(true);
+        setSchools([]);
+      })
+      .finally(() => setLoading(false));
+  };
+
+  useEffect(() => { load(); }, []);
+
+  const filtered = useMemo(() => schools.filter(s => {
+    if (keyword && !s.name.toLowerCase().includes(keyword.toLowerCase()) && !s.email.toLowerCase().includes(keyword.toLowerCase())) return false;
+    if (statusFilter && s.status !== statusFilter) return false;
+    return true;
+  }), [schools, keyword, statusFilter]);
+
+  const counts = {
+    ALL:      schools.length,
+    ACTIVE:   schools.filter(s => s.status === 'ACTIVE').length,
+    PENDING:  schools.filter(s => s.status === 'PENDING').length,
+    REJECTED: schools.filter(s => s.status === 'REJECTED').length,
+  };
+
+  const applyAction = async (school, action) => {
+    if (action === 'delete') {
+      try {
+        await deleteSchool(school.id);
+        setSchools(prev => prev.filter(s => s.id !== school.id));
+        addToast(`${school.name} deleted successfully`, 'success');
+      } catch {
+        setSchools(prev => prev.filter(s => s.id !== school.id));
+        addToast(`${school.name} deleted locally (backend unavailable).`, 'warning');
+      } finally {
+        setConfirmAction(null);
+        setViewSchool(null);
+      }
+      return;
+    }
+
+    const newStatus = action === 'approve' ? 'ACTIVE' : action === 'reject' ? 'REJECTED' : 'SUSPENDED';
+    try {
+      await apiUpdateSchoolStatus(school.id, newStatus);
+      setSchools(prev => prev.map(s => s.id === school.id ? { ...s, status: newStatus } : s));
+      addToast(`${school.name} status updated successfully`, 'success');
+      if (newStatus === 'ACTIVE') {
+        try { await sendWelcomeEmail(school.id); } catch { /* non-blocking */ }
+      }
+    } catch {
+      setSchools(prev => prev.map(s => s.id === school.id ? { ...s, status: newStatus } : s));
+      addToast(`${school.name} status updated locally (backend unavailable).`, 'warning');
+    } finally {
+      setConfirmAction(null);
+      setViewSchool(null);
+    }
+  };
+
+  const toggleVerify = async (school) => {
+    const isVerified = !school.isVerified;
+    try {
+      await updateSchoolDetails(school.id, { isVerified });
+      setSchools(prev => prev.map(s => s.id === school.id ? { ...s, isVerified } : s));
+      addToast(`${school.name} is now ${isVerified ? 'verified' : 'unverified'}`, 'success');
+    } catch {
+      // Local fallback
+      setSchools(prev => prev.map(s => s.id === school.id ? { ...s, isVerified } : s));
+      addToast(`Status updated locally (backend unavailable).`, 'warning');
+    }
+  };
+
+  const handleAddSchool = async (e) => {
+    e.preventDefault();
+    setAddSaving(true);
+    try {
+      const res = await register({
+        schoolName: addForm.name,
+        email: addForm.email,
+        password: addForm.password || 'password123',
+        phone: addForm.phone,
+        address: addForm.address,
+      });
+      addToast('School created successfully.', 'success');
+      setAddSchoolModal(false);
+      setAddForm({ name: '', email: '', phone: '', address: '', plan: 'BASIC', password: '' });
+      load(); // Reload list
+    } catch (err) {
+      addToast(err?.response?.data?.message || 'Failed to create school', 'error');
+    } finally {
+      setAddSaving(false);
+    }
+  };
+
+  const openEdit = (school) => {
+    setEditForm({
+      name: school.name || '',
+      email: school.email || '',
+      phone: school.phone || '',
+      address: school.address || school.location || '',
+      plan: school.plan || 'BASIC',
+      status: school.status || 'ACTIVE',
+    });
+    setEditSchool(school);
+  };
+
+  const handleEditSave = async () => {
+    if (!editForm.name.trim()) { addToast('School name is required.', 'error'); return; }
+    setEditSaving(true);
+    try {
+      await updateSchoolDetails(editSchool.id, editForm);
+      if (editForm.plan !== editSchool.plan) {
+        await updateSchoolPlan(editSchool.id, editForm.plan);
+      }
+      setSchools(prev => prev.map(s => s.id === editSchool.id ? { ...s, ...editForm, location: editForm.address } : s));
+      addToast(`${editForm.name} updated successfully.`, 'success');
+      setEditSchool(null);
+    } catch {
+      // Graceful fallback: apply locally
+      setSchools(prev => prev.map(s => s.id === editSchool.id ? { ...s, ...editForm, location: editForm.address } : s));
+      addToast('School updated locally (backend unavailable).', 'warning');
+      setEditSchool(null);
+    } finally {
+      setEditSaving(false);
+    }
+  };
+
+  const tabs = ['ALL', 'PENDING', 'ACTIVE', 'REJECTED'];
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900 tracking-tight">School Management</h1>
+          <p className="text-sm text-gray-500 mt-1">Review registrations, approve or reject schools, and manage their access.</p>
+        </div>
+        <button onClick={() => setAddSchoolModal(true)} className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-colors shadow-sm">
+          <School className="h-4 w-4" /> Add School
+        </button>
+      </div>
+
+      {loadError && (
+        <div className="rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-800">
+          Couldn't reach the server to load schools. Check the console for details, or refresh to try again.
+        </div>
+      )}
+
+      {/* Tabs */}
+      <div className="flex items-center gap-1 bg-gray-100 p-1 rounded-xl w-fit flex-wrap">
+        {tabs.map(tab => (
+          <button
+            key={tab}
+            onClick={() => setStatusFilter(tab === 'ALL' ? '' : tab)}
+            className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-all ${
+              (tab === 'ALL' && !statusFilter) || statusFilter === tab
+                ? 'bg-white text-gray-900 shadow-sm'
+                : 'text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            {tab === 'ALL' ? 'All Schools' : tab.charAt(0) + tab.slice(1).toLowerCase()}
+            <span className="ml-2 text-xs bg-gray-200 text-gray-600 rounded-full px-1.5 py-0.5">
+              {counts[tab]}
+            </span>
+          </button>
+        ))}
+      </div>
+
+      {/* Toolbar */}
+      <div className="flex flex-col sm:flex-row items-center gap-3">
+        <div className="relative w-full sm:max-w-sm">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+          <input
+            type="text"
+            placeholder="Search schools by name or email..."
+            value={keyword}
+            onChange={e => setKeyword(e.target.value)}
+            className="w-full pl-9 pr-4 py-2 text-sm bg-white border border-gray-200 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 transition-all"
+          />
+        </div>
+        <div className="sm:ml-auto text-sm text-gray-500 font-medium">{filtered.length} school{filtered.length !== 1 ? 's' : ''}</div>
+      </div>
+
+      {/* Table */}
+      <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-100">
+            <thead className="bg-gray-50/80">
+              <tr>
+                {['School', 'Location', 'Plan', 'Students', 'Registered', 'Status', 'Actions'].map(h => (
+                  <th key={h} className="px-5 py-3.5 text-left text-[11px] font-semibold text-gray-500 uppercase tracking-wider whitespace-nowrap">{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {loading ? (
+                <tr>
+                  <td colSpan={7} className="py-16 text-center text-sm text-gray-400">Loading schools…</td>
+                </tr>
+              ) : filtered.length === 0 ? (
+                <tr>
+                  <td colSpan={7} className="py-16 text-center text-sm text-gray-400">No schools match your search.</td>
+                </tr>
+              ) : filtered.map(school => (
+                <tr key={school.id} className="hover:bg-gray-50/60 transition-colors">
+                  <td className="px-5 py-4 whitespace-nowrap">
+                    <div className="flex items-center gap-3">
+                      <div className="h-9 w-9 rounded-lg bg-indigo-50 border border-indigo-100 flex items-center justify-center flex-shrink-0">
+                        <School className="h-4 w-4 text-indigo-600" />
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-1.5">
+                          <p className="text-sm font-semibold text-gray-900">{school.name}</p>
+                          {school.isVerified && <CheckCircle className="h-3 w-3 text-emerald-500" title="Verified" />}
+                        </div>
+                        <p className="text-[11px] text-gray-500">{school.email}</p>
+                      </div>
+                    </div>
+                  </td>
+                  <td className="px-5 py-4 whitespace-nowrap text-sm text-gray-600">{school.location}</td>
+                  <td className="px-5 py-4 whitespace-nowrap">
+                    <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
+                      school.plan === 'PREMIUM' ? 'bg-indigo-50 text-indigo-700' :
+                      school.plan === 'STANDARD' ? 'bg-violet-50 text-violet-700' :
+                      'bg-gray-100 text-gray-600'
+                    }`}>{school.plan}</span>
+                  </td>
+                  <td className="px-5 py-4 whitespace-nowrap text-sm text-gray-600">{school.students > 0 ? school.students.toLocaleString() : '—'}</td>
+                  <td className="px-5 py-4 whitespace-nowrap text-sm text-gray-600">{new Date(school.registeredAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</td>
+                  <td className="px-5 py-4 whitespace-nowrap">
+                    <div className="flex items-center gap-1.5">
+                      {statusIcon[school.status]}
+                      <Badge variant={statusVariant[school.status]}>{school.status}</Badge>
+                    </div>
+                  </td>
+                  <td className="px-5 py-4 whitespace-nowrap">
+                    <div className="flex items-center gap-1">
+                      <button onClick={() => setViewSchool(school)} className="p-1.5 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-md transition-colors" title="View Details">
+                        <Eye className="h-4 w-4" />
+                      </button>
+                      <button onClick={() => toggleVerify(school)} className={`text-xs font-medium px-2 py-1 rounded-md transition-colors ${school.isVerified ? 'text-emerald-600 bg-emerald-50 hover:bg-emerald-100' : 'text-gray-500 bg-gray-50 hover:bg-gray-100'}`} title={school.isVerified ? 'Unverify' : 'Verify'}>
+                        {school.isVerified ? 'Verified' : 'Verify'}
+                      </button>
+                      <button onClick={() => openEdit(school)} className="p-1.5 text-gray-400 hover:text-violet-600 hover:bg-violet-50 rounded-md transition-colors" title="Edit School">
+                        <Edit2 className="h-4 w-4" />
+                      </button>
+                      {school.status === 'PENDING' && (
+                        <>
+                          <button onClick={() => setConfirmAction({ school, action: 'approve' })} className="p-1.5 text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-md transition-colors" title="Approve">
+                            <CheckCircle className="h-4 w-4" />
+                          </button>
+                          <button onClick={() => setConfirmAction({ school, action: 'reject' })} className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors" title="Reject">
+                            <XCircle className="h-4 w-4" />
+                          </button>
+                        </>
+                      )}
+                      {school.status === 'ACTIVE' && (
+                        <button onClick={() => setConfirmAction({ school, action: 'suspend' })} className="text-xs font-medium text-red-500 hover:text-red-600 hover:bg-red-50 px-2 py-1 rounded-md transition-colors">
+                          Suspend
+                        </button>
+                      )}
+                      <button onClick={() => setConfirmAction({ school, action: 'delete' })} className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors" title="Delete School">
+                        <Trash className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* View School Details Modal */}
+      {viewSchool && (
+        <Modal isOpen={!!viewSchool} onClose={() => setViewSchool(null)} title={viewSchool.name} subtitle="School registration details">
+          <div className="space-y-5 pt-2">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="bg-gray-50 rounded-lg p-3">
+                <p className="text-[10px] font-semibold text-gray-400 uppercase mb-1">Status</p>
+                <div className="flex items-center gap-1.5">{statusIcon[viewSchool.status]}<Badge variant={statusVariant[viewSchool.status]}>{viewSchool.status}</Badge></div>
+              </div>
+              <div className="bg-gray-50 rounded-lg p-3">
+                <p className="text-[10px] font-semibold text-gray-400 uppercase mb-1">Plan</p>
+                <p className="text-sm font-semibold text-gray-900">{viewSchool.plan}</p>
+              </div>
+            </div>
+            <div className="space-y-3">
+              {[
+                { icon: Mail,        label: 'Email',      value: viewSchool.email },
+                { icon: Phone,       label: 'Phone',      value: viewSchool.phone },
+                { icon: MapPin,      label: 'Location',   value: viewSchool.location },
+                { icon: Users,       label: 'Students',   value: viewSchool.students > 0 ? `${viewSchool.students.toLocaleString()} enrolled` : 'Not yet active' },
+                { icon: CalendarDays,label: 'Registered', value: new Date(viewSchool.registeredAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }) },
+              ].map(({ icon: Icon, label, value }) => (
+                <div key={label} className="flex items-center gap-3">
+                  <div className="h-8 w-8 rounded-lg bg-gray-100 flex items-center justify-center flex-shrink-0">
+                    <Icon className="h-4 w-4 text-gray-500" />
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-gray-400 uppercase font-semibold">{label}</p>
+                    <p className="text-sm text-gray-800">{value}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+            {viewSchool.status === 'PENDING' && (
+              <div className="flex gap-3 pt-4 border-t border-gray-100">
+                <button onClick={() => setConfirmAction({ school: viewSchool, action: 'reject' })} className="flex-1 py-2 rounded-lg border border-red-200 text-red-600 text-sm font-semibold hover:bg-red-50 transition-colors">
+                  Reject
+                </button>
+                <button onClick={() => setConfirmAction({ school: viewSchool, action: 'approve' })} className="flex-1 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-semibold transition-colors">
+                  Approve School
+                </button>
+              </div>
+            )}
+          </div>
+        </Modal>
+      )}
+
+      {/* Confirm Action Modal */}
+      {confirmAction && (
+        <Modal
+          isOpen={!!confirmAction}
+          onClose={() => setConfirmAction(null)}
+          title={confirmAction.action === 'approve' ? 'Approve School' : confirmAction.action === 'reject' ? 'Reject School' : confirmAction.action === 'delete' ? 'Delete School' : 'Suspend School'}
+          subtitle={confirmAction.school.name}
+        >
+          <div className="space-y-5 pt-2">
+            <div className={`rounded-xl p-4 ${
+              confirmAction.action === 'approve' ? 'bg-emerald-50 border border-emerald-200' :
+              'bg-red-50 border border-red-200'
+            }`}>
+              <p className="text-sm text-gray-700">
+                {confirmAction.action === 'approve'
+                  ? `You are about to approve ${confirmAction.school.name}. They will gain full platform access and can start onboarding their staff and students.`
+                  : confirmAction.action === 'reject'
+                  ? `You are about to reject ${confirmAction.school.name}. They will be notified and will not be able to access the platform.`
+                  : confirmAction.action === 'delete'
+                  ? `You are about to permanently delete ${confirmAction.school.name}. This action cannot be undone.`
+                  : `You are about to suspend ${confirmAction.school.name}. All users in this school will lose access immediately.`}
+              </p>
+            </div>
+            <div className="flex gap-3">
+              <button onClick={() => setConfirmAction(null)} className="flex-1 py-2 rounded-lg border border-gray-200 text-gray-700 text-sm font-semibold hover:bg-gray-50 transition-colors">
+                Cancel
+              </button>
+              <button
+                onClick={() => applyAction(confirmAction.school, confirmAction.action)}
+                className={`flex-1 py-2 rounded-lg text-white text-sm font-semibold transition-colors ${
+                  confirmAction.action === 'approve' ? 'bg-emerald-600 hover:bg-emerald-500' : 'bg-red-600 hover:bg-red-500'
+                }`}
+              >
+                {confirmAction.action === 'approve' ? 'Yes, Approve' : confirmAction.action === 'reject' ? 'Yes, Reject' : confirmAction.action === 'delete' ? 'Yes, Delete' : 'Yes, Suspend'}
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {/* ── Edit School Modal ── */}
+      {editSchool && (
+        <Modal isOpen onClose={() => setEditSchool(null)} title={`Edit School — ${editSchool.name}`} subtitle="Update school details and plan.">
+          <div className="space-y-4 pt-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="sm:col-span-2">
+                <label className="block text-xs font-semibold text-gray-600 mb-1">School Name *</label>
+                <input className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-300 outline-none" value={editForm.name} onChange={e => setEditForm(f => ({ ...f, name: e.target.value }))} />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-600 mb-1">Email</label>
+                <input type="email" className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-300 outline-none" value={editForm.email} onChange={e => setEditForm(f => ({ ...f, email: e.target.value }))} />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-600 mb-1">Phone</label>
+                <input type="tel" className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-300 outline-none" value={editForm.phone} onChange={e => setEditForm(f => ({ ...f, phone: e.target.value }))} />
+              </div>
+              <div className="sm:col-span-2">
+                <label className="block text-xs font-semibold text-gray-600 mb-1">Address / Location</label>
+                <input className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-300 outline-none" value={editForm.address} onChange={e => setEditForm(f => ({ ...f, address: e.target.value }))} />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-600 mb-1">Subscription Plan</label>
+                <select className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-300 outline-none" value={editForm.plan} onChange={e => setEditForm(f => ({ ...f, plan: e.target.value }))}>
+                  <option value="BASIC">Basic (Free)</option>
+                  <option value="STANDARD">Standard</option>
+                  <option value="PREMIUM">Premium</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-600 mb-1">Status</label>
+                <select className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-300 outline-none" value={editForm.status} onChange={e => setEditForm(f => ({ ...f, status: e.target.value }))}>
+                  <option value="ACTIVE">Active</option>
+                  <option value="PENDING">Pending</option>
+                  <option value="SUSPENDED">Suspended</option>
+                  <option value="REJECTED">Rejected</option>
+                </select>
+              </div>
+            </div>
+            <div className="flex gap-3 pt-4 border-t border-gray-100">
+              <button onClick={() => setEditSchool(null)} className="flex-1 py-2 rounded-lg border border-gray-200 text-gray-700 text-sm font-semibold hover:bg-gray-50 transition-colors">Cancel</button>
+              <button onClick={handleEditSave} disabled={editSaving} className="flex-1 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold transition-colors flex items-center justify-center gap-2">
+                {editSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                {editSaving ? 'Saving…' : 'Save Changes'}
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {/* Add School Modal */}
+      {addSchoolModal && (
+        <Modal isOpen onClose={() => setAddSchoolModal(false)} title="Add New School" subtitle="Manually register a new school.">
+          <form onSubmit={handleAddSchool} className="space-y-4 pt-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="sm:col-span-2">
+                <label className="block text-xs font-semibold text-gray-600 mb-1">School Name *</label>
+                <input required className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-300 outline-none" value={addForm.name} onChange={e => setAddForm(f => ({ ...f, name: e.target.value }))} />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-600 mb-1">Email *</label>
+                <input required type="email" className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-300 outline-none" value={addForm.email} onChange={e => setAddForm(f => ({ ...f, email: e.target.value }))} />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-600 mb-1">Phone</label>
+                <input type="tel" className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-300 outline-none" value={addForm.phone} onChange={e => setAddForm(f => ({ ...f, phone: e.target.value }))} />
+              </div>
+              <div className="sm:col-span-2">
+                <label className="block text-xs font-semibold text-gray-600 mb-1">Address / Location</label>
+                <input className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-300 outline-none" value={addForm.address} onChange={e => setAddForm(f => ({ ...f, address: e.target.value }))} />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-600 mb-1">Temporary Password *</label>
+                <input required minLength={6} type="password" placeholder="Min 6 chars" className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-300 outline-none" value={addForm.password} onChange={e => setAddForm(f => ({ ...f, password: e.target.value }))} />
+              </div>
+            </div>
+            <div className="flex gap-3 pt-4 border-t border-gray-100">
+              <button type="button" onClick={() => setAddSchoolModal(false)} className="flex-1 py-2 rounded-lg border border-gray-200 text-gray-700 text-sm font-semibold hover:bg-gray-50 transition-colors">Cancel</button>
+              <button type="submit" disabled={addSaving} className="flex-1 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold transition-colors flex items-center justify-center gap-2">
+                {addSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                {addSaving ? 'Creating…' : 'Create School'}
+              </button>
+            </div>
+          </form>
+        </Modal>
+      )}
+    </div>
+  );
+}
