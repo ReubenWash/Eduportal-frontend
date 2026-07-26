@@ -1,7 +1,14 @@
 import { useState, useEffect } from 'react';
 import { Save, Globe, Mail, Shield, ShieldAlert, Palette, Image, FileText } from 'lucide-react';
 import { useToast } from '../../context/ToastContext';
-import { getGlobalSettings, updateGlobalSettings, updateEnvConfig, updateIntegration, createIntegration, getIntegrations } from '../../api/superAdminApi';
+import { 
+  getGlobalSettings, 
+  updateGlobalSettings, 
+  updateEnvConfig, 
+  updateIntegration, 
+  createIntegration, 
+  getIntegrations 
+} from '../../api/superAdminApi';
 
 export default function AdminSettings() {
   const { addToast } = useToast();
@@ -32,88 +39,122 @@ export default function AdminSettings() {
   ]);
 
   useEffect(() => {
-    Promise.allSettled([getGlobalSettings(), getIntegrations()])
-      .then(([settingsResult, integrationsResult]) => {
-        if (settingsResult.status === 'fulfilled') {
-          applySettings(settingsResult.value);
-        } else {
-          console.error('Failed to load global settings from DB:', settingsResult.reason);
-          addToast('Failed to load general settings from server', 'error');
+    const loadSettings = async () => {
+      setLoading(true);
+      try {
+        // Load global settings
+        const settings = await getGlobalSettings();
+        if (settings) {
+          applySettings(settings);
         }
+      } catch (err) {
+        console.error('Failed to load global settings:', err);
+        addToast('Failed to load general settings from server', 'error');
+      }
 
-        if (integrationsResult.status === 'fulfilled') {
-          const integrations = integrationsResult.value || [];
-          const sendgrid = integrations.find(i => i.key === 'sendgrid');
+      try {
+        // Load integrations to get SMTP config
+        const integrations = await getIntegrations();
+        if (Array.isArray(integrations)) {
+          const sendgrid = integrations.find(i => i.key === 'sendgrid' || i.key === 'smtp');
           if (sendgrid) {
             setSmtpIntegrationId(sendgrid.id);
             if (sendgrid.config) {
               if (sendgrid.config.host) setSmtpHost(sendgrid.config.host);
-              if (sendgrid.config.port) setSmtpPort(sendgrid.config.port);
+              if (sendgrid.config.port) setSmtpPort(String(sendgrid.config.port));
               if (sendgrid.config.username) setSmtpUser(sendgrid.config.username);
               if (sendgrid.config.password) setSmtpPass(sendgrid.config.password);
             }
           }
         }
-      })
-      .finally(() => setLoading(false));
+      } catch (err) {
+        console.error('Failed to load integrations:', err);
+        // Don't show toast for integrations failure - it's not critical for UI
+      }
+
+      setLoading(false);
+    };
+
+    loadSettings();
   }, []);
 
   const applySettings = (settings) => {
+    // Platform settings
     if (settings?.platformName) setPlatformName(settings.platformName);
     if (settings?.theme) setTheme(settings.theme);
     if (settings?.language) setLanguage(settings.language);
     if (settings?.timeZone) setTimeZone(settings.timeZone);
+    
+    // SMTP settings (if stored in global settings as fallback)
     if (settings?.smtpHost) setSmtpHost(settings.smtpHost);
-    if (settings?.smtpPort) setSmtpPort(settings.smtpPort);
+    if (settings?.smtpPort) setSmtpPort(String(settings.smtpPort));
     if (settings?.smtpUser) setSmtpUser(settings.smtpUser);
     if (settings?.smtpPass) setSmtpPass(settings.smtpPass);
+    
+    // KYC requirements
     if (settings?.kyc_requirements) {
-      try { setKycDocs(typeof settings.kyc_requirements === 'string' ? JSON.parse(settings.kyc_requirements) : settings.kyc_requirements); } catch {}
+      try {
+        const parsed = typeof settings.kyc_requirements === 'string' 
+          ? JSON.parse(settings.kyc_requirements) 
+          : settings.kyc_requirements;
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setKycDocs(parsed);
+        }
+      } catch (err) {
+        console.error('Failed to parse KYC requirements:', err);
+      }
     }
   };
 
   const toggleKycDoc = (id) => {
-    setKycDocs(prev => prev.map(doc => doc.id === id ? { ...doc, required: !doc.required } : doc));
+    setKycDocs(prev => prev.map(doc => 
+      doc.id === id ? { ...doc, required: !doc.required } : doc
+    ));
   };
 
   const handleSave = async (e) => {
     e.preventDefault();
     setSaving(true);
     let hasError = false;
-    let errorMsg = '';
+    let errorMessages = [];
 
     try {
-      // Save general settings using the existing config API
-      await updateGlobalSettings({
+      // 1. Save general settings
+      const settingsPayload = {
         platformName,
         theme,
         language,
         timeZone,
         kyc_requirements: JSON.stringify(kycDocs),
-      });
+      };
+      
+      await updateGlobalSettings(settingsPayload);
     } catch (err) {
       hasError = true;
-      errorMsg = err?.response?.data?.message || 'Settings API failed';
-      console.warn('updateGlobalSettings failed:', err);
+      const msg = err?.response?.data?.message || err?.message || 'Failed to save general settings';
+      errorMessages.push(msg);
+      console.error('updateGlobalSettings error:', err);
     }
 
     try {
-      // Save SMTP settings to the database via the new Integrations API
+      // 2. Save SMTP settings via Integrations API
       const integrationData = {
         name: 'SendGrid Email',
         description: 'Email delivery service',
         isEnabled: true,
         config: {
           host: smtpHost,
-          port: parseInt(smtpPort, 10),
+          port: parseInt(smtpPort, 10) || 587,
           username: smtpUser,
           password: smtpPass,
         },
       };
 
       if (smtpIntegrationId) {
+        // Update existing integration
         await updateIntegration(smtpIntegrationId, integrationData);
       } else {
+        // Create new integration
         const newIntegration = await createIntegration({
           key: 'sendgrid',
           type: 'EMAIL',
@@ -123,13 +164,13 @@ export default function AdminSettings() {
       }
     } catch (err) {
       hasError = true;
-      // We don't overwrite errorMsg if the previous request also failed
-      errorMsg = errorMsg || err?.response?.data?.message || 'Integrations API failed';
-      console.warn('update/create integration failed:', err);
+      const msg = err?.response?.data?.message || err?.message || 'Failed to save SMTP settings';
+      errorMessages.push(msg);
+      console.error('Integration save error:', err);
     }
 
     try {
-      // Temporarily sync to ENV so the backend can still use it directly if it hasn't fully migrated
+      // 3. Sync to ENV (optional - for backward compatibility)
       await updateEnvConfig({
         SMTP_HOST: smtpHost,
         SMTP_PORT: smtpPort,
@@ -137,19 +178,31 @@ export default function AdminSettings() {
         SMTP_PASS: smtpPass,
       });
     } catch (err) {
-      // We can ignore env sync errors if the DB saved successfully, but let's log it
-      console.warn('updateEnvConfig failed:', err);
+      // Non-critical - don't mark as error if this fails
+      console.warn('updateEnvConfig warning:', err);
     }
 
     if (!hasError) {
       addToast('System settings saved successfully!', 'success');
     } else {
-      addToast(`Backend sync failed: ${errorMsg}`, 'error');
+      // Show combined error message
+      const combinedMsg = errorMessages.length > 1 
+        ? `${errorMessages[0]} (and ${errorMessages.length - 1} more errors)`
+        : errorMessages[0];
+      addToast(`Failed to save: ${combinedMsg}`, 'error');
     }
+    
     setSaving(false);
   };
 
-  if (loading) return <div>Loading settings...</div>;
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600" />
+        <span className="ml-3 text-sm text-gray-500">Loading settings...</span>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -231,7 +284,11 @@ export default function AdminSettings() {
                 <div className="h-12 w-12 rounded-lg bg-indigo-50 border border-indigo-100 flex items-center justify-center">
                   <Image className="h-5 w-5 text-indigo-600" />
                 </div>
-                <button type="button" className="text-xs font-semibold text-indigo-600 hover:text-indigo-700 bg-indigo-50 hover:bg-indigo-100 px-3 py-1.5 rounded-lg transition-colors">
+                <button 
+                  type="button" 
+                  className="text-xs font-semibold text-indigo-600 hover:text-indigo-700 bg-indigo-50 hover:bg-indigo-100 px-3 py-1.5 rounded-lg transition-colors"
+                  onClick={() => addToast('Logo upload feature coming soon!', 'info')}
+                >
                   Upload Logo File
                 </button>
               </div>
@@ -307,11 +364,26 @@ export default function AdminSettings() {
         </div>
 
         <div className="flex justify-end gap-3">
-          <button type="button" className="px-5 py-2 text-sm font-semibold text-gray-700 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
+          <button 
+            type="button" 
+            className="px-5 py-2 text-sm font-semibold text-gray-700 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+            onClick={() => {
+              // Reload settings to discard changes
+              window.location.reload();
+            }}
+          >
             Discard Changes
           </button>
-          <button type="submit" disabled={saving} className="flex items-center gap-2 px-6 py-2 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-500 rounded-lg transition-colors shadow-sm disabled:opacity-60">
-            {saving ? <span className="animate-spin h-4 w-4 rounded-full border-2 border-white border-t-transparent"/> : <Save className="h-4 w-4" />}
+          <button 
+            type="submit" 
+            disabled={saving} 
+            className="flex items-center gap-2 px-6 py-2 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-500 rounded-lg transition-colors shadow-sm disabled:opacity-60"
+          >
+            {saving ? (
+              <span className="animate-spin h-4 w-4 rounded-full border-2 border-white border-t-transparent"/>
+            ) : (
+              <Save className="h-4 w-4" />
+            )}
             Save System Settings
           </button>
         </div>

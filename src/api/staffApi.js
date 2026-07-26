@@ -1,6 +1,7 @@
+// frontend/src/api/staffApi.js
 import api, { unwrapList, unwrapItem } from './axios';
 
-// GET /staff/export  (returns blob)
+// ─── EXPORT ────────────────────────────────────────────────────
 export const exportStaff = async (params) => {
   const res = await api.get('/staff/export', {
     params,
@@ -9,7 +10,7 @@ export const exportStaff = async (params) => {
   return res.data;
 };
 
-// POST /staff/import-excel
+// ─── IMPORT ────────────────────────────────────────────────────
 export const importStaffExcel = async (formData) => {
   const res = await api.post('/staff/import-excel', formData, {
     headers: { 'Content-Type': 'multipart/form-data' },
@@ -17,47 +18,40 @@ export const importStaffExcel = async (formData) => {
   return unwrapItem(res.data);
 };
 
-// GET /staff
+// ─── LIST ──────────────────────────────────────────────────────
 export const getStaff = async (params) => {
   const res = await api.get('/staff', { params });
   return unwrapList(res.data);
 };
 
-// GET /staff/:id
 export const getStaffMember = async (id) => {
   const res = await api.get(`/staff/${id}`);
   return unwrapItem(res.data);
 };
 
-// POST /staff
+// ─── CRUD ──────────────────────────────────────────────────────
 export const createStaff = async (data) => {
   const res = await api.post('/staff', data);
   return unwrapItem(res.data);
 };
 
-// PATCH /staff/:id
 export const updateStaff = async (id, data) => {
   const res = await api.patch(`/staff/${id}`, data);
   return unwrapItem(res.data);
 };
 
-// DELETE /staff/:id
 export const deleteStaff = async (id) => {
   const res = await api.delete(`/staff/${id}`);
   return unwrapItem(res.data);
 };
 
-// POST /staff/:id/assign  (assign subjects/classes to a staff member)
-export const assignStaff = async (id, data) => {
+// ─── ASSIGNMENTS ──────────────────────────────────────────────
+export const assignSubjects = async (id, data) => {
   const res = await api.post(`/staff/${id}/assign`, data);
   return unwrapItem(res.data);
 };
 
-// Alias kept for backward-compatibility with existing page imports
-export const assignSubjects = assignStaff;
-
-// DELETE /staff/:id/assign  (remove a subject/class assignment)
-export const unassignStaff = async (id, data) => {
+export const unassignSubject = async (id, data) => {
   const res = await api.delete(`/staff/${id}/assign`, { data });
   return unwrapItem(res.data);
 };

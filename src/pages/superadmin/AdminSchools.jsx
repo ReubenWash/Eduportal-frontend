@@ -7,15 +7,23 @@ import Badge from '../../components/ui/Badge';
 import Modal from '../../components/ui/Modal';
 import { useToast } from '../../context/ToastContext';
 import { getAllSchools, updateSchoolStatus as apiUpdateSchoolStatus, deleteSchool } from '../../api/schoolApi';
-import { updateSchoolDetails, updateSchoolPlan, sendWelcomeEmail, updateEnvConfig } from '../../api/superAdminApi';
+import { updateSchoolDetails, updateSchoolPlan, sendWelcomeEmail } from '../../api/superAdminApi';
 import { register } from '../../api/authApi';
 
-const statusVariant = { ACTIVE: 'success', PENDING: 'warning', REJECTED: 'danger', SUSPENDED: 'danger' };
+const statusVariant = { 
+  ACTIVE: 'success', 
+  PENDING: 'warning', 
+  REJECTED: 'danger', 
+  SUSPENDED: 'danger',
+  DEACTIVATED: 'default'
+};
+
 const statusIcon = {
   ACTIVE:   <CheckCircle className="h-4 w-4 text-emerald-500" />,
   PENDING:  <Clock className="h-4 w-4 text-amber-500" />,
   REJECTED: <XCircle className="h-4 w-4 text-red-500" />,
   SUSPENDED: <XCircle className="h-4 w-4 text-red-500" />,
+  DEACTIVATED: <XCircle className="h-4 w-4 text-gray-500" />,
 };
 
 export default function AdminSchools() {
@@ -33,31 +41,34 @@ export default function AdminSchools() {
   const [addSchoolModal, setAddSchoolModal] = useState(false);
   const [addForm, setAddForm] = useState({ name: '', email: '', phone: '', address: '', plan: 'BASIC', password: '' });
   const [addSaving, setAddSaving] = useState(false);
+  const [actionLoading, setActionLoading] = useState({});
 
-  const load = () => {
+  const load = async () => {
     setLoading(true);
-    getAllSchools()
-      .then(list => {
-        const fetchedSchools = (Array.isArray(list) ? list : []).map(s => ({
-          ...s,
-          location: s.district && s.region ? `${s.district}, ${s.region}` : s.address || 'Unknown',
-          students: s._count?.students || 0,
-          registeredAt: s.createdAt || new Date().toISOString(),
-        }));
-        setSchools(fetchedSchools);
-        setLoadError(false);
-      })
-      .catch(err => {
-        setLoadError(true);
-        setSchools([]);
-      })
-      .finally(() => setLoading(false));
+    setLoadError(false);
+    try {
+      const list = await getAllSchools();
+      const fetchedSchools = (Array.isArray(list) ? list : []).map(s => ({
+        ...s,
+        location: s.district && s.region ? `${s.district}, ${s.region}` : s.address || 'Unknown',
+        students: s._count?.students || 0,
+        registeredAt: s.createdAt || new Date().toISOString(),
+        isVerified: s.isVerified ?? false,
+      }));
+      setSchools(fetchedSchools);
+    } catch (err) {
+      console.error('Failed to load schools:', err);
+      setLoadError(true);
+      setSchools([]);
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => { load(); }, []);
 
   const filtered = useMemo(() => schools.filter(s => {
-    if (keyword && !s.name.toLowerCase().includes(keyword.toLowerCase()) && !s.email.toLowerCase().includes(keyword.toLowerCase())) return false;
+    if (keyword && !s.name?.toLowerCase().includes(keyword.toLowerCase()) && !s.email?.toLowerCase().includes(keyword.toLowerCase())) return false;
     if (statusFilter && s.status !== statusFilter) return false;
     return true;
   }), [schools, keyword, statusFilter]);
@@ -67,18 +78,27 @@ export default function AdminSchools() {
     ACTIVE:   schools.filter(s => s.status === 'ACTIVE').length,
     PENDING:  schools.filter(s => s.status === 'PENDING').length,
     REJECTED: schools.filter(s => s.status === 'REJECTED').length,
+    SUSPENDED: schools.filter(s => s.status === 'SUSPENDED').length,
+  };
+
+  const setRowLoading = (id, loading) => {
+    setActionLoading(prev => ({ ...prev, [id]: loading }));
   };
 
   const applyAction = async (school, action) => {
     if (action === 'delete') {
+      setRowLoading(school.id, true);
       try {
         await deleteSchool(school.id);
         setSchools(prev => prev.filter(s => s.id !== school.id));
         addToast(`${school.name} deleted successfully`, 'success');
-      } catch {
+      } catch (err) {
+        console.error('Delete school error:', err);
+        // Fallback: remove locally
         setSchools(prev => prev.filter(s => s.id !== school.id));
         addToast(`${school.name} deleted locally (backend unavailable).`, 'warning');
       } finally {
+        setRowLoading(school.id, false);
         setConfirmAction(null);
         setViewSchool(null);
       }
@@ -86,17 +106,37 @@ export default function AdminSchools() {
     }
 
     const newStatus = action === 'approve' ? 'ACTIVE' : action === 'reject' ? 'REJECTED' : 'SUSPENDED';
+    setRowLoading(school.id, true);
+    
     try {
-      await apiUpdateSchoolStatus(school.id, newStatus);
-      setSchools(prev => prev.map(s => s.id === school.id ? { ...s, status: newStatus } : s));
-      addToast(`${school.name} status updated successfully`, 'success');
+      const updated = await apiUpdateSchoolStatus(school.id, newStatus);
+      setSchools(prev => prev.map(s => 
+        s.id === school.id ? { ...s, status: newStatus, ...updated } : s
+      ));
+      
+      const statusMessages = {
+        ACTIVE: `${school.name} has been approved and activated.`,
+        REJECTED: `${school.name} has been rejected.`,
+        SUSPENDED: `${school.name} has been suspended.`
+      };
+      addToast(statusMessages[newStatus] || `${school.name} status updated`, 'success');
+      
       if (newStatus === 'ACTIVE') {
-        try { await sendWelcomeEmail(school.id); } catch { /* non-blocking */ }
+        try { 
+          await sendWelcomeEmail(school.id); 
+        } catch (emailErr) { 
+          console.warn('Welcome email failed:', emailErr);
+        }
       }
-    } catch {
-      setSchools(prev => prev.map(s => s.id === school.id ? { ...s, status: newStatus } : s));
-      addToast(`${school.name} status updated locally (backend unavailable).`, 'warning');
+    } catch (err) {
+      console.error('Status update error:', err);
+      // Fallback: update locally
+      setSchools(prev => prev.map(s => 
+        s.id === school.id ? { ...s, status: newStatus } : s
+      ));
+      addToast(`${school.name} status updated locally (backend sync failed).`, 'warning');
     } finally {
+      setRowLoading(school.id, false);
       setConfirmAction(null);
       setViewSchool(null);
     }
@@ -104,34 +144,68 @@ export default function AdminSchools() {
 
   const toggleVerify = async (school) => {
     const isVerified = !school.isVerified;
+    setRowLoading(school.id, true);
+    
     try {
       await updateSchoolDetails(school.id, { isVerified });
-      setSchools(prev => prev.map(s => s.id === school.id ? { ...s, isVerified } : s));
+      setSchools(prev => prev.map(s => 
+        s.id === school.id ? { ...s, isVerified } : s
+      ));
       addToast(`${school.name} is now ${isVerified ? 'verified' : 'unverified'}`, 'success');
-    } catch {
-      // Local fallback
-      setSchools(prev => prev.map(s => s.id === school.id ? { ...s, isVerified } : s));
+    } catch (err) {
+      console.error('Verify toggle error:', err);
+      // Fallback: update locally
+      setSchools(prev => prev.map(s => 
+        s.id === school.id ? { ...s, isVerified } : s
+      ));
       addToast(`Status updated locally (backend unavailable).`, 'warning');
+    } finally {
+      setRowLoading(school.id, false);
     }
   };
 
   const handleAddSchool = async (e) => {
     e.preventDefault();
     setAddSaving(true);
+    
     try {
-      const res = await register({
-        schoolName: addForm.name,
-        email: addForm.email,
-        password: addForm.password || 'password123',
-        phone: addForm.phone,
-        address: addForm.address,
+      // Validate required fields
+      if (!addForm.name.trim()) {
+        addToast('School name is required.', 'error');
+        setAddSaving(false);
+        return;
+      }
+      if (!addForm.email.trim()) {
+        addToast('Email is required.', 'error');
+        setAddSaving(false);
+        return;
+      }
+      if (!addForm.password || addForm.password.length < 6) {
+        addToast('Password must be at least 6 characters.', 'error');
+        setAddSaving(false);
+        return;
+      }
+
+      const result = await register({
+        schoolName: addForm.name.trim(),
+        email: addForm.email.trim().toLowerCase(),
+        password: addForm.password,
+        region: addForm.region || 'Greater Accra',
+        district: addForm.district || 'Accra Metro',
+        headmasterName: 'School Administrator',
+        address: addForm.address || '',
+        phone: addForm.phone || '',
+        plan: addForm.plan || 'BASIC',
       });
-      addToast('School created successfully.', 'success');
+
+      addToast(`${addForm.name} created successfully.`, 'success');
       setAddSchoolModal(false);
       setAddForm({ name: '', email: '', phone: '', address: '', plan: 'BASIC', password: '' });
-      load(); // Reload list
+      await load(); // Reload list
     } catch (err) {
-      addToast(err?.response?.data?.message || 'Failed to create school', 'error');
+      console.error('Add school error:', err);
+      const errorMsg = err?.response?.data?.message || err?.message || 'Failed to create school';
+      addToast(errorMsg, 'error');
     } finally {
       setAddSaving(false);
     }
@@ -150,27 +224,63 @@ export default function AdminSchools() {
   };
 
   const handleEditSave = async () => {
-    if (!editForm.name.trim()) { addToast('School name is required.', 'error'); return; }
+    if (!editForm.name.trim()) { 
+      addToast('School name is required.', 'error'); 
+      return; 
+    }
+    
     setEditSaving(true);
     try {
-      await updateSchoolDetails(editSchool.id, editForm);
+      // Update school details
+      const updateData = {
+        name: editForm.name.trim(),
+        email: editForm.email.trim().toLowerCase(),
+        phone: editForm.phone || '',
+        address: editForm.address || '',
+        status: editForm.status,
+      };
+      
+      await updateSchoolDetails(editSchool.id, updateData);
+      
+      // Update plan if changed
       if (editForm.plan !== editSchool.plan) {
         await updateSchoolPlan(editSchool.id, editForm.plan);
       }
-      setSchools(prev => prev.map(s => s.id === editSchool.id ? { ...s, ...editForm, location: editForm.address } : s));
+      
+      setSchools(prev => prev.map(s => 
+        s.id === editSchool.id ? { 
+          ...s, 
+          ...updateData, 
+          plan: editForm.plan,
+          location: editForm.address || s.location 
+        } : s
+      ));
+      
       addToast(`${editForm.name} updated successfully.`, 'success');
       setEditSchool(null);
-    } catch {
-      // Graceful fallback: apply locally
-      setSchools(prev => prev.map(s => s.id === editSchool.id ? { ...s, ...editForm, location: editForm.address } : s));
-      addToast('School updated locally (backend unavailable).', 'warning');
+    } catch (err) {
+      console.error('Edit school error:', err);
+      // Fallback: update locally
+      setSchools(prev => prev.map(s => 
+        s.id === editSchool.id ? { 
+          ...s, 
+          name: editForm.name,
+          email: editForm.email,
+          phone: editForm.phone,
+          address: editForm.address,
+          plan: editForm.plan,
+          status: editForm.status,
+          location: editForm.address || s.location
+        } : s
+      ));
+      addToast('School updated locally (backend sync failed).', 'warning');
       setEditSchool(null);
     } finally {
       setEditSaving(false);
     }
   };
 
-  const tabs = ['ALL', 'PENDING', 'ACTIVE', 'REJECTED'];
+  const tabs = ['ALL', 'PENDING', 'ACTIVE', 'REJECTED', 'SUSPENDED'];
 
   return (
     <div className="space-y-6">
@@ -180,7 +290,10 @@ export default function AdminSchools() {
           <h1 className="text-2xl font-bold text-gray-900 tracking-tight">School Management</h1>
           <p className="text-sm text-gray-500 mt-1">Review registrations, approve or reject schools, and manage their access.</p>
         </div>
-        <button onClick={() => setAddSchoolModal(true)} className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-colors shadow-sm">
+        <button 
+          onClick={() => setAddSchoolModal(true)} 
+          className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-colors shadow-sm"
+        >
           <School className="h-4 w-4" /> Add School
         </button>
       </div>
@@ -205,7 +318,7 @@ export default function AdminSchools() {
           >
             {tab === 'ALL' ? 'All Schools' : tab.charAt(0) + tab.slice(1).toLowerCase()}
             <span className="ml-2 text-xs bg-gray-200 text-gray-600 rounded-full px-1.5 py-0.5">
-              {counts[tab]}
+              {counts[tab] || 0}
             </span>
           </button>
         ))}
@@ -223,7 +336,9 @@ export default function AdminSchools() {
             className="w-full pl-9 pr-4 py-2 text-sm bg-white border border-gray-200 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 transition-all"
           />
         </div>
-        <div className="sm:ml-auto text-sm text-gray-500 font-medium">{filtered.length} school{filtered.length !== 1 ? 's' : ''}</div>
+        <div className="sm:ml-auto text-sm text-gray-500 font-medium">
+          {filtered.length} school{filtered.length !== 1 ? 's' : ''}
+        </div>
       </div>
 
       {/* Table */}
@@ -270,42 +385,87 @@ export default function AdminSchools() {
                       'bg-gray-100 text-gray-600'
                     }`}>{school.plan}</span>
                   </td>
-                  <td className="px-5 py-4 whitespace-nowrap text-sm text-gray-600">{school.students > 0 ? school.students.toLocaleString() : '—'}</td>
-                  <td className="px-5 py-4 whitespace-nowrap text-sm text-gray-600">{new Date(school.registeredAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</td>
+                  <td className="px-5 py-4 whitespace-nowrap text-sm text-gray-600">
+                    {school.students > 0 ? school.students.toLocaleString() : '—'}
+                  </td>
+                  <td className="px-5 py-4 whitespace-nowrap text-sm text-gray-600">
+                    {new Date(school.registeredAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+                  </td>
                   <td className="px-5 py-4 whitespace-nowrap">
                     <div className="flex items-center gap-1.5">
-                      {statusIcon[school.status]}
-                      <Badge variant={statusVariant[school.status]}>{school.status}</Badge>
+                      {statusIcon[school.status] || statusIcon.PENDING}
+                      <Badge variant={statusVariant[school.status] || 'default'}>
+                        {school.status}
+                      </Badge>
                     </div>
                   </td>
                   <td className="px-5 py-4 whitespace-nowrap">
                     <div className="flex items-center gap-1">
-                      <button onClick={() => setViewSchool(school)} className="p-1.5 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-md transition-colors" title="View Details">
+                      <button 
+                        onClick={() => setViewSchool(school)} 
+                        className="p-1.5 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-md transition-colors" 
+                        title="View Details"
+                        disabled={actionLoading[school.id]}
+                      >
                         <Eye className="h-4 w-4" />
                       </button>
-                      <button onClick={() => toggleVerify(school)} className={`text-xs font-medium px-2 py-1 rounded-md transition-colors ${school.isVerified ? 'text-emerald-600 bg-emerald-50 hover:bg-emerald-100' : 'text-gray-500 bg-gray-50 hover:bg-gray-100'}`} title={school.isVerified ? 'Unverify' : 'Verify'}>
+                      <button 
+                        onClick={() => toggleVerify(school)} 
+                        className={`text-xs font-medium px-2 py-1 rounded-md transition-colors ${
+                          school.isVerified ? 'text-emerald-600 bg-emerald-50 hover:bg-emerald-100' : 'text-gray-500 bg-gray-50 hover:bg-gray-100'
+                        }`} 
+                        title={school.isVerified ? 'Unverify' : 'Verify'}
+                        disabled={actionLoading[school.id]}
+                      >
                         {school.isVerified ? 'Verified' : 'Verify'}
                       </button>
-                      <button onClick={() => openEdit(school)} className="p-1.5 text-gray-400 hover:text-violet-600 hover:bg-violet-50 rounded-md transition-colors" title="Edit School">
+                      <button 
+                        onClick={() => openEdit(school)} 
+                        className="p-1.5 text-gray-400 hover:text-violet-600 hover:bg-violet-50 rounded-md transition-colors" 
+                        title="Edit School"
+                      >
                         <Edit2 className="h-4 w-4" />
                       </button>
                       {school.status === 'PENDING' && (
                         <>
-                          <button onClick={() => setConfirmAction({ school, action: 'approve' })} className="p-1.5 text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-md transition-colors" title="Approve">
+                          <button 
+                            onClick={() => setConfirmAction({ school, action: 'approve' })} 
+                            className="p-1.5 text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-md transition-colors" 
+                            title="Approve"
+                            disabled={actionLoading[school.id]}
+                          >
                             <CheckCircle className="h-4 w-4" />
                           </button>
-                          <button onClick={() => setConfirmAction({ school, action: 'reject' })} className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors" title="Reject">
+                          <button 
+                            onClick={() => setConfirmAction({ school, action: 'reject' })} 
+                            className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors" 
+                            title="Reject"
+                            disabled={actionLoading[school.id]}
+                          >
                             <XCircle className="h-4 w-4" />
                           </button>
                         </>
                       )}
                       {school.status === 'ACTIVE' && (
-                        <button onClick={() => setConfirmAction({ school, action: 'suspend' })} className="text-xs font-medium text-red-500 hover:text-red-600 hover:bg-red-50 px-2 py-1 rounded-md transition-colors">
+                        <button 
+                          onClick={() => setConfirmAction({ school, action: 'suspend' })} 
+                          className="text-xs font-medium text-red-500 hover:text-red-600 hover:bg-red-50 px-2 py-1 rounded-md transition-colors"
+                          disabled={actionLoading[school.id]}
+                        >
                           Suspend
                         </button>
                       )}
-                      <button onClick={() => setConfirmAction({ school, action: 'delete' })} className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors" title="Delete School">
-                        <Trash className="h-4 w-4" />
+                      <button 
+                        onClick={() => setConfirmAction({ school, action: 'delete' })} 
+                        className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors" 
+                        title="Delete School"
+                        disabled={actionLoading[school.id]}
+                      >
+                        {actionLoading[school.id] ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Trash className="h-4 w-4" />
+                        )}
                       </button>
                     </div>
                   </td>
@@ -323,7 +483,12 @@ export default function AdminSchools() {
             <div className="grid grid-cols-2 gap-4">
               <div className="bg-gray-50 rounded-lg p-3">
                 <p className="text-[10px] font-semibold text-gray-400 uppercase mb-1">Status</p>
-                <div className="flex items-center gap-1.5">{statusIcon[viewSchool.status]}<Badge variant={statusVariant[viewSchool.status]}>{viewSchool.status}</Badge></div>
+                <div className="flex items-center gap-1.5">
+                  {statusIcon[viewSchool.status] || statusIcon.PENDING}
+                  <Badge variant={statusVariant[viewSchool.status] || 'default'}>
+                    {viewSchool.status}
+                  </Badge>
+                </div>
               </div>
               <div className="bg-gray-50 rounded-lg p-3">
                 <p className="text-[10px] font-semibold text-gray-400 uppercase mb-1">Plan</p>
@@ -344,17 +509,23 @@ export default function AdminSchools() {
                   </div>
                   <div>
                     <p className="text-[10px] text-gray-400 uppercase font-semibold">{label}</p>
-                    <p className="text-sm text-gray-800">{value}</p>
+                    <p className="text-sm text-gray-800">{value || '—'}</p>
                   </div>
                 </div>
               ))}
             </div>
             {viewSchool.status === 'PENDING' && (
               <div className="flex gap-3 pt-4 border-t border-gray-100">
-                <button onClick={() => setConfirmAction({ school: viewSchool, action: 'reject' })} className="flex-1 py-2 rounded-lg border border-red-200 text-red-600 text-sm font-semibold hover:bg-red-50 transition-colors">
+                <button 
+                  onClick={() => setConfirmAction({ school: viewSchool, action: 'reject' })} 
+                  className="flex-1 py-2 rounded-lg border border-red-200 text-red-600 text-sm font-semibold hover:bg-red-50 transition-colors"
+                >
                   Reject
                 </button>
-                <button onClick={() => setConfirmAction({ school: viewSchool, action: 'approve' })} className="flex-1 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-semibold transition-colors">
+                <button 
+                  onClick={() => setConfirmAction({ school: viewSchool, action: 'approve' })} 
+                  className="flex-1 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-semibold transition-colors"
+                >
                   Approve School
                 </button>
               </div>
@@ -387,7 +558,10 @@ export default function AdminSchools() {
               </p>
             </div>
             <div className="flex gap-3">
-              <button onClick={() => setConfirmAction(null)} className="flex-1 py-2 rounded-lg border border-gray-200 text-gray-700 text-sm font-semibold hover:bg-gray-50 transition-colors">
+              <button 
+                onClick={() => setConfirmAction(null)} 
+                className="flex-1 py-2 rounded-lg border border-gray-200 text-gray-700 text-sm font-semibold hover:bg-gray-50 transition-colors"
+              >
                 Cancel
               </button>
               <button
@@ -395,8 +569,15 @@ export default function AdminSchools() {
                 className={`flex-1 py-2 rounded-lg text-white text-sm font-semibold transition-colors ${
                   confirmAction.action === 'approve' ? 'bg-emerald-600 hover:bg-emerald-500' : 'bg-red-600 hover:bg-red-500'
                 }`}
+                disabled={actionLoading[confirmAction.school.id]}
               >
-                {confirmAction.action === 'approve' ? 'Yes, Approve' : confirmAction.action === 'reject' ? 'Yes, Reject' : confirmAction.action === 'delete' ? 'Yes, Delete' : 'Yes, Suspend'}
+                {actionLoading[confirmAction.school.id] ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  confirmAction.action === 'approve' ? 'Yes, Approve' : 
+                  confirmAction.action === 'reject' ? 'Yes, Reject' : 
+                  confirmAction.action === 'delete' ? 'Yes, Delete' : 'Yes, Suspend'
+                )}
               </button>
             </div>
           </div>
@@ -410,23 +591,45 @@ export default function AdminSchools() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="sm:col-span-2">
                 <label className="block text-xs font-semibold text-gray-600 mb-1">School Name *</label>
-                <input className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-300 outline-none" value={editForm.name} onChange={e => setEditForm(f => ({ ...f, name: e.target.value }))} />
+                <input 
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-300 outline-none" 
+                  value={editForm.name} 
+                  onChange={e => setEditForm(f => ({ ...f, name: e.target.value }))} 
+                />
               </div>
               <div>
                 <label className="block text-xs font-semibold text-gray-600 mb-1">Email</label>
-                <input type="email" className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-300 outline-none" value={editForm.email} onChange={e => setEditForm(f => ({ ...f, email: e.target.value }))} />
+                <input 
+                  type="email" 
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-300 outline-none" 
+                  value={editForm.email} 
+                  onChange={e => setEditForm(f => ({ ...f, email: e.target.value }))} 
+                />
               </div>
               <div>
                 <label className="block text-xs font-semibold text-gray-600 mb-1">Phone</label>
-                <input type="tel" className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-300 outline-none" value={editForm.phone} onChange={e => setEditForm(f => ({ ...f, phone: e.target.value }))} />
+                <input 
+                  type="tel" 
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-300 outline-none" 
+                  value={editForm.phone} 
+                  onChange={e => setEditForm(f => ({ ...f, phone: e.target.value }))} 
+                />
               </div>
               <div className="sm:col-span-2">
                 <label className="block text-xs font-semibold text-gray-600 mb-1">Address / Location</label>
-                <input className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-300 outline-none" value={editForm.address} onChange={e => setEditForm(f => ({ ...f, address: e.target.value }))} />
+                <input 
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-300 outline-none" 
+                  value={editForm.address} 
+                  onChange={e => setEditForm(f => ({ ...f, address: e.target.value }))} 
+                />
               </div>
               <div>
                 <label className="block text-xs font-semibold text-gray-600 mb-1">Subscription Plan</label>
-                <select className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-300 outline-none" value={editForm.plan} onChange={e => setEditForm(f => ({ ...f, plan: e.target.value }))}>
+                <select 
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-300 outline-none" 
+                  value={editForm.plan} 
+                  onChange={e => setEditForm(f => ({ ...f, plan: e.target.value }))}
+                >
                   <option value="BASIC">Basic (Free)</option>
                   <option value="STANDARD">Standard</option>
                   <option value="PREMIUM">Premium</option>
@@ -434,17 +637,31 @@ export default function AdminSchools() {
               </div>
               <div>
                 <label className="block text-xs font-semibold text-gray-600 mb-1">Status</label>
-                <select className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-300 outline-none" value={editForm.status} onChange={e => setEditForm(f => ({ ...f, status: e.target.value }))}>
+                <select 
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-300 outline-none" 
+                  value={editForm.status} 
+                  onChange={e => setEditForm(f => ({ ...f, status: e.target.value }))}
+                >
                   <option value="ACTIVE">Active</option>
                   <option value="PENDING">Pending</option>
                   <option value="SUSPENDED">Suspended</option>
                   <option value="REJECTED">Rejected</option>
+                  <option value="DEACTIVATED">Deactivated</option>
                 </select>
               </div>
             </div>
             <div className="flex gap-3 pt-4 border-t border-gray-100">
-              <button onClick={() => setEditSchool(null)} className="flex-1 py-2 rounded-lg border border-gray-200 text-gray-700 text-sm font-semibold hover:bg-gray-50 transition-colors">Cancel</button>
-              <button onClick={handleEditSave} disabled={editSaving} className="flex-1 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold transition-colors flex items-center justify-center gap-2">
+              <button 
+                onClick={() => setEditSchool(null)} 
+                className="flex-1 py-2 rounded-lg border border-gray-200 text-gray-700 text-sm font-semibold hover:bg-gray-50 transition-colors"
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={handleEditSave} 
+                disabled={editSaving} 
+                className="flex-1 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold transition-colors flex items-center justify-center gap-2 disabled:opacity-60"
+              >
                 {editSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
                 {editSaving ? 'Saving…' : 'Save Changes'}
               </button>
@@ -460,28 +677,82 @@ export default function AdminSchools() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="sm:col-span-2">
                 <label className="block text-xs font-semibold text-gray-600 mb-1">School Name *</label>
-                <input required className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-300 outline-none" value={addForm.name} onChange={e => setAddForm(f => ({ ...f, name: e.target.value }))} />
+                <input 
+                  required 
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-300 outline-none" 
+                  value={addForm.name} 
+                  onChange={e => setAddForm(f => ({ ...f, name: e.target.value }))} 
+                  placeholder="e.g. Sunshine Academy" 
+                />
               </div>
               <div>
                 <label className="block text-xs font-semibold text-gray-600 mb-1">Email *</label>
-                <input required type="email" className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-300 outline-none" value={addForm.email} onChange={e => setAddForm(f => ({ ...f, email: e.target.value }))} />
+                <input 
+                  required 
+                  type="email" 
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-300 outline-none" 
+                  value={addForm.email} 
+                  onChange={e => setAddForm(f => ({ ...f, email: e.target.value }))} 
+                  placeholder="admin@school.com" 
+                />
               </div>
               <div>
                 <label className="block text-xs font-semibold text-gray-600 mb-1">Phone</label>
-                <input type="tel" className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-300 outline-none" value={addForm.phone} onChange={e => setAddForm(f => ({ ...f, phone: e.target.value }))} />
+                <input 
+                  type="tel" 
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-300 outline-none" 
+                  value={addForm.phone} 
+                  onChange={e => setAddForm(f => ({ ...f, phone: e.target.value }))} 
+                  placeholder="+233 24 000 0000" 
+                />
               </div>
               <div className="sm:col-span-2">
                 <label className="block text-xs font-semibold text-gray-600 mb-1">Address / Location</label>
-                <input className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-300 outline-none" value={addForm.address} onChange={e => setAddForm(f => ({ ...f, address: e.target.value }))} />
+                <input 
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-300 outline-none" 
+                  value={addForm.address} 
+                  onChange={e => setAddForm(f => ({ ...f, address: e.target.value }))} 
+                  placeholder="123 School Street, Accra" 
+                />
               </div>
               <div>
                 <label className="block text-xs font-semibold text-gray-600 mb-1">Temporary Password *</label>
-                <input required minLength={6} type="password" placeholder="Min 6 chars" className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-300 outline-none" value={addForm.password} onChange={e => setAddForm(f => ({ ...f, password: e.target.value }))} />
+                <input 
+                  required 
+                  minLength={6} 
+                  type="password" 
+                  placeholder="Min 6 chars" 
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-300 outline-none" 
+                  value={addForm.password} 
+                  onChange={e => setAddForm(f => ({ ...f, password: e.target.value }))} 
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-600 mb-1">Plan</label>
+                <select 
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-300 outline-none" 
+                  value={addForm.plan} 
+                  onChange={e => setAddForm(f => ({ ...f, plan: e.target.value }))}
+                >
+                  <option value="BASIC">Basic (Free)</option>
+                  <option value="STANDARD">Standard</option>
+                  <option value="PREMIUM">Premium</option>
+                </select>
               </div>
             </div>
             <div className="flex gap-3 pt-4 border-t border-gray-100">
-              <button type="button" onClick={() => setAddSchoolModal(false)} className="flex-1 py-2 rounded-lg border border-gray-200 text-gray-700 text-sm font-semibold hover:bg-gray-50 transition-colors">Cancel</button>
-              <button type="submit" disabled={addSaving} className="flex-1 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold transition-colors flex items-center justify-center gap-2">
+              <button 
+                type="button" 
+                onClick={() => setAddSchoolModal(false)} 
+                className="flex-1 py-2 rounded-lg border border-gray-200 text-gray-700 text-sm font-semibold hover:bg-gray-50 transition-colors"
+              >
+                Cancel
+              </button>
+              <button 
+                type="submit" 
+                disabled={addSaving} 
+                className="flex-1 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold transition-colors flex items-center justify-center gap-2 disabled:opacity-60"
+              >
                 {addSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
                 {addSaving ? 'Creating…' : 'Create School'}
               </button>
