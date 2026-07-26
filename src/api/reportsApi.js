@@ -47,7 +47,8 @@ export const releaseReport = async (id) => {
   return unwrapItem(res.data);
 };
 
-export const bulkReleaseReports = async (data) => {
+// ─── BULK RELEASE ──────────────────────────────────────────────
+export const releaseBulkReports = async (data) => {
   const res = await api.post('/reports/release-bulk', data);
   return unwrapItem(res.data);
 };
