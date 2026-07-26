@@ -328,6 +328,77 @@ export const deleteApiKey = async (id) => {
   return unwrapItem(res.data);
 };
 
+// ─── SUBSCRIPTIONS ──────────────────────────────────────────────
+export const getSubscriptionPlans = async () => {
+  const res = await api.get('/admin/subscriptions/plans');
+  return unwrapList(res.data);
+};
+
+export const createSubscriptionPlan = async (data) => {
+  const res = await api.post('/admin/subscriptions/plans', data);
+  return unwrapItem(res.data);
+};
+
+export const updateSubscriptionPlan = async (id, data) => {
+  const res = await api.patch(`/admin/subscriptions/plans/${id}`, data);
+  return unwrapItem(res.data);
+};
+
+export const deleteSubscriptionPlan = async (id) => {
+  const res = await api.delete(`/admin/subscriptions/plans/${id}`);
+  return unwrapItem(res.data);
+};
+
+export const getSubscriptions = async (params) => {
+  const res = await api.get('/admin/subscriptions', { params });
+  return unwrapItem(res.data);
+};
+
+export const getSubscriptionById = async (id) => {
+  const res = await api.get(`/admin/subscriptions/${id}`);
+  return unwrapItem(res.data);
+};
+
+export const getSchoolSubscription = async (schoolId) => {
+  const res = await api.get(`/admin/subscriptions/school/${schoolId}`);
+  return unwrapItem(res.data);
+};
+
+export const createSubscription = async (data) => {
+  const res = await api.post('/admin/subscriptions', data);
+  return unwrapItem(res.data);
+};
+
+export const updateSubscription = async (id, data) => {
+  const res = await api.patch(`/admin/subscriptions/${id}`, data);
+  return unwrapItem(res.data);
+};
+
+export const cancelSubscription = async (id) => {
+  const res = await api.post(`/admin/subscriptions/${id}/cancel`);
+  return unwrapItem(res.data);
+};
+
+export const getPayments = async (params) => {
+  const res = await api.get('/admin/payments', { params });
+  return unwrapItem(res.data);
+};
+
+export const createPayment = async (data) => {
+  const res = await api.post('/admin/payments', data);
+  return unwrapItem(res.data);
+};
+
+export const createInvoice = async (data) => {
+  const res = await api.post('/admin/invoices', data);
+  return unwrapItem(res.data);
+};
+
+export const getRevenueAnalytics = async (params) => {
+  const res = await api.get('/admin/subscriptions/revenue', { params });
+  return unwrapItem(res.data);
+};
+
 // ─── SUPPORT TICKETS ───────────────────────────────────────────
 export const getSupportTickets = async (params) => {
   const res = await api.get('/admin/support/tickets', { params });
@@ -508,5 +579,93 @@ export const getDeveloperSettings = async () => {
 
 export const updateDeveloperSetting = async (key, value) => {
   const res = await api.post('/admin/system/developer', { key, value });
+  return unwrapItem(res.data);
+};
+
+// ─── SUPER ADMIN DASHBOARD ─────────────────────────────────────
+export const getSuperAdminDashboard = async () => {
+  const res = await api.get('/schools/admin/dashboard');
+  return unwrapItem(res.data);
+};
+
+// ─── SCHOOL ADMIN FUNCTIONS ────────────────────────────────────
+export const getAllSchools = async (params) => {
+  const res = await api.get('/schools', { params });
+  return unwrapList(res.data);
+};
+
+export const updateSchoolStatus = async (id, status) => {
+  const res = await api.patch(`/schools/${id}/status`, { status });
+  return unwrapItem(res.data);
+};
+
+export const updateSchoolDetails = async (id, data) => {
+  const res = await api.patch(`/schools/${id}`, data);
+  return unwrapItem(res.data);
+};
+
+export const updateSchoolPlan = async (id, plan) => {
+  const res = await api.patch(`/schools/${id}/plan`, { plan });
+  return unwrapItem(res.data);
+};
+
+export const deleteSchool = async (id) => {
+  const res = await api.delete(`/schools/${id}`);
+  return unwrapItem(res.data);
+};
+
+export const sendWelcomeEmail = async (schoolId) => {
+  const res = await api.post(`/admin/emails/welcome`, { schoolId });
+  return unwrapItem(res.data);
+};
+
+export const sendBroadcast = async ({ title, message, audience, channels }) => {
+  const res = await api.post('/notifications/mass-broadcast', { title, message, audience, channels });
+  return unwrapItem(res.data);
+};
+
+export const sendPushNotification = async ({ title, body, audience }) => {
+  const res = await api.post('/admin/notifications/push', { title, body, audience });
+  return unwrapItem(res.data);
+};
+
+export const updateEnvConfig = async (keys) => {
+  const res = await api.post('/admin/config/env', { keys });
+  return unwrapItem(res.data);
+};
+
+export const getGlobalSettings = async () => {
+  const res = await api.get('/admin/config/settings');
+  return unwrapItem(res.data);
+};
+
+export const updateGlobalSettings = async (settings) => {
+  const res = await api.put('/admin/config/settings', { settings });
+  return unwrapItem(res.data);
+};
+
+// ─── USER MANAGEMENT ────────────────────────────────────────────
+export const getAdminUsers = async () => {
+  const res = await api.get('/admin/users');
+  return unwrapList(res.data);
+};
+
+export const addAdminUser = async (data) => {
+  const res = await api.post('/admin/users', data);
+  return unwrapItem(res.data);
+};
+
+export const updateAdminUserStatus = async (id, status) => {
+  const res = await api.patch(`/admin/users/${id}/status`, { status });
+  return unwrapItem(res.data);
+};
+
+export const deleteAdminUser = async (id) => {
+  const res = await api.delete(`/admin/users/${id}`);
+  return unwrapItem(res.data);
+};
+
+export const verifyUser = async (userId) => {
+  const res = await api.patch(`/admin/users/${userId}/verify`);
   return unwrapItem(res.data);
 };
