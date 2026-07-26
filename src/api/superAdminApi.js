@@ -329,6 +329,60 @@ export const deleteApiKey = async (id) => {
 };
 
 // ─── SUBSCRIPTIONS ──────────────────────────────────────────────
+export const getSubscriptions = async (params) => {
+  const res = await api.get('/admin/subscriptions/subscriptions', { params });
+  return unwrapItem(res.data);
+};
+
+export const getSubscriptionById = async (id) => {
+  const res = await api.get(`/admin/subscriptions/subscriptions/${id}`);
+  return unwrapItem(res.data);
+};
+
+export const getSchoolSubscription = async (schoolId) => {
+  const res = await api.get(`/admin/subscriptions/subscriptions/school/${schoolId}`);
+  return unwrapItem(res.data);
+};
+
+export const createSubscription = async (data) => {
+  const res = await api.post('/admin/subscriptions/subscriptions', data);
+  return unwrapItem(res.data);
+};
+
+export const updateSubscription = async (id, data) => {
+  const res = await api.patch(`/admin/subscriptions/subscriptions/${id}`, data);
+  return unwrapItem(res.data);
+};
+
+export const cancelSubscription = async (id) => {
+  const res = await api.post(`/admin/subscriptions/subscriptions/${id}/cancel`);
+  return unwrapItem(res.data);
+};
+
+// ─── PAYMENTS ────────────────────────────────────────────────────
+export const getPayments = async (params) => {
+  const res = await api.get('/admin/subscriptions/payments', { params });
+  return unwrapItem(res.data);
+};
+
+export const createPayment = async (data) => {
+  const res = await api.post('/admin/subscriptions/payments', data);
+  return unwrapItem(res.data);
+};
+
+// ─── INVOICES ────────────────────────────────────────────────────
+export const createInvoice = async (data) => {
+  const res = await api.post('/admin/subscriptions/invoices', data);
+  return unwrapItem(res.data);
+};
+
+// ─── REVENUE ANALYTICS ──────────────────────────────────────────
+export const getRevenueAnalytics = async (params) => {
+  const res = await api.get('/admin/subscriptions/revenue', { params });
+  return unwrapItem(res.data);
+};
+
+// ─── PLANS ──────────────────────────────────────────────────────
 export const getSubscriptionPlans = async () => {
   const res = await api.get('/admin/subscriptions/plans');
   return unwrapList(res.data);
@@ -346,56 +400,6 @@ export const updateSubscriptionPlan = async (id, data) => {
 
 export const deleteSubscriptionPlan = async (id) => {
   const res = await api.delete(`/admin/subscriptions/plans/${id}`);
-  return unwrapItem(res.data);
-};
-
-export const getSubscriptions = async (params) => {
-  const res = await api.get('/admin/subscriptions', { params });
-  return unwrapItem(res.data);
-};
-
-export const getSubscriptionById = async (id) => {
-  const res = await api.get(`/admin/subscriptions/${id}`);
-  return unwrapItem(res.data);
-};
-
-export const getSchoolSubscription = async (schoolId) => {
-  const res = await api.get(`/admin/subscriptions/school/${schoolId}`);
-  return unwrapItem(res.data);
-};
-
-export const createSubscription = async (data) => {
-  const res = await api.post('/admin/subscriptions', data);
-  return unwrapItem(res.data);
-};
-
-export const updateSubscription = async (id, data) => {
-  const res = await api.patch(`/admin/subscriptions/${id}`, data);
-  return unwrapItem(res.data);
-};
-
-export const cancelSubscription = async (id) => {
-  const res = await api.post(`/admin/subscriptions/${id}/cancel`);
-  return unwrapItem(res.data);
-};
-
-export const getPayments = async (params) => {
-  const res = await api.get('/admin/payments', { params });
-  return unwrapItem(res.data);
-};
-
-export const createPayment = async (data) => {
-  const res = await api.post('/admin/payments', data);
-  return unwrapItem(res.data);
-};
-
-export const createInvoice = async (data) => {
-  const res = await api.post('/admin/invoices', data);
-  return unwrapItem(res.data);
-};
-
-export const getRevenueAnalytics = async (params) => {
-  const res = await api.get('/admin/subscriptions/revenue', { params });
   return unwrapItem(res.data);
 };
 
@@ -668,4 +672,18 @@ export const deleteAdminUser = async (id) => {
 export const verifyUser = async (userId) => {
   const res = await api.patch(`/admin/users/${userId}/verify`);
   return unwrapItem(res.data);
+};
+
+// ─── ANALYTICS ──────────────────────────────────────────────────
+export const getPlatformAnalytics = async () => {
+  const res = await api.get('/admin/analytics');
+  return unwrapItem(res.data);
+};
+
+export const exportAnalytics = async (params) => {
+  const res = await api.get('/analytics/export', {
+    params,
+    responseType: 'blob',
+  });
+  return res.data;
 };
