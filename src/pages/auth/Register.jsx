@@ -14,6 +14,7 @@ const REGIONS = [
 export default function RegisterPage() {
   const { register } = useAuth();
   const { addToast } = useToast();
+  const navigate = useNavigate();
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -42,6 +43,32 @@ export default function RegisterPage() {
     e.preventDefault();
     setError('');
 
+    // Validation
+    if (!formData.schoolName.trim()) {
+      setError('School name is required');
+      return;
+    }
+
+    if (!formData.name.trim()) {
+      setError('Admin full name is required');
+      return;
+    }
+
+    if (!formData.email.trim()) {
+      setError('Email address is required');
+      return;
+    }
+
+    if (!formData.password) {
+      setError('Password is required');
+      return;
+    }
+
+    if (formData.password.length < 8) {
+      setError('Password must be at least 8 characters');
+      return;
+    }
+
     if (formData.password !== formData.confirmPassword) {
       setError('Passwords do not match');
       return;
@@ -52,9 +79,23 @@ export default function RegisterPage() {
       return;
     }
 
+    if (!formData.district.trim()) {
+      setError('District is required');
+      return;
+    }
+
     setLoading(true);
     try {
-      await register({
+      console.log('📝 Submitting registration:', {
+        name: formData.name,
+        email: formData.email,
+        schoolName: formData.schoolName,
+        region: formData.region,
+        district: formData.district,
+        plan: formData.plan
+      });
+
+      const result = await register({
         name: formData.name,
         email: formData.email,
         password: formData.password,
@@ -64,10 +105,26 @@ export default function RegisterPage() {
         address: formData.address,
         plan: formData.plan
       });
+
+      console.log('✅ Registration successful:', result);
+
+      // Show success state
       setIsSubmitted(true);
       addToast('Registration submitted successfully!', 'success');
+      
     } catch (err) {
-      setError(err.response?.data?.message || 'Registration failed. Please try again.');
+      console.error('❌ Registration error:', err);
+      
+      // Handle specific error cases
+      if (err.response?.status === 409) {
+        setError('An account with this email already exists. Please use a different email or login.');
+      } else if (err.response?.status === 422) {
+        setError(err.response?.data?.message || 'Please check your input and try again.');
+      } else if (err.response?.status === 500) {
+        setError('Server error. Please try again later.');
+      } else {
+        setError(err.response?.data?.message || 'Registration failed. Please try again.');
+      }
     } finally {
       setLoading(false);
     }
@@ -96,12 +153,18 @@ export default function RegisterPage() {
               <li>You will receive an email notification as soon as your account is approved and activated.</li>
             </ul>
           </div>
-          <div className="pt-4">
+          <div className="flex flex-col sm:flex-row gap-3 justify-center pt-4">
             <Link
               to="/verify-email"
               className="w-full sm:w-auto inline-flex bg-indigo-600 hover:bg-indigo-500 text-white font-semibold py-2.5 px-8 rounded-lg text-sm transition-all items-center justify-center shadow-lg shadow-indigo-500/20"
             >
               Verify Email
+            </Link>
+            <Link
+              to="/login"
+              className="w-full sm:w-auto inline-flex bg-white/10 hover:bg-white/20 text-white font-semibold py-2.5 px-8 rounded-lg text-sm transition-all items-center justify-center border border-white/10"
+            >
+              Go to Login
             </Link>
           </div>
         </div>
@@ -305,13 +368,17 @@ export default function RegisterPage() {
             disabled={loading}
             className="w-full bg-indigo-600 hover:bg-indigo-500 disabled:opacity-60 disabled:cursor-not-allowed text-white font-semibold py-3 px-4 rounded-lg text-sm transition-all flex items-center justify-center gap-2 shadow-lg shadow-indigo-500/20 mt-4"
           >
-            {loading && (
-              <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-              </svg>
+            {loading ? (
+              <>
+                <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                </svg>
+                Submitting Application…
+              </>
+            ) : (
+              'Submit Registration'
             )}
-            {loading ? 'Submitting Application…' : 'Submit Registration'}
           </button>
         </form>
 

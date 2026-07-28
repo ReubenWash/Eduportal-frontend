@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Save, Globe, Mail, Shield, ShieldAlert, Palette, Image, FileText } from 'lucide-react';
+import { Save, Globe, Mail, Shield, ShieldAlert, Palette, Image, FileText, Send, CheckCircle2, XCircle } from 'lucide-react';
 import { useToast } from '../../context/ToastContext';
 import { 
   getGlobalSettings, 
@@ -9,6 +9,7 @@ import {
   createIntegration, 
   getIntegrations 
 } from '../../api/superAdminApi';
+import api from '../../api/axios';
 
 export default function AdminSettings() {
   const { addToast } = useToast();
@@ -21,11 +22,16 @@ export default function AdminSettings() {
   const [maintenanceMode, setMaintenanceMode] = useState(false);
   
   // SMTP settings
-  const [smtpHost, setSmtpHost] = useState('smtp.sendgrid.net');
+  const [smtpHost, setSmtpHost] = useState('smtp-relay.brevo.com');
   const [smtpPort, setSmtpPort] = useState('587');
-  const [smtpUser, setSmtpUser] = useState('apikey');
-  const [smtpPass, setSmtpPass] = useState('SG.xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx');
+  const [smtpUser, setSmtpUser] = useState('');
+  const [smtpPass, setSmtpPass] = useState('');
   const [smtpIntegrationId, setSmtpIntegrationId] = useState(null);
+
+  // Test Email
+  const [testEmail, setTestEmail] = useState('');
+  const [testing, setTesting] = useState(false);
+  const [testStatus, setTestStatus] = useState(null); // 'success' | 'error' | null
 
   // Regional settings
   const [timeZone, setTimeZone] = useState('UTC');
@@ -112,6 +118,39 @@ export default function AdminSettings() {
     ));
   };
 
+  const handleTestEmail = async () => {
+    if (!testEmail) {
+      addToast('Please enter an email address to test', 'error');
+      return;
+    }
+
+    setTesting(true);
+    setTestStatus(null);
+
+    try {
+      const response = await api.post('/test/test-email', {
+        to: testEmail,
+        subject: 'SMTP Configuration Test - EduTrack JHS',
+        message: 'This is a test email from EduTrack JHS to verify your SMTP configuration. If you received this, your email settings are working correctly!'
+      });
+
+      setTestStatus('success');
+      addToast(`Test email sent successfully to ${testEmail}! Check your inbox.`, 'success');
+    } catch (error) {
+      setTestStatus('error');
+      const errorMsg = error.response?.data?.message || error.message || 'Failed to send test email';
+      addToast(`Test email failed: ${errorMsg}`, 'error');
+      console.error('Test email error:', error);
+    } finally {
+      setTesting(false);
+    }
+  };
+
+  const toggleMaintenance = () => {
+    setMaintenanceMode(!maintenanceMode);
+    addToast(maintenanceMode ? 'Maintenance mode disabled' : 'Maintenance mode enabled', 'info');
+  };
+
   const handleSave = async (e) => {
     e.preventDefault();
     setSaving(true);
@@ -126,6 +165,7 @@ export default function AdminSettings() {
         language,
         timeZone,
         kyc_requirements: JSON.stringify(kycDocs),
+        maintenanceMode,
       };
       
       await updateGlobalSettings(settingsPayload);
@@ -139,8 +179,8 @@ export default function AdminSettings() {
     try {
       // 2. Save SMTP settings via Integrations API
       const integrationData = {
-        name: 'SendGrid Email',
-        description: 'Email delivery service',
+        name: 'Brevo Email',
+        description: 'Email delivery service via Brevo SMTP',
         isEnabled: true,
         config: {
           host: smtpHost,
@@ -170,8 +210,12 @@ export default function AdminSettings() {
     }
 
     try {
-      // 3. Sync to ENV (optional - for backward compatibility)
+      // 3. Sync to ENV (for backward compatibility)
       await updateEnvConfig({
+        BREVO_SMTP_HOST: smtpHost,
+        BREVO_SMTP_PORT: smtpPort,
+        BREVO_SMTP_USER: smtpUser,
+        BREVO_SMTP_PASSWORD: smtpPass,
         SMTP_HOST: smtpHost,
         SMTP_PORT: smtpPort,
         SMTP_USER: smtpUser,
@@ -293,14 +337,36 @@ export default function AdminSettings() {
                 </button>
               </div>
             </div>
+            <div className="flex items-center justify-between pt-2 border-t border-gray-100">
+              <div>
+                <p className="text-sm font-medium text-gray-900">Maintenance Mode</p>
+                <p className="text-xs text-gray-500">Put the platform in maintenance mode</p>
+              </div>
+              <button
+                type="button"
+                onClick={toggleMaintenance}
+                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                  maintenanceMode ? 'bg-amber-600' : 'bg-gray-300'
+                }`}
+              >
+                <span
+                  className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                    maintenanceMode ? 'translate-x-6' : 'translate-x-1'
+                  }`}
+                />
+              </button>
+            </div>
           </div>
 
           {/* SMTP Configuration */}
           <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6 space-y-4 lg:col-span-2">
             <h2 className="text-sm font-semibold text-gray-900 flex items-center gap-2 pb-2 border-b border-gray-100">
-              <Mail className="h-4 w-4 text-emerald-500" /> SMTP Configuration (Gmail Supported)
+              <Mail className="h-4 w-4 text-emerald-500" /> SMTP Configuration
             </h2>
-            <p className="text-xs text-gray-500 mb-3">If using Gmail, use `smtp.gmail.com` on port `587` or `465`, and generate an App Password in your Google Account security settings.</p>
+            <p className="text-xs text-gray-500 mb-3">
+              Configure SMTP settings for sending emails. For Brevo, use <code className="bg-gray-100 px-1 rounded">smtp-relay.brevo.com</code> on port <code className="bg-gray-100 px-1 rounded">587</code>.
+            </p>
+            
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-semibold text-gray-500 mb-1.5">SMTP Host</label>
@@ -309,6 +375,7 @@ export default function AdminSettings() {
                   value={smtpHost}
                   onChange={e => setSmtpHost(e.target.value)}
                   className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400"
+                  placeholder="smtp-relay.brevo.com"
                 />
               </div>
               <div>
@@ -318,6 +385,7 @@ export default function AdminSettings() {
                   value={smtpPort}
                   onChange={e => setSmtpPort(e.target.value)}
                   className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400"
+                  placeholder="587"
                 />
               </div>
               <div>
@@ -327,6 +395,7 @@ export default function AdminSettings() {
                   value={smtpUser}
                   onChange={e => setSmtpUser(e.target.value)}
                   className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400"
+                  placeholder="your-email@example.com"
                 />
               </div>
               <div>
@@ -336,8 +405,56 @@ export default function AdminSettings() {
                   value={smtpPass}
                   onChange={e => setSmtpPass(e.target.value)}
                   className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 font-mono"
+                  placeholder="Your SMTP password or API key"
                 />
               </div>
+            </div>
+
+            {/* Test Email Section */}
+            <div className="mt-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
+              <h3 className="text-sm font-medium text-gray-900 mb-3 flex items-center gap-2">
+                <Send className="h-4 w-4 text-indigo-600" />
+                Test Email Configuration
+              </h3>
+              <div className="flex flex-col sm:flex-row items-center gap-3">
+                <input
+                  type="email"
+                  value={testEmail}
+                  onChange={e => setTestEmail(e.target.value)}
+                  placeholder="Enter email to test..."
+                  className="w-full sm:flex-1 text-sm border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400"
+                />
+                <button
+                  type="button"
+                  onClick={handleTestEmail}
+                  disabled={testing}
+                  className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-500 rounded-lg transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+                >
+                  {testing ? (
+                    <>
+                      <span className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full" />
+                      Sending...
+                    </>
+                  ) : (
+                    <>
+                      <Send className="h-4 w-4" />
+                      Send Test Email
+                    </>
+                  )}
+                </button>
+              </div>
+              {testStatus === 'success' && (
+                <p className="mt-2 text-sm text-emerald-600 flex items-center gap-1">
+                  <CheckCircle2 className="h-4 w-4" />
+                  Test email sent successfully! Check your inbox.
+                </p>
+              )}
+              {testStatus === 'error' && (
+                <p className="mt-2 text-sm text-red-600 flex items-center gap-1">
+                  <XCircle className="h-4 w-4" />
+                  Test email failed. Check your SMTP settings and try again.
+                </p>
+              )}
             </div>
           </div>
 

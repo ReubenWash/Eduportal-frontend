@@ -1,18 +1,28 @@
 import { useState, useEffect } from 'react';
 import PageHeader from '../../components/common/PageHeader';
-import { Monitor, Layout, Image as ImageIcon, Settings, Plus, Save, Edit3, X, Eye } from 'lucide-react';
+import { 
+  Monitor, Layout, Image as ImageIcon, Settings, Plus, Save, 
+  Edit3, X, Eye, Trash2, PlusCircle, ChevronUp, ChevronDown,
+  Quote, HelpCircle, CreditCard, Palette, Globe, Link, Mail, 
+  Facebook, Twitter, Instagram, Youtube, Github, Menu as MenuIcon
+} from 'lucide-react';
 import Button from '../../components/ui/Button';
-import { useToast } from '../../context/ToastContext';
+import Input from '../../components/ui/Input';
 import Modal from '../../components/ui/Modal';
-import { getGlobalSettings, updateGlobalSettings } from '../../api/superAdminApi';
+import { useToast } from '../../context/ToastContext';
+import api from '../../api/axios';
+
+const COLORS = ['#4F46E5', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899', '#06B6D4', '#F97316'];
 
 export default function AdminCMS() {
   const { addToast } = useToast();
-  const [activeSection, setActiveSection] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-
-  // Default states
+  const [activeSection, setActiveSection] = useState(null);
+  const [editingItem, setEditingItem] = useState(null);
+  const [editingIndex, setEditingIndex] = useState(null);
+  
+  // ─── State ────────────────────────────────────────────────────
   const [heroForm, setHeroForm] = useState({
     heroHeadline: 'Run your school.',
     heroHeadlineHighlight: 'Not paperwork.',
@@ -27,201 +37,527 @@ export default function AdminCMS() {
     { number: '99.9%', label: 'Platform uptime' },
   ]);
 
-  const defaultPages = {
-    'Team': { title: 'Our Team', subtitle: 'Meet the people building EduPortal.', content: '<h3>Founders</h3><p>EduPortal was built by a group of passionate educators and engineers...</p>' },
-    'Changelog': { title: 'Changelog', subtitle: 'See what\'s new in EduPortal.', content: '<h3>v1.0.0</h3><ul><li>Initial release of the school management dashboard.</li><li>Added core modules for Enrollments, Scores, and Attendance.</li></ul>' },
-    'Roadmap': { title: 'Roadmap', subtitle: 'Our planned features and upcoming releases.', content: '<h3>Q3 2026</h3><ul><li>Mobile Application for Parents</li><li>AI-driven student performance predictions</li></ul>' },
-    'Documentation': { title: 'Documentation', subtitle: 'Guides and tutorials for using EduPortal.', content: '<h3>Getting Started</h3><p>Welcome to the EduPortal docs. Here you will find step-by-step guides for onboarding your school...</p>' },
-    'Contact Us': { title: 'Contact Us', subtitle: 'Get in touch with our support team.', content: '<p><strong>Email:</strong> support@eduportal.com</p><p><strong>Phone:</strong> +233 24 000 0000</p><p><strong>Office:</strong> Accra, Ghana</p><p>We aim to respond to all inquiries within 24 hours.</p>' },
-    'System Status': { title: 'System Status', subtitle: 'All systems are fully operational.', content: '<ul><li><strong>Database:</strong> Operational (99.99% uptime)</li><li><strong>API:</strong> Operational (99.98% uptime)</li><li><strong>Email Delivery:</strong> Operational</li></ul>' },
-    'Community': { title: 'Community', subtitle: 'Join the EduPortal administrator community.', content: '<p>Join thousands of other school administrators in our private forum to share tips, configurations, and best practices.</p><button style="background: #4F46E5; color: white; padding: 8px 16px; border-radius: 6px; border: none; margin-top: 12px; cursor: pointer;">Join the Slack Channel</button>' },
-    'Privacy Policy': { title: 'Privacy Policy', subtitle: 'How we collect, use, and protect your data.', content: '<h3>Data Collection</h3><p>We only collect data necessary for operating the school platform...</p>' },
-    'Terms of Service': { title: 'Terms of Service', subtitle: 'The rules and guidelines for using our platform.', content: '<h3>1. Acceptance of Terms</h3><p>By registering a school on EduPortal, you agree to...</p>' },
-    'Data Processing': { title: 'Data Processing', subtitle: 'Information on data handling and GDPR compliance.', content: '<h3>Security</h3><p>All student records are encrypted at rest using industry-standard protocols...</p>' },
-  };
-  
-  const [publicPages, setPublicPages] = useState(defaultPages);
+  const [testimonials, setTestimonials] = useState([
+    {
+      quote: "We used to spend three weeks compiling report cards. With EduPortal, the whole process takes two days. Teachers submit scores, I approve, and parents get a PDF.",
+      author: "Abena Owusu",
+      role: "Headmistress, Holy Child School",
+      initials: "AO",
+      color: "#4F46E5"
+    },
+    {
+      quote: "The attendance analytics alone are worth it. I can see which classes have the worst absenteeism and act on it before the term ends — not after.",
+      author: "Kwame Darko",
+      role: "Deputy Head, Presec Legon",
+      initials: "KD",
+      color: "#10B981"
+    },
+    {
+      quote: "As a parent, I used to wait weeks to find out how my daughter was doing. Now I get her report on my phone the same day results are released.",
+      author: "Efua Boateng",
+      role: "Parent, Achimota School",
+      initials: "EB",
+      color: "#F59E0B"
+    }
+  ]);
 
+  const [faqs, setFaqs] = useState([
+    { question: "How long does it take to set up my school?", answer: "You can set up your school in under 15 minutes. Register, add your staff, and start entering data immediately." },
+    { question: "Can I import existing student data?", answer: "Yes, you can bulk import students, staff, and guardians using Excel/CSV files." },
+    { question: "Is my data secure?", answer: "All data is encrypted at rest and in transit. We use industry-standard security practices." }
+  ]);
+
+  const [plans, setPlans] = useState([
+    {
+      name: "Basic",
+      price: "Free",
+      period: "/ term",
+      desc: "For small schools getting started. Up to 150 students.",
+      popular: false,
+      features: ["Up to 150 students", "Scores & grading", "Attendance tracking", "PDF report cards"],
+      disabled: ["Analytics dashboard", "Email reports to parents"]
+    },
+    {
+      name: "Standard",
+      price: "GHS 299",
+      period: "/ term",
+      desc: "For growing schools. Up to 800 students, full feature set.",
+      popular: true,
+      features: ["Up to 800 students", "Scores & grading", "Attendance tracking", "PDF report cards", "Analytics dashboard", "Email reports to parents"],
+      disabled: []
+    },
+    {
+      name: "Premium",
+      price: "GHS 599",
+      period: "/ term",
+      desc: "For large institutions. Unlimited students, priority support.",
+      popular: false,
+      features: ["Unlimited students", "Everything in Standard", "Bulk import & export", "Priority email support", "Custom report branding", "Dedicated account manager"],
+      disabled: []
+    }
+  ]);
+
+  const [footerData, setFooterData] = useState({
+    tagline: "A school management platform built specifically for schools in Ghana and across West Africa.",
+    links: [
+      { label: "Features", url: "#features" },
+      { label: "Pricing", url: "#plans" },
+      { label: "Changelog", url: "/changelog" },
+      { label: "Roadmap", url: "/roadmap" },
+      { label: "Team", url: "/team" }
+    ],
+    socialLinks: [
+      { platform: "Twitter", url: "https://twitter.com/eduportal" },
+      { platform: "LinkedIn", url: "https://linkedin.com/company/eduportal" },
+      { platform: "Facebook", url: "https://facebook.com/eduportal" },
+      { platform: "YouTube", url: "https://youtube.com/eduportal" },
+      { platform: "GitHub", url: "https://github.com/eduportal" }
+    ],
+    copyright: `© ${new Date().getFullYear()} EduPortal. All rights reserved.`
+  });
+
+  const [theme, setTheme] = useState({
+    primaryColor: '#4F46E5',
+    secondaryColor: '#1A3C5E',
+    fontFamily: 'Inter',
+    buttonStyle: 'rounded',
+    logoUrl: null,
+    faviconUrl: null
+  });
+
+  const [publicPages, setPublicPages] = useState({});
+
+  // ─── Load Data ─────────────────────────────────────────────────
   useEffect(() => {
-    getGlobalSettings().then((settings) => {
-      const cmsLanding = settings?.cms_landing ? JSON.parse(settings.cms_landing) : {};
-      const cmsPages = settings?.cms_pages ? JSON.parse(settings.cms_pages) : {};
-      
-      if (cmsLanding.heroHeadline) {
-        setHeroForm({
-          heroHeadline: cmsLanding.heroHeadline,
-          heroHeadlineHighlight: cmsLanding.heroHeadlineHighlight,
-          heroSubtitle: cmsLanding.heroSubtitle,
-          heroTrustText: cmsLanding.heroTrustText,
-        });
-      }
-      if (cmsLanding.stats) {
-        setStatsForm(cmsLanding.stats);
-      }
-      if (Object.keys(cmsPages).length > 0) {
-        setPublicPages({ ...defaultPages, ...cmsPages });
-      }
-    }).catch(err => {
-      console.error('Failed to load CMS settings:', err);
-    }).finally(() => {
-      setLoading(false);
-    });
+    loadData();
   }, []);
 
-  const updatePublicPage = (pageKey, field, value) => {
-    setPublicPages(prev => ({ ...prev, [pageKey]: { ...prev[pageKey], [field]: value } }));
+  const loadData = async () => {
+    setLoading(true);
+    try {
+      // Load landing content
+      const landingRes = await api.get('/admin/cms/landing');
+      if (landingRes.data?.data) {
+        const data = landingRes.data.data;
+        if (data.heroHeadline) setHeroForm(prev => ({ ...prev, ...data }));
+        if (data.stats) setStatsForm(data.stats);
+        if (data.testimonials) setTestimonials(data.testimonials);
+        if (data.faqs) setFaqs(data.faqs);
+        if (data.plans) setPlans(data.plans);
+        if (data.footerTagline) setFooterData(prev => ({ ...prev, tagline: data.footerTagline }));
+      }
+
+      // Load theme
+      const themeRes = await api.get('/admin/cms/theme');
+      if (themeRes.data?.data) {
+        setTheme(prev => ({ ...prev, ...themeRes.data.data }));
+      }
+
+      // Load public pages
+      const settings = await getGlobalSettings();
+      if (settings?.cms_pages) {
+        setPublicPages(JSON.parse(settings.cms_pages));
+      }
+    } catch (err) {
+      console.error('Failed to load CMS data:', err);
+      addToast('Failed to load CMS content', 'error');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleSaveCMS = async () => {
+  // ─── Save Functions ────────────────────────────────────────────
+  const saveHeroSection = async () => {
     setSaving(true);
     try {
-      const payload = {};
-      if (activeSection === 'Hero Section' || activeSection === 'Stats / Numbers') {
-        const landingContent = {
-          ...heroForm,
-          stats: statsForm,
-        };
-        payload.cms_landing = JSON.stringify(landingContent);
-      } else if (activeSection === 'Public Pages') {
-        payload.cms_pages = JSON.stringify(publicPages);
-      }
-      
-      if (Object.keys(payload).length > 0) {
-        await updateGlobalSettings(payload);
-      }
-      addToast('Section updated successfully', 'success');
-      closeEditor();
+      await api.patch('/admin/cms/sections/hero/content', { 
+        content: {
+          heading: heroForm.heroHeadline,
+          highlight: heroForm.heroHeadlineHighlight,
+          subtitle: heroForm.heroSubtitle,
+          trustBadge: heroForm.heroTrustText
+        }
+      });
+      addToast('Hero section updated successfully', 'success');
+      setActiveSection(null);
     } catch (err) {
-      addToast('Failed to save settings', 'error');
+      addToast('Failed to save hero section', 'error');
     } finally {
       setSaving(false);
     }
   };
 
-  const openEditor = (section) => setActiveSection(section);
-  const closeEditor = () => setActiveSection(null);
+  const saveStats = async () => {
+    setSaving(true);
+    try {
+      await api.patch('/admin/cms/sections/stats/content', { 
+        content: { stats: statsForm }
+      });
+      addToast('Stats updated successfully', 'success');
+      setActiveSection(null);
+    } catch (err) {
+      addToast('Failed to save stats', 'error');
+    } finally {
+      setSaving(false);
+    }
+  };
 
+  const saveTestimonials = async () => {
+    setSaving(true);
+    try {
+      await api.patch('/admin/cms/sections/testimonials/content', { 
+        content: { testimonials }
+      });
+      addToast('Testimonials updated successfully', 'success');
+      setActiveSection(null);
+    } catch (err) {
+      addToast('Failed to save testimonials', 'error');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const saveFaqs = async () => {
+    setSaving(true);
+    try {
+      await api.patch('/admin/cms/sections/faq/content', { 
+        content: { faqs }
+      });
+      addToast('FAQ updated successfully', 'success');
+      setActiveSection(null);
+    } catch (err) {
+      addToast('Failed to save FAQ', 'error');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const savePlans = async () => {
+    setSaving(true);
+    try {
+      await api.patch('/admin/cms/sections/pricing/content', { 
+        content: { plans }
+      });
+      addToast('Pricing plans updated successfully', 'success');
+      setActiveSection(null);
+    } catch (err) {
+      addToast('Failed to save pricing plans', 'error');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const saveFooter = async () => {
+    setSaving(true);
+    try {
+      await api.patch('/admin/cms/footer', footerData);
+      addToast('Footer updated successfully', 'success');
+      setActiveSection(null);
+    } catch (err) {
+      addToast('Failed to save footer', 'error');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const saveTheme = async () => {
+    setSaving(true);
+    try {
+      await api.patch('/admin/cms/theme', theme);
+      addToast('Theme updated successfully', 'success');
+      setActiveSection(null);
+    } catch (err) {
+      addToast('Failed to save theme', 'error');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // ─── Render Editors ────────────────────────────────────────────
   const renderEditorContent = () => {
     switch (activeSection) {
       case 'Hero Section':
-        return (
-          <div className="space-y-4 pt-2">
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Main Headline</label>
-              <input type="text" className="mt-1 w-full border border-gray-200 rounded-lg px-3 py-2 text-sm" value={heroForm.heroHeadline} onChange={e => setHeroForm(f => ({...f, heroHeadline: e.target.value}))} />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Headline Highlight (coloured part)</label>
-              <input type="text" className="mt-1 w-full border border-gray-200 rounded-lg px-3 py-2 text-sm" value={heroForm.heroHeadlineHighlight} onChange={e => setHeroForm(f => ({...f, heroHeadlineHighlight: e.target.value}))} />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Subtitle Text</label>
-              <textarea rows={3} className="mt-1 w-full border border-gray-200 rounded-lg px-3 py-2 text-sm" value={heroForm.heroSubtitle} onChange={e => setHeroForm(f => ({...f, heroSubtitle: e.target.value}))} />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Trust Badge Text</label>
-              <input type="text" className="mt-1 w-full border border-gray-200 rounded-lg px-3 py-2 text-sm" value={heroForm.heroTrustText} onChange={e => setHeroForm(f => ({...f, heroTrustText: e.target.value}))} />
-            </div>
-          </div>
-        );
+        return renderHeroEditor();
       case 'Stats / Numbers':
-        return (
-          <div className="space-y-4 pt-2">
-            <p className="text-sm text-gray-500">Edit the 4 stat numbers shown in the indigo banner on the landing page.</p>
-            {statsForm.map((stat, i) => (
-              <div key={i} className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-semibold text-gray-600 mb-1">Number / Value</label>
-                  <input type="text" className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm" value={stat.number} onChange={e => setStatsForm(s => s.map((x, j) => j === i ? {...x, number: e.target.value} : x))} />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-gray-600 mb-1">Label</label>
-                  <input type="text" className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm" value={stat.label} onChange={e => setStatsForm(s => s.map((x, j) => j === i ? {...x, label: e.target.value} : x))} />
-                </div>
-              </div>
-            ))}
-          </div>
-        );
-      case 'Features Section':
-        return (
-          <div className="space-y-4 pt-2">
-             <div className="flex justify-end"><Button size="sm" icon={Plus} onClick={() => addToast('Feature creation coming soon.', 'info')}>Add Feature</Button></div>
-             <div className="space-y-3">
-               {[
-                 { title: 'Role-based Access', desc: 'Secure portals for Admins, Teachers, Students.' },
-                 { title: 'Instant Report Cards', desc: 'Automated grading and transcript generation.' },
-                 { title: 'Parent Engagement', desc: 'Keep parents informed with real-time updates.' },
-               ].map((f, i) => (
-                 <div key={i} className="flex gap-3 border border-gray-200 p-3 rounded-lg bg-gray-50 items-start">
-                   <div className="p-2 bg-indigo-100 rounded text-indigo-600"><Layout className="h-4 w-4" /></div>
-                   <div className="flex-1">
-                     <input type="text" className="w-full bg-transparent border-b border-gray-300 focus:border-indigo-500 focus:outline-none text-sm font-semibold text-gray-900 mb-1 pb-1" defaultValue={f.title} />
-                     <textarea className="w-full bg-transparent border-b border-gray-300 focus:border-indigo-500 focus:outline-none text-sm text-gray-600 resize-none" rows={2} defaultValue={f.desc} />
-                   </div>
-                 </div>
-               ))}
-             </div>
-          </div>
-        );
-      case 'Pricing Section':
-        return (
-          <div className="space-y-4 pt-2">
-            <p className="text-sm text-gray-500 mb-4">Edit subscription plans displayed on the landing page.</p>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              {['Basic', 'Standard', 'Premium'].map(plan => (
-                <div key={plan} className="border border-gray-200 rounded-lg p-4 flex flex-col justify-between">
-                  <div>
-                    <p className="font-bold text-gray-900">{plan}</p>
-                    <input type="text" className="mt-2 w-full border border-gray-200 rounded px-2 py-1 text-sm font-bold" defaultValue={plan === 'Basic' ? '$0' : plan === 'Standard' ? '$49' : '$99'} />
-                    <p className="text-xs text-gray-500 mt-1">per month</p>
-                  </div>
-                  <Button variant="outline" size="sm" className="mt-4 w-full" onClick={() => addToast('Pricing editor coming soon.', 'info')}>Edit Features</Button>
-                </div>
-              ))}
-            </div>
-          </div>
-        );
+        return renderStatsEditor();
       case 'Testimonials & FAQ':
+        return renderTestimonialsEditor();
+      case 'Pricing Section':
+        return renderPricingEditor();
       case 'Footer & Theme':
-        return (
-          <div className="py-8 text-center text-gray-500">
-            <Settings className="h-10 w-10 mx-auto mb-3 text-gray-300" />
-            <p className="text-sm">Configuration options for {activeSection} will appear here.</p>
-          </div>
-        );
-      case 'Public Pages':
-        return (
-          <div className="space-y-4 pt-2">
-            <p className="text-sm text-gray-500 mb-4">Edit the content of the generic public pages linked in the footer.</p>
-            <div className="space-y-4 max-h-96 overflow-y-auto pr-2">
-              {Object.entries(publicPages).map(([pageKey, pageData]) => (
-                <div key={pageKey} className="border border-gray-200 rounded-lg p-4 bg-gray-50">
-                  <div className="flex items-center justify-between mb-3">
-                    <h4 className="font-semibold text-gray-900">{pageKey}</h4>
-                    <span className="text-xs font-medium text-indigo-600 bg-indigo-50 px-2 py-1 rounded">/{pageKey.toLowerCase().replace(/ /g, '-')}</span>
-                  </div>
-                  <div className="space-y-3">
-                    <div>
-                      <label className="block text-xs font-medium text-gray-700 mb-1">Page Title</label>
-                      <input type="text" className="w-full border border-gray-200 rounded px-3 py-1.5 text-sm" value={pageData.title} onChange={e => updatePublicPage(pageKey, 'title', e.target.value)} />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-medium text-gray-700 mb-1">Page Subtitle</label>
-                      <input type="text" className="w-full border border-gray-200 rounded px-3 py-1.5 text-sm" value={pageData.subtitle} onChange={e => updatePublicPage(pageKey, 'subtitle', e.target.value)} />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-medium text-gray-700 mb-1">Page Content (HTML)</label>
-                      <textarea className="w-full border border-gray-200 rounded px-3 py-2 text-sm font-mono h-24" value={pageData.content} onChange={e => updatePublicPage(pageKey, 'content', e.target.value)} />
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        );
-      default: return null;
+        return renderFooterThemeEditor();
+      default:
+        return <div className="py-8 text-center text-gray-500">Select a section to edit</div>;
     }
   };
+
+  // ─── Hero Editor ──────────────────────────────────────────────
+  const renderHeroEditor = () => (
+    <div className="space-y-4 pt-2">
+      <Input label="Main Headline" value={heroForm.heroHeadline} onChange={e => setHeroForm(f => ({...f, heroHeadline: e.target.value}))} />
+      <Input label="Headline Highlight (coloured part)" value={heroForm.heroHeadlineHighlight} onChange={e => setHeroForm(f => ({...f, heroHeadlineHighlight: e.target.value}))} />
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1.5">Subtitle Text</label>
+        <textarea
+          rows={3}
+          value={heroForm.heroSubtitle}
+          onChange={e => setHeroForm(f => ({...f, heroSubtitle: e.target.value}))}
+          className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-400 transition-all"
+        />
+      </div>
+      <Input label="Trust Badge Text" value={heroForm.heroTrustText} onChange={e => setHeroForm(f => ({...f, heroTrustText: e.target.value}))} />
+      <div className="flex justify-end gap-2 pt-4 border-t">
+        <Button variant="outline" onClick={() => setActiveSection(null)}>Cancel</Button>
+        <Button onClick={saveHeroSection} loading={saving}>Save Hero</Button>
+      </div>
+    </div>
+  );
+
+  // ─── Stats Editor ─────────────────────────────────────────────
+  const renderStatsEditor = () => (
+    <div className="space-y-4 pt-2">
+      <p className="text-sm text-gray-500">Edit the 4 stat numbers shown on the landing page.</p>
+      {statsForm.map((stat, i) => (
+        <div key={i} className="grid grid-cols-2 gap-3">
+          <Input label="Number / Value" value={stat.number} onChange={e => setStatsForm(s => s.map((x, j) => j === i ? {...x, number: e.target.value} : x))} />
+          <Input label="Label" value={stat.label} onChange={e => setStatsForm(s => s.map((x, j) => j === i ? {...x, label: e.target.value} : x))} />
+        </div>
+      ))}
+      <div className="flex justify-end gap-2 pt-4 border-t">
+        <Button variant="outline" onClick={() => setActiveSection(null)}>Cancel</Button>
+        <Button onClick={saveStats} loading={saving}>Save Stats</Button>
+      </div>
+    </div>
+  );
+
+  // ─── Testimonials Editor ──────────────────────────────────────
+  const renderTestimonialsEditor = () => {
+    const addTestimonial = () => {
+      setTestimonials([...testimonials, { quote: 'New testimonial...', author: 'Author Name', role: 'Role, School', initials: 'AN', color: '#4F46E5' }]);
+    };
+
+    const updateTestimonial = (index, field, value) => {
+      const updated = [...testimonials];
+      updated[index][field] = value;
+      setTestimonials(updated);
+    };
+
+    const removeTestimonial = (index) => {
+      setTestimonials(testimonials.filter((_, i) => i !== index));
+    };
+
+    return (
+      <div className="space-y-4 pt-2">
+        <div className="flex justify-between items-center">
+          <p className="text-sm text-gray-500">Manage testimonials shown on the landing page.</p>
+          <Button size="sm" icon={Plus} onClick={addTestimonial}>Add Testimonial</Button>
+        </div>
+        <div className="space-y-4 max-h-96 overflow-y-auto pr-2">
+          {testimonials.map((t, i) => (
+            <div key={i} className="border border-gray-200 rounded-lg p-4 bg-gray-50">
+              <div className="flex justify-between mb-3">
+                <span className="text-sm font-semibold text-gray-700">Testimonial #{i + 1}</span>
+                <button onClick={() => removeTestimonial(i)} className="text-red-500 hover:text-red-600"><X className="h-4 w-4" /></button>
+              </div>
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Quote</label>
+                  <textarea
+                    rows={2}
+                    value={t.quote}
+                    onChange={e => updateTestimonial(i, 'quote', e.target.value)}
+                    className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-400 transition-all"
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <Input label="Author" value={t.author} onChange={e => updateTestimonial(i, 'author', e.target.value)} />
+                  <Input label="Role" value={t.role} onChange={e => updateTestimonial(i, 'role', e.target.value)} />
+                </div>
+                <div className="flex gap-3">
+                  <Input label="Initials" value={t.initials} onChange={e => updateTestimonial(i, 'initials', e.target.value)} className="w-24" />
+                  <div className="flex-1">
+                    <label className="block text-xs font-medium text-gray-700 mb-1">Color</label>
+                    <div className="flex gap-1 flex-wrap">
+                      {COLORS.map(c => (
+                        <button key={c} className={`h-6 w-6 rounded-full border-2 ${t.color === c ? 'border-indigo-600' : 'border-transparent'}`} style={{ background: c }} onClick={() => updateTestimonial(i, 'color', c)} />
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+        <div className="flex justify-end gap-2 pt-4 border-t">
+          <Button variant="outline" onClick={() => setActiveSection(null)}>Cancel</Button>
+          <Button onClick={saveTestimonials} loading={saving}>Save Testimonials</Button>
+        </div>
+      </div>
+    );
+  };
+
+  // ─── Pricing Editor ────────────────────────────────────────────
+  const renderPricingEditor = () => {
+    const addPlan = () => {
+      setPlans([...plans, { name: 'New Plan', price: 'Free', period: '/ term', desc: 'Plan description', popular: false, features: [], disabled: [] }]);
+    };
+
+    const updatePlan = (index, field, value) => {
+      const updated = [...plans];
+      updated[index][field] = value;
+      setPlans(updated);
+    };
+
+    const removePlan = (index) => {
+      setPlans(plans.filter((_, i) => i !== index));
+    };
+
+    const addFeature = (planIndex, type) => {
+      const updated = [...plans];
+      updated[planIndex][type].push('');
+      setPlans(updated);
+    };
+
+    const updateFeature = (planIndex, type, featureIndex, value) => {
+      const updated = [...plans];
+      updated[planIndex][type][featureIndex] = value;
+      setPlans(updated);
+    };
+
+    const removeFeature = (planIndex, type, featureIndex) => {
+      const updated = [...plans];
+      updated[planIndex][type] = updated[planIndex][type].filter((_, i) => i !== featureIndex);
+      setPlans(updated);
+    };
+
+    return (
+      <div className="space-y-4 pt-2">
+        <div className="flex justify-between items-center">
+          <p className="text-sm text-gray-500">Manage subscription plans shown on the landing page.</p>
+          <Button size="sm" icon={Plus} onClick={addPlan}>Add Plan</Button>
+        </div>
+        <div className="space-y-4 max-h-96 overflow-y-auto pr-2">
+          {plans.map((plan, i) => (
+            <div key={i} className="border border-gray-200 rounded-lg p-4 bg-gray-50">
+              <div className="flex justify-between items-center mb-3">
+                <span className="text-sm font-semibold text-gray-700">{plan.name}</span>
+                <button onClick={() => removePlan(i)} className="text-red-500 hover:text-red-600"><X className="h-4 w-4" /></button>
+              </div>
+              <div className="grid grid-cols-3 gap-3">
+                <Input label="Plan Name" value={plan.name} onChange={e => updatePlan(i, 'name', e.target.value)} />
+                <Input label="Price" value={plan.price} onChange={e => updatePlan(i, 'price', e.target.value)} />
+                <Input label="Period" value={plan.period} onChange={e => updatePlan(i, 'period', e.target.value)} />
+              </div>
+              <Input label="Description" value={plan.desc} onChange={e => updatePlan(i, 'desc', e.target.value)} />
+              <div className="flex items-center gap-2 mt-2">
+                <input type="checkbox" checked={plan.popular} onChange={e => updatePlan(i, 'popular', e.target.checked)} className="rounded text-indigo-600" />
+                <label className="text-sm text-gray-700">Popular plan (highlighted)</label>
+              </div>
+              <div className="mt-3">
+                <div className="flex justify-between items-center mb-2">
+                  <label className="text-xs font-medium text-gray-700">Features</label>
+                  <Button size="sm" variant="outline" onClick={() => addFeature(i, 'features')}>+ Add Feature</Button>
+                </div>
+                {plan.features.map((f, fi) => (
+                  <div key={fi} className="flex gap-2 mb-1">
+                    <input className="flex-1 border border-gray-200 rounded px-2 py-1 text-sm" value={f} onChange={e => updateFeature(i, 'features', fi, e.target.value)} placeholder="Feature" />
+                    <button onClick={() => removeFeature(i, 'features', fi)} className="text-red-400 hover:text-red-500"><X className="h-4 w-4" /></button>
+                  </div>
+                ))}
+              </div>
+              <div className="mt-3">
+                <div className="flex justify-between items-center mb-2">
+                  <label className="text-xs font-medium text-gray-700">Disabled Features (show as unavailable)</label>
+                  <Button size="sm" variant="outline" onClick={() => addFeature(i, 'disabled')}>+ Add Disabled</Button>
+                </div>
+                {plan.disabled.map((f, fi) => (
+                  <div key={fi} className="flex gap-2 mb-1">
+                    <input className="flex-1 border border-gray-200 rounded px-2 py-1 text-sm" value={f} onChange={e => updateFeature(i, 'disabled', fi, e.target.value)} placeholder="Disabled feature" />
+                    <button onClick={() => removeFeature(i, 'disabled', fi)} className="text-red-400 hover:text-red-500"><X className="h-4 w-4" /></button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+        <div className="flex justify-end gap-2 pt-4 border-t">
+          <Button variant="outline" onClick={() => setActiveSection(null)}>Cancel</Button>
+          <Button onClick={savePlans} loading={saving}>Save Plans</Button>
+        </div>
+      </div>
+    );
+  };
+
+  // ─── Footer & Theme Editor ────────────────────────────────────
+  const renderFooterThemeEditor = () => {
+    return (
+      <div className="space-y-4 pt-2 max-h-96 overflow-y-auto pr-2">
+        <h3 className="font-semibold text-gray-900">Footer Settings</h3>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1.5">Footer Tagline</label>
+          <textarea
+            rows={2}
+            value={footerData.tagline}
+            onChange={e => setFooterData(f => ({...f, tagline: e.target.value}))}
+            className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-400 transition-all"
+          />
+        </div>
+        
+        <div className="mt-4">
+          <label className="block text-xs font-medium text-gray-700 mb-2">Footer Links</label>
+          {footerData.links.map((link, i) => (
+            <div key={i} className="flex gap-2 mb-2">
+              <input className="flex-1 border border-gray-200 rounded px-2 py-1 text-sm" value={link.label} onChange={e => setFooterData(f => ({...f, links: f.links.map((l, j) => j === i ? {...l, label: e.target.value} : l)}))} placeholder="Label" />
+              <input className="flex-1 border border-gray-200 rounded px-2 py-1 text-sm" value={link.url} onChange={e => setFooterData(f => ({...f, links: f.links.map((l, j) => j === i ? {...l, url: e.target.value} : l)}))} placeholder="URL" />
+              <button onClick={() => setFooterData(f => ({...f, links: f.links.filter((_, j) => j !== i)}))} className="text-red-400 hover:text-red-500"><X className="h-4 w-4" /></button>
+            </div>
+          ))}
+          <Button size="sm" variant="outline" onClick={() => setFooterData(f => ({...f, links: [...f.links, { label: '', url: '' }]}))}>+ Add Link</Button>
+        </div>
+
+        <div className="mt-4">
+          <h3 className="font-semibold text-gray-900 mt-4">Theme Settings</h3>
+          <div className="grid grid-cols-2 gap-3 mt-2">
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">Primary Color</label>
+              <div className="flex gap-1 flex-wrap">
+                {COLORS.map(c => (
+                  <button key={c} className={`h-6 w-6 rounded-full border-2 ${theme.primaryColor === c ? 'border-indigo-600' : 'border-transparent'}`} style={{ background: c }} onClick={() => setTheme(t => ({...t, primaryColor: c}))} />
+                ))}
+              </div>
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">Secondary Color</label>
+              <div className="flex gap-1 flex-wrap">
+                {['#1A3C5E', '#2D3748', '#1A202C', '#0D1117'].map(c => (
+                  <button key={c} className={`h-6 w-6 rounded-full border-2 ${theme.secondaryColor === c ? 'border-indigo-600' : 'border-transparent'}`} style={{ background: c }} onClick={() => setTheme(t => ({...t, secondaryColor: c}))} />
+                ))}
+              </div>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3 mt-3">
+            <Input label="Logo URL" value={theme.logoUrl || ''} onChange={e => setTheme(t => ({...t, logoUrl: e.target.value}))} placeholder="https://example.com/logo.png" />
+            <Input label="Favicon URL" value={theme.faviconUrl || ''} onChange={e => setTheme(t => ({...t, faviconUrl: e.target.value}))} placeholder="https://example.com/favicon.ico" />
+          </div>
+        </div>
+
+        <div className="flex justify-end gap-2 pt-4 border-t">
+          <Button variant="outline" onClick={() => setActiveSection(null)}>Cancel</Button>
+          <Button onClick={saveTheme} loading={saving}>Save Theme</Button>
+        </div>
+      </div>
+    );
+  };
+
+  // ─── Main Render ──────────────────────────────────────────────
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600" />
+        <span className="ml-3 text-sm text-gray-500">Loading CMS...</span>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -231,7 +567,6 @@ export default function AdminCMS() {
         action={
           <div className="flex gap-2">
             <Button variant="outline" icon={Eye} onClick={() => window.open('/', '_blank')}>Preview Site</Button>
-            <Button icon={Save} onClick={() => addToast('Changes published successfully.', 'success')}>Publish Changes</Button>
           </div>
         }
       />
@@ -239,40 +574,42 @@ export default function AdminCMS() {
         <h2 className="text-lg font-semibold text-gray-900 mb-4">Landing Page Sections</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {[
-            { id: 'Hero Section', desc: 'Edit main heading, subtitle, and the trust badge text.' },
-            { id: 'Stats / Numbers', desc: 'Update the 4 statistics shown in the indigo band.' },
-            { id: 'Features Section', desc: 'Manage platform features, icons, and descriptions.' },
-            { id: 'Pricing Section', desc: 'Edit pricing cards, add new plans, and manage feature lists.' },
-            { id: 'Testimonials & FAQ', desc: 'Add or remove testimonials and frequently asked questions.' },
-            { id: 'Footer & Theme', desc: 'Manage social links, brand colors, fonts, and button styles.' },
-            { id: 'Public Pages', desc: 'Edit the content for Team, Privacy, Roadmap, and other text-heavy pages.' },
-          ].map(section => (
-            <div 
-              key={section.id} 
-              className="border border-gray-200 rounded-lg p-5 cursor-pointer hover:border-indigo-400 hover:shadow-md transition-all group relative flex flex-col justify-between"
-              onClick={() => openEditor(section.id)}
-            >
-              <div>
-                <h3 className="font-bold text-gray-900 mb-1 group-hover:text-indigo-600 transition-colors">{section.id}</h3>
-                <p className="text-sm text-gray-500">{section.desc}</p>
+            { id: 'Hero Section', desc: 'Edit main heading, subtitle, and the trust badge text.', icon: Layout },
+            { id: 'Stats / Numbers', desc: 'Update the 4 statistics shown in the indigo band.', icon: Monitor },
+            { id: 'Testimonials & FAQ', desc: 'Add or remove testimonials and frequently asked questions.', icon: Quote },
+            { id: 'Pricing Section', desc: 'Edit pricing cards, add new plans, and manage feature lists.', icon: CreditCard },
+            { id: 'Footer & Theme', desc: 'Manage footer links, social links, brand colors, and fonts.', icon: Palette },
+          ].map(section => {
+            const Icon = section.icon;
+            return (
+              <div 
+                key={section.id} 
+                className="border border-gray-200 rounded-lg p-5 cursor-pointer hover:border-indigo-400 hover:shadow-md transition-all group relative flex flex-col justify-between"
+                onClick={() => setActiveSection(section.id)}
+              >
+                <div>
+                  <div className="flex items-center gap-3 mb-2">
+                    <div className="p-2 bg-indigo-50 rounded-lg">
+                      <Icon className="h-4 w-4 text-indigo-600" />
+                    </div>
+                    <h3 className="font-bold text-gray-900 group-hover:text-indigo-600 transition-colors">{section.id}</h3>
+                  </div>
+                  <p className="text-sm text-gray-500">{section.desc}</p>
+                </div>
+                <div className="mt-4 flex justify-end">
+                  <span className="flex items-center gap-1 text-xs font-semibold text-indigo-600 bg-indigo-50 px-2.5 py-1 rounded-md opacity-0 group-hover:opacity-100 transition-opacity">
+                    <Edit3 className="h-3.5 w-3.5" /> Edit
+                  </span>
+                </div>
               </div>
-              <div className="mt-4 flex justify-end">
-                <span className="flex items-center gap-1 text-xs font-semibold text-indigo-600 bg-indigo-50 px-2.5 py-1 rounded-md opacity-0 group-hover:opacity-100 transition-opacity">
-                  <Edit3 className="h-3.5 w-3.5" /> Edit
-                </span>
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
 
       {activeSection && (
-        <Modal isOpen={!!activeSection} onClose={closeEditor} title={`Editing: ${activeSection}`}>
+        <Modal isOpen={!!activeSection} onClose={() => setActiveSection(null)} title={`Editing: ${activeSection}`}>
           {renderEditorContent()}
-          <div className="mt-6 pt-4 border-t border-gray-100 flex justify-end gap-2">
-            <Button variant="outline" onClick={closeEditor}>Cancel</Button>
-            <Button onClick={handleSaveCMS} loading={saving}>Save Section</Button>
-          </div>
         </Modal>
       )}
     </div>

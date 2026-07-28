@@ -6,7 +6,7 @@ import {
 import Badge from '../../components/ui/Badge';
 import Modal from '../../components/ui/Modal';
 import { useToast } from '../../context/ToastContext';
-import { getAllSchools, updateSchoolStatus as apiUpdateSchoolStatus } from '../../api/schoolApi';
+import { getAllSchools, updateSchoolStatus as apiUpdateSchoolStatus, downloadRegistrationPdf } from '../../api/schoolApi';
 import { sendWelcomeEmail } from '../../api/superAdminApi';
 
 const statusConfig = {
@@ -27,6 +27,8 @@ export default function AdminApplications() {
   const [confirmAction, setConfirmAction] = useState(null);
   const [infoNote, setInfoNote] = useState('');
   const [showInfoModal, setShowInfoModal] = useState(false);
+  const [exporting, setExporting] = useState(false);
+  const [downloading, setDownloading] = useState(false);
 
   useEffect(() => {
     setLoading(true);
@@ -35,14 +37,14 @@ export default function AdminApplications() {
         const fetchedSchools = (Array.isArray(list) ? list : []).map(s => ({
           ...s,
           schoolName: s.name,
-          contactName: s.headmasterName || 'N/A', // fallback
+          contactName: s.headmasterName || 'N/A',
           location: s.district && s.region ? `${s.district}, ${s.region}` : s.address || 'Unknown',
           students: s._count?.students || 0,
           type: s.plan === 'BASIC' ? 'Basic' : 'Premium',
           submittedAt: s.createdAt || new Date().toISOString(),
-          documents: ['Registration.pdf'], // Mock documents since backend doesn't store them yet
+          documents: ['Registration.pdf'],
+          documentUrl: s.documentUrl || null,
         }));
-        // Show pending and recently rejected/approved apps in the applications view
         setApps(fetchedSchools.filter(s => ['PENDING', 'ACTIVE', 'REJECTED'].includes(s.status)));
       })
       .catch(() => setApps([]))
@@ -59,8 +61,80 @@ export default function AdminApplications() {
     [t]: t === 'ALL' ? apps.length : apps.filter(a => a.status === t).length
   }), {});
 
+  // ─── EXPORT FUNCTION ────────────────────────────────────────────
+  const handleExport = () => {
+    if (filtered.length === 0) {
+      addToast('No data to export', 'warning');
+      return;
+    }
+
+    setExporting(true);
+    try {
+      const headers = ['School Name', 'Contact Person', 'Email', 'Phone', 'Location', 'Type', 'Students', 'Status', 'Submitted'];
+      
+      const rows = filtered.map(app => [
+        `"${app.schoolName || ''}"`,
+        `"${app.contactName || ''}"`,
+        `"${app.email || ''}"`,
+        `"${app.phone || ''}"`,
+        `"${app.location || ''}"`,
+        `"${app.type || ''}"`,
+        app.students || 0,
+        `"${app.status || ''}"`,
+        `"${new Date(app.submittedAt).toLocaleDateString('en-GB')}"`
+      ]);
+
+      const csvContent = [
+        headers.join(','),
+        ...rows.map(row => row.join(','))
+      ].join('\n');
+
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `school_applications_${new Date().toISOString().split('T')[0]}.csv`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      
+      addToast(`Exported ${filtered.length} applications successfully`, 'success');
+    } catch (error) {
+      console.error('Export error:', error);
+      addToast('Failed to export applications', 'error');
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  // ─── DOWNLOAD DOCUMENT FUNCTION ──────────────────────────────
+  const handleDownloadDocument = async (app, docName) => {
+    setDownloading(true);
+    try {
+      // Use the backend API to generate and download the registration PDF
+      const blob = await downloadRegistrationPdf(app.id);
+      
+      // Create download link
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `${app.schoolName.replace(/\s+/g, '_')}_Registration.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+      
+      addToast(`${docName} downloaded successfully`, 'success');
+    } catch (error) {
+      console.error('Download error:', error);
+      addToast(`Failed to download ${docName}. Please try again.`, 'error');
+    } finally {
+      setDownloading(false);
+    }
+  };
+
   const applyAction = async (app, action) => {
-    // We map frontend action 'approve' to 'ACTIVE' status in DB
     const newStatus = action === 'approve' ? 'ACTIVE' : action === 'reject' ? 'REJECTED' : 'PENDING';
     
     if (action === 'info') {
@@ -96,8 +170,17 @@ export default function AdminApplications() {
           <h1 className="text-2xl font-bold text-gray-900 tracking-tight">School Applications</h1>
           <p className="text-sm text-gray-500 mt-1">Review, approve, reject, or request more information from applicant schools.</p>
         </div>
-        <button className="flex items-center gap-2 text-sm font-medium text-indigo-600 hover:text-indigo-700 bg-indigo-50 hover:bg-indigo-100 px-4 py-2 rounded-lg transition-colors">
-          <Download className="h-4 w-4" /> Export Report
+        <button 
+          onClick={handleExport}
+          disabled={exporting || filtered.length === 0}
+          className="flex items-center gap-2 text-sm font-medium text-indigo-600 hover:text-indigo-700 bg-indigo-50 hover:bg-indigo-100 px-4 py-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {exporting ? (
+            <span className="animate-spin h-4 w-4 border-2 border-indigo-600 border-t-transparent rounded-full" />
+          ) : (
+            <Download className="h-4 w-4" />
+          )}
+          {exporting ? 'Exporting...' : 'Export Report'}
         </button>
       </div>
 
@@ -196,8 +279,22 @@ export default function AdminApplications() {
               <div className="space-y-2">
                 {selected.documents.map(doc => (
                   <div key={doc} className="flex items-center justify-between p-2.5 bg-gray-50 rounded-lg border border-gray-200">
-                    <div className="flex items-center gap-2"><FileText className="h-4 w-4 text-indigo-500" /><span className="text-sm text-gray-700">{doc}</span></div>
-                    <button className="text-xs text-indigo-600 font-medium hover:text-indigo-700">Download</button>
+                    <div className="flex items-center gap-2">
+                      <FileText className="h-4 w-4 text-indigo-500" />
+                      <span className="text-sm text-gray-700">{doc}</span>
+                    </div>
+                    <button 
+                      onClick={() => handleDownloadDocument(selected, doc)}
+                      disabled={downloading}
+                      className="flex items-center gap-1 text-xs font-medium text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50 px-3 py-1.5 rounded-md transition-colors disabled:opacity-50"
+                    >
+                      {downloading ? (
+                        <span className="animate-spin h-3.5 w-3.5 border-2 border-indigo-600 border-t-transparent rounded-full" />
+                      ) : (
+                        <Download className="h-3.5 w-3.5" />
+                      )}
+                      {downloading ? 'Downloading...' : 'Download'}
+                    </button>
                   </div>
                 ))}
               </div>

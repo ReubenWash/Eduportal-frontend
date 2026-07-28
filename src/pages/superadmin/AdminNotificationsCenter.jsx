@@ -1,13 +1,24 @@
 import { useState } from 'react';
 import { Send, Bell, Mail, MessageSquare, Clock, Users, Plus, Trash2 } from 'lucide-react';
 import { useToast } from '../../context/ToastContext';
+import { useSocket } from '../../context/SocketContext';
+import { broadcastNotification } from '../../api/superAdminApi';
 
 const CHANNELS = [
   { id: 'push',  label: 'Push Notification', icon: Bell,          color: 'text-indigo-600', bg: 'bg-indigo-50', enabled: true  },
   { id: 'email', label: 'Email',              icon: Mail,          color: 'text-violet-600', bg: 'bg-violet-50', enabled: true  },
   { id: 'sms',   label: 'SMS',                icon: MessageSquare, color: 'text-emerald-600',bg: 'bg-emerald-50',enabled: false },
 ];
-const AUDIENCE = ['All Users', 'School Admins Only', 'Teachers Only', 'Active Schools', 'Pending Schools'];
+
+// Update audience to match backend enum values
+const AUDIENCE = [
+  { value: 'ALL', label: 'All Users' },
+  { value: 'SCHOOLS', label: 'School Admins Only' },
+  { value: 'TEACHERS', label: 'Teachers Only' },
+  { value: 'STUDENTS', label: 'Students Only' },
+  { value: 'PARENTS', label: 'Parents Only' }
+];
+
 const TEMPLATES = [
   { id: '1', name: 'Welcome New School', type: 'email', subject: 'Welcome to EduPortal!', preview: 'Your school account has been approved...' },
   { id: '2', name: 'Subscription Reminder', type: 'email', subject: 'Your subscription is due', preview: 'This is a reminder that your subscription...' },
@@ -17,19 +28,75 @@ const TEMPLATES = [
 
 export default function AdminNotifications() {
   const { addToast } = useToast();
+  const { emit } = useSocket();
   const [channels, setChannels] = useState(CHANNELS);
-  const [audience, setAudience] = useState('All Users');
+  const [audience, setAudience] = useState('ALL');
   const [subject, setSubject] = useState('');
   const [body, setBody] = useState('');
   const [scheduled, setScheduled] = useState(false);
   const [scheduleTime, setScheduleTime] = useState('');
+  const [sending, setSending] = useState(false);
 
   const toggleChannel = (id) => setChannels(p => p.map(c => c.id === id ? { ...c, enabled: !c.enabled } : c));
 
-  const handleSend = () => {
-    if (!subject || !body) { addToast('Please fill in subject and message.', 'error'); return; }
-    addToast(`Notification sent to ${audience}!`, 'success');
-    setSubject(''); setBody('');
+  const handleSend = async () => {
+    if (!subject || !body) { 
+      addToast('Please fill in subject and message.', 'error'); 
+      return; 
+    }
+
+    const enabledChannels = channels.filter(c => c.enabled);
+    if (enabledChannels.length === 0) {
+      addToast('Please select at least one delivery channel.', 'error');
+      return;
+    }
+
+    setSending(true);
+
+    try {
+      // Send via API - matches backend validation
+      const result = await broadcastNotification({
+        title: subject,
+        message: body,
+        audience: audience, // Now using correct enum values
+        type: 'info'
+      });
+
+      // Emit via Socket.IO for real-time delivery
+      if (enabledChannels.some(c => c.id === 'push' || c.id === 'in-app')) {
+        const notificationData = {
+          id: result?.notificationId || Date.now(),
+          title: subject,
+          message: body,
+          type: 'info',
+          audience: audience,
+          createdAt: new Date().toISOString()
+        };
+
+        emit('new-notification', notificationData);
+        emit('unread-count', { count: 'update' });
+      }
+
+      const audienceLabel = AUDIENCE.find(a => a.value === audience)?.label || audience;
+      addToast(
+        scheduled 
+          ? `Notification scheduled for ${scheduleTime}` 
+          : `Notification sent to ${audienceLabel}!`,
+        'success'
+      );
+      
+      setSubject('');
+      setBody('');
+      setScheduled(false);
+      setScheduleTime('');
+
+    } catch (error) {
+      console.error('Send notification error:', error);
+      const errorMessage = error.response?.data?.message || error.message || 'Failed to send notification';
+      addToast('Failed to send notification: ' + errorMessage, 'error');
+    } finally {
+      setSending(false);
+    }
   };
 
   return (
@@ -44,12 +111,18 @@ export default function AdminNotifications() {
         <div className="lg:col-span-2 space-y-5">
           <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6 space-y-4">
             <h2 className="text-sm font-semibold text-gray-900">Compose Notification</h2>
+            
             <div>
               <label className="block text-xs font-semibold text-gray-500 mb-1.5">Send To</label>
-              <select value={audience} onChange={e => setAudience(e.target.value)} className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 bg-white">
-                {AUDIENCE.map(a => <option key={a}>{a}</option>)}
+              <select 
+                value={audience} 
+                onChange={e => setAudience(e.target.value)} 
+                className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 bg-white"
+              >
+                {AUDIENCE.map(a => <option key={a.value} value={a.value}>{a.label}</option>)}
               </select>
             </div>
+            
             <div>
               <label className="block text-xs font-semibold text-gray-500 mb-1.5">Channels</label>
               <div className="flex gap-2">
@@ -62,15 +135,32 @@ export default function AdminNotifications() {
                   );
                 })}
               </div>
+              <p className="text-xs text-gray-400 mt-1.5">
+                <span className="text-emerald-600">●</span> Push sends real-time notifications via Socket.IO
+              </p>
             </div>
+            
             <div>
               <label className="block text-xs font-semibold text-gray-500 mb-1.5">Subject / Title</label>
-              <input value={subject} onChange={e => setSubject(e.target.value)} className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400" placeholder="e.g. Important Platform Update" />
+              <input 
+                value={subject} 
+                onChange={e => setSubject(e.target.value)} 
+                className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400" 
+                placeholder="e.g. Important Platform Update" 
+              />
             </div>
+            
             <div>
               <label className="block text-xs font-semibold text-gray-500 mb-1.5">Message</label>
-              <textarea value={body} onChange={e => setBody(e.target.value)} rows={5} className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 resize-none" placeholder="Write your notification message..." />
+              <textarea 
+                value={body} 
+                onChange={e => setBody(e.target.value)} 
+                rows={5} 
+                className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 resize-none" 
+                placeholder="Write your notification message..." 
+              />
             </div>
+            
             <div className="flex items-center gap-3">
               <label className="flex items-center gap-2 cursor-pointer text-sm text-gray-600">
                 <input type="checkbox" checked={scheduled} onChange={e => setScheduled(e.target.checked)} className="rounded border-gray-300 text-indigo-600" />
@@ -78,10 +168,25 @@ export default function AdminNotifications() {
               </label>
               {scheduled && <input type="datetime-local" value={scheduleTime} onChange={e => setScheduleTime(e.target.value)} className="text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400" />}
             </div>
+            
             <div className="flex gap-3 pt-2 border-t border-gray-100">
               <button className="px-4 py-2 text-sm font-semibold text-gray-700 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">Save as Draft</button>
-              <button onClick={handleSend} className="flex items-center gap-2 px-5 py-2 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-500 rounded-lg transition-colors shadow-sm">
-                <Send className="h-4 w-4" /> {scheduled ? 'Schedule Send' : 'Send Now'}
+              <button 
+                onClick={handleSend} 
+                disabled={sending}
+                className="flex items-center gap-2 px-5 py-2 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-500 rounded-lg transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {sending ? (
+                  <>
+                    <span className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full" />
+                    Sending...
+                  </>
+                ) : (
+                  <>
+                    <Send className="h-4 w-4" /> 
+                    {scheduled ? 'Schedule Send' : 'Send Now'}
+                  </>
+                )}
               </button>
             </div>
           </div>

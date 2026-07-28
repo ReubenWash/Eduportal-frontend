@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import PageHeader from '../../components/common/PageHeader';
 import Button from '../../components/ui/Button';
 import { useToast } from '../../context/ToastContext';
+import { useSocket } from '../../context/SocketContext';
 import { getNotifications, markNotificationRead } from '../../api/notificationsApi';
 import { Bell, BellOff, CheckCheck, AlertCircle, Info, CheckCircle2, XCircle } from 'lucide-react';
 
@@ -29,38 +30,81 @@ export default function Notifications() {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
   const { addToast } = useToast();
+  const { unreadCount, setUnreadCount, markAsRead: socketMarkAsRead, markAllAsRead } = useSocket();
+
+  const fetchNotifications = async () => {
+    try {
+      const data = await getNotifications();
+      setNotifications(Array.isArray(data) ? data : []);
+      setLoadError(false);
+    } catch (err) {
+      setLoadError(true);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    getNotifications()
-      .then((data) => {
-        setNotifications(Array.isArray(data) ? data : []);
-        setLoadError(false);
-      })
-      .catch((err) => {
-        setLoadError(true);
-      })
-      .finally(() => setLoading(false));
+    fetchNotifications();
+
+    // Listen for new notifications via Socket.IO
+    const handleNewNotification = (event) => {
+      const notification = event.detail;
+      setNotifications(prev => [notification, ...prev]);
+      if (setUnreadCount) {
+        setUnreadCount(prev => (prev || 0) + 1);
+      }
+    };
+
+    window.addEventListener('new-notification', handleNewNotification);
+
+    return () => {
+      window.removeEventListener('new-notification', handleNewNotification);
+    };
   }, []);
 
-  const markAsRead = async (id) => {
+  const handleMarkAsRead = async (id) => {
+    // Optimistic update
     setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
+    
+    // Update unread count via Socket
+    if (socketMarkAsRead) {
+      socketMarkAsRead(id);
+    }
+    
+    // Also call API
     try {
       await markNotificationRead(id);
     } catch (err) {
-      }
+      // Revert on error
+      setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: false } : n));
+    }
   };
 
-  const markAllRead = async () => {
+  const handleMarkAllRead = async () => {
     const unreadIds = notifications.filter(n => !n.read).map(n => n.id);
+    
+    // Optimistic update
     setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+    
+    // Update unread count via Socket
+    if (markAllAsRead) {
+      markAllAsRead();
+    }
+    
     addToast('All notifications marked as read', 'success');
+    
+    // Also call API
     try {
       await Promise.all(unreadIds.map(id => markNotificationRead(id)));
     } catch (err) {
-      }
+      // Revert on error - refetch
+      fetchNotifications();
+    }
   };
 
-  const unread = notifications.filter(n => !n.read).length;
+  // Use Socket unread count if available, otherwise calculate locally
+  const unread = unreadCount !== undefined ? unreadCount : notifications.filter(n => !n.read).length;
 
   if (loading) {
     return (
@@ -88,7 +132,7 @@ export default function Notifications() {
         subtitle={unread > 0 ? `You have ${unread} unread notification${unread !== 1 ? 's' : ''}` : 'All caught up'}
         action={
           unread > 0 && (
-            <Button variant="secondary" size="sm" icon={CheckCheck} onClick={markAllRead}>
+            <Button variant="secondary" size="sm" icon={CheckCheck} onClick={handleMarkAllRead}>
               Mark all read
             </Button>
           )
@@ -118,7 +162,7 @@ export default function Notifications() {
               return (
                 <div
                   key={n.id}
-                  onClick={() => markAsRead(n.id)}
+                  onClick={() => handleMarkAsRead(n.id)}
                   className={`flex items-start gap-4 px-5 py-4 cursor-pointer hover:bg-gray-50/60 transition-colors group ${!n.read ? 'bg-indigo-50/30' : ''}`}
                 >
                   <div className={`flex-shrink-0 mt-0.5 h-10 w-10 rounded-full ${cfg.iconBg} flex items-center justify-center`}>

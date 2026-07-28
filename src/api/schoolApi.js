@@ -40,6 +40,13 @@ export const getAllSchools = async (params) => {
   return unwrapList(res.data);
 };
 
+export const getDeletedSchools = async (params) => {
+  const res = await api.get('/schools', { 
+    params: { ...params, status: 'DEACTIVATED' } 
+  });
+  return unwrapList(res.data);
+};
+
 export const getSuperAdminDashboard = async () => {
   const res = await api.get('/schools/admin/dashboard');
   return unwrapItem(res.data);
@@ -68,4 +75,17 @@ export const updateSchoolPlan = async (id, plan) => {
 export const deleteSchool = async (id) => {
   const res = await api.delete(`/schools/${id}`);
   return unwrapItem(res.data);
+};
+
+export const restoreSchool = async (id) => {
+  const res = await api.patch(`/schools/${id}/restore`);
+  return unwrapItem(res.data);
+};
+
+// ─── DOWNLOAD REGISTRATION PDF ──────────────────────────────────
+export const downloadRegistrationPdf = async (schoolId) => {
+  const res = await api.get(`/schools/${schoolId}/registration-pdf`, {
+    responseType: 'blob',
+  });
+  return res.data;
 };

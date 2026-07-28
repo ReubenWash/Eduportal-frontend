@@ -22,7 +22,6 @@ export default function AdminUsers() {
   const [schools, setSchools] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedSchool, setSelectedSchool] = useState('');
-  
   const [keyword, setKeyword] = useState('');
   const [roleFilter, setRoleFilter] = useState('');
   const [viewUser, setViewUser] = useState(null);
@@ -44,16 +43,43 @@ export default function AdminUsers() {
       .finally(() => setLoading(false));
   }, []);
 
-  const filtered = useMemo(() => users.filter(u => {
-    // If Super Admin hasn't selected a school, they don't see any users (per requirements)
-    if (!selectedSchool) return false;
-    if (u.schoolId && u.schoolId !== selectedSchool) return false;
-    if (!u.schoolId && u.school !== selectedSchool) return false;
+  // Apply all filters correctly
+  const filtered = useMemo(() => {
+    let filteredUsers = users;
 
-    if (keyword && !u.name.toLowerCase().includes(keyword.toLowerCase()) && !u.email.toLowerCase().includes(keyword.toLowerCase())) return false;
-    if (roleFilter && u.role !== roleFilter) return false;
-    return true;
-  }), [users, keyword, roleFilter, selectedSchool]);
+    // Filter by school
+    if (selectedSchool) {
+      filteredUsers = filteredUsers.filter(u => 
+        u.schoolId === selectedSchool || u.school === selectedSchool
+      );
+    }
+
+    // Filter by role
+    if (roleFilter) {
+      filteredUsers = filteredUsers.filter(u => u.role === roleFilter);
+    }
+
+    // Filter by keyword
+    if (keyword) {
+      filteredUsers = filteredUsers.filter(u => 
+        u.name.toLowerCase().includes(keyword.toLowerCase()) || 
+        u.email.toLowerCase().includes(keyword.toLowerCase())
+      );
+    }
+
+    return filteredUsers;
+  }, [users, keyword, roleFilter, selectedSchool]);
+
+  // Counts for ALL users (not filtered by selected school or keyword)
+  const allUsersCounts = {
+    ALL: users.length,
+    SCHOOL_ADMIN: users.filter(u => u.role === 'SCHOOL_ADMIN').length,
+    CLASS_TEACHER: users.filter(u => u.role === 'CLASS_TEACHER').length,
+    SUBJECT_TEACHER: users.filter(u => u.role === 'SUBJECT_TEACHER').length,
+    PARENT: users.filter(u => u.role === 'PARENT').length,
+    STUDENT: users.filter(u => u.role === 'STUDENT').length,
+    SUSPENDED: users.filter(u => u.status === 'SUSPENDED').length,
+  };
 
   const toggleSuspend = async (user) => {
     const newStatus = user.status === 'SUSPENDED' ? 'ACTIVE' : 'SUSPENDED';
@@ -98,13 +124,21 @@ export default function AdminUsers() {
     }
   };
 
+  const handleRoleFilter = (filter) => {
+    if (roleFilter === filter) {
+      setRoleFilter('');
+    } else {
+      setRoleFilter(filter);
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 tracking-tight">User Management</h1>
-          <p className="text-sm text-gray-500 mt-1">Select a school to view, add, or remove its users.</p>
+          <p className="text-sm text-gray-500 mt-1">View all users or select a school to manage its users.</p>
         </div>
         
         {/* School Selector & Add Button */}
@@ -114,7 +148,7 @@ export default function AdminUsers() {
             onChange={(e) => setSelectedSchool(e.target.value)}
             className="border border-gray-200 rounded-lg px-4 py-2 text-sm bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
           >
-            <option value="">-- Select a School --</option>
+            <option value="">-- All Schools --</option>
             {schools.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
           </select>
           
@@ -134,24 +168,69 @@ export default function AdminUsers() {
 
       {/* Summary Pills */}
       <div className="flex flex-wrap gap-3">
-        {[
-          { label: 'All Users',       count: users.length,                             filter: '',                color: 'bg-gray-100 text-gray-700 border-gray-200' },
-          { label: 'School Admins',   count: users.filter(u=>u.role==='SCHOOL_ADMIN').length,   filter: 'SCHOOL_ADMIN',   color: 'bg-indigo-50 text-indigo-700 border-indigo-200' },
-          { label: 'Class Teachers',  count: users.filter(u=>u.role==='CLASS_TEACHER').length,  filter: 'CLASS_TEACHER',  color: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
-          { label: 'Subject Teachers',count: users.filter(u=>u.role==='SUBJECT_TEACHER').length,filter: 'SUBJECT_TEACHER',color: 'bg-violet-50 text-violet-700 border-violet-200' },
-          { label: 'Parents',         count: users.filter(u=>u.role==='PARENT').length,         filter: 'PARENT',         color: 'bg-amber-50 text-amber-700 border-amber-200' },
-          { label: 'Students',        count: users.filter(u=>u.role==='STUDENT').length,        filter: 'STUDENT',        color: 'bg-sky-50 text-sky-700 border-sky-200' },
-          { label: 'Suspended',       count: users.filter(u=>u.status==='SUSPENDED').length,    filter: '__SUSPENDED__',  color: 'bg-red-50 text-red-700 border-red-200' },
-        ].map(p => (
-          <button
-            key={p.label}
-            onClick={() => setRoleFilter(p.filter === '__SUSPENDED__' ? '' : p.filter)}
-            className={`flex items-center gap-2 px-3.5 py-1.5 rounded-full border text-[13px] font-medium transition-all ${p.color} ${(roleFilter === p.filter || (p.filter === '' && !roleFilter)) ? 'ring-2 ring-offset-1 ring-indigo-400' : 'opacity-70 hover:opacity-100'}`}
-          >
-            {p.label}
-            <span className="text-xs font-bold">{p.count}</span>
-          </button>
-        ))}
+        <button
+          onClick={() => handleRoleFilter('')}
+          className={`flex items-center gap-2 px-3.5 py-1.5 rounded-full border text-[13px] font-medium transition-all ${
+            !roleFilter ? 'bg-indigo-50 text-indigo-700 border-indigo-200 ring-2 ring-offset-1 ring-indigo-400' : 'bg-gray-100 text-gray-700 border-gray-200 hover:bg-gray-200'
+          }`}
+        >
+          All Users
+          <span className="text-xs font-bold">{allUsersCounts.ALL}</span>
+        </button>
+        <button
+          onClick={() => handleRoleFilter('SCHOOL_ADMIN')}
+          className={`flex items-center gap-2 px-3.5 py-1.5 rounded-full border text-[13px] font-medium transition-all ${
+            roleFilter === 'SCHOOL_ADMIN' ? 'bg-indigo-50 text-indigo-700 border-indigo-200 ring-2 ring-offset-1 ring-indigo-400' : 'bg-gray-100 text-gray-700 border-gray-200 hover:bg-gray-200'
+          }`}
+        >
+          School Admins
+          <span className="text-xs font-bold">{allUsersCounts.SCHOOL_ADMIN}</span>
+        </button>
+        <button
+          onClick={() => handleRoleFilter('CLASS_TEACHER')}
+          className={`flex items-center gap-2 px-3.5 py-1.5 rounded-full border text-[13px] font-medium transition-all ${
+            roleFilter === 'CLASS_TEACHER' ? 'bg-emerald-50 text-emerald-700 border-emerald-200 ring-2 ring-offset-1 ring-emerald-400' : 'bg-gray-100 text-gray-700 border-gray-200 hover:bg-gray-200'
+          }`}
+        >
+          Class Teachers
+          <span className="text-xs font-bold">{allUsersCounts.CLASS_TEACHER}</span>
+        </button>
+        <button
+          onClick={() => handleRoleFilter('SUBJECT_TEACHER')}
+          className={`flex items-center gap-2 px-3.5 py-1.5 rounded-full border text-[13px] font-medium transition-all ${
+            roleFilter === 'SUBJECT_TEACHER' ? 'bg-violet-50 text-violet-700 border-violet-200 ring-2 ring-offset-1 ring-violet-400' : 'bg-gray-100 text-gray-700 border-gray-200 hover:bg-gray-200'
+          }`}
+        >
+          Subject Teachers
+          <span className="text-xs font-bold">{allUsersCounts.SUBJECT_TEACHER}</span>
+        </button>
+        <button
+          onClick={() => handleRoleFilter('PARENT')}
+          className={`flex items-center gap-2 px-3.5 py-1.5 rounded-full border text-[13px] font-medium transition-all ${
+            roleFilter === 'PARENT' ? 'bg-amber-50 text-amber-700 border-amber-200 ring-2 ring-offset-1 ring-amber-400' : 'bg-gray-100 text-gray-700 border-gray-200 hover:bg-gray-200'
+          }`}
+        >
+          Parents
+          <span className="text-xs font-bold">{allUsersCounts.PARENT}</span>
+        </button>
+        <button
+          onClick={() => handleRoleFilter('STUDENT')}
+          className={`flex items-center gap-2 px-3.5 py-1.5 rounded-full border text-[13px] font-medium transition-all ${
+            roleFilter === 'STUDENT' ? 'bg-sky-50 text-sky-700 border-sky-200 ring-2 ring-offset-1 ring-sky-400' : 'bg-gray-100 text-gray-700 border-gray-200 hover:bg-gray-200'
+          }`}
+        >
+          Students
+          <span className="text-xs font-bold">{allUsersCounts.STUDENT}</span>
+        </button>
+        <button
+          onClick={() => handleRoleFilter('SUSPENDED')}
+          className={`flex items-center gap-2 px-3.5 py-1.5 rounded-full border text-[13px] font-medium transition-all ${
+            roleFilter === 'SUSPENDED' ? 'bg-red-50 text-red-700 border-red-200 ring-2 ring-offset-1 ring-red-400' : 'bg-gray-100 text-gray-700 border-gray-200 hover:bg-gray-200'
+          }`}
+        >
+          Suspended
+          <span className="text-xs font-bold">{allUsersCounts.SUSPENDED}</span>
+        </button>
       </div>
 
       {/* Toolbar */}
@@ -159,7 +238,7 @@ export default function AdminUsers() {
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
         <input
           type="text"
-          placeholder="Search by name, email, or school..."
+          placeholder="Search by name, email..."
           value={keyword}
           onChange={e => setKeyword(e.target.value)}
           className="w-full pl-9 pr-4 py-2 text-sm bg-white border border-gray-200 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 transition-all"
@@ -180,10 +259,10 @@ export default function AdminUsers() {
             <tbody className="divide-y divide-gray-100">
               {loading ? (
                 <tr><td colSpan={6} className="py-16 text-center text-sm text-gray-500 font-medium">Loading users...</td></tr>
-              ) : !selectedSchool ? (
-                <tr><td colSpan={6} className="py-16 text-center text-sm text-gray-500 font-medium">Please select a school from the dropdown above to view and manage its users.</td></tr>
               ) : filtered.length === 0 ? (
-                <tr><td colSpan={6} className="py-16 text-center text-sm text-gray-400">No users found for {selectedSchool}.</td></tr>
+                <tr><td colSpan={6} className="py-16 text-center text-sm text-gray-400">
+                  {selectedSchool ? `No users found for this school.` : 'No users found in the system.'}
+                </td></tr>
               ) : filtered.map(user => {
                 const role = roleConfig[user.role] || {};
                 const RoleIcon = role.icon || Shield;
@@ -198,11 +277,11 @@ export default function AdminUsers() {
                         </div>
                       </div>
                     </td>
-                    <td className="px-5 py-4 whitespace-nowrap text-sm text-gray-600">{user.school}</td>
+                    <td className="px-5 py-4 whitespace-nowrap text-sm text-gray-600">{user.school || '—'}</td>
                     <td className="px-5 py-4 whitespace-nowrap">
                       <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full ${role.bg}`}>
                         <RoleIcon className={`h-3.5 w-3.5 ${role.color}`} />
-                        <span className={`text-[11px] font-semibold ${role.color}`}>{role.label}</span>
+                        <span className={`text-[11px] font-semibold ${role.color}`}>{role.label || user.role}</span>
                       </div>
                     </td>
                     <td className="px-5 py-4 whitespace-nowrap">
@@ -239,7 +318,7 @@ export default function AdminUsers() {
             <div className="grid grid-cols-2 gap-3">
               <div className="bg-gray-50 rounded-lg p-3">
                 <p className="text-[10px] font-semibold text-gray-400 uppercase mb-1">School</p>
-                <p className="text-sm font-semibold text-gray-900">{viewUser.school}</p>
+                <p className="text-sm font-semibold text-gray-900">{viewUser.school || '—'}</p>
               </div>
               <div className="bg-gray-50 rounded-lg p-3">
                 <p className="text-[10px] font-semibold text-gray-400 uppercase mb-1">Role</p>
@@ -265,6 +344,7 @@ export default function AdminUsers() {
           </div>
         </Modal>
       )}
+      
       {/* Add User Modal */}
       {addUserModal && (
         <Modal isOpen={addUserModal} onClose={() => setAddUserModal(false)} title="Add User" subtitle={`Adding a new user to ${selectedSchool}`}>

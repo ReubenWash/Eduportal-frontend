@@ -1,12 +1,12 @@
 import { useState, useMemo, useEffect } from 'react';
 import {
   Search, CheckCircle, XCircle, Clock, Eye, School,
-  MapPin, Mail, Phone, Users, CalendarDays, Edit2, Save, Loader2, Trash
+  MapPin, Mail, Phone, Users, CalendarDays, Edit2, Save, Loader2, Trash, RotateCcw
 } from 'lucide-react';
 import Badge from '../../components/ui/Badge';
 import Modal from '../../components/ui/Modal';
 import { useToast } from '../../context/ToastContext';
-import { getAllSchools, updateSchoolStatus as apiUpdateSchoolStatus, deleteSchool } from '../../api/schoolApi';
+import { getAllSchools, getDeletedSchools, updateSchoolStatus as apiUpdateSchoolStatus, deleteSchool, restoreSchool } from '../../api/schoolApi';
 import { updateSchoolDetails, updateSchoolPlan, sendWelcomeEmail } from '../../api/superAdminApi';
 import { register } from '../../api/authApi';
 
@@ -29,6 +29,7 @@ const statusIcon = {
 export default function AdminSchools() {
   const { addToast } = useToast();
   const [schools, setSchools] = useState([]);
+  const [deletedSchools, setDeletedSchools] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
   const [keyword, setKeyword] = useState('');
@@ -47,6 +48,7 @@ export default function AdminSchools() {
     setLoading(true);
     setLoadError(false);
     try {
+      // Fetch active schools (excluding deactivated)
       const list = await getAllSchools();
       const fetchedSchools = (Array.isArray(list) ? list : []).map(s => ({
         ...s,
@@ -56,10 +58,22 @@ export default function AdminSchools() {
         isVerified: s.isVerified ?? false,
       }));
       setSchools(fetchedSchools);
+      
+      // Fetch deactivated schools separately
+      const deletedList = await getDeletedSchools();
+      const fetchedDeleted = (Array.isArray(deletedList) ? deletedList : []).map(s => ({
+        ...s,
+        location: s.district && s.region ? `${s.district}, ${s.region}` : s.address || 'Unknown',
+        students: s._count?.students || 0,
+        registeredAt: s.createdAt || new Date().toISOString(),
+        isVerified: s.isVerified ?? false,
+      }));
+      setDeletedSchools(fetchedDeleted);
     } catch (err) {
       console.error('Failed to load schools:', err);
       setLoadError(true);
       setSchools([]);
+      setDeletedSchools([]);
     } finally {
       setLoading(false);
     }
@@ -67,11 +81,21 @@ export default function AdminSchools() {
 
   useEffect(() => { load(); }, []);
 
-  const filtered = useMemo(() => schools.filter(s => {
-    if (keyword && !s.name?.toLowerCase().includes(keyword.toLowerCase()) && !s.email?.toLowerCase().includes(keyword.toLowerCase())) return false;
-    if (statusFilter && s.status !== statusFilter) return false;
-    return true;
-  }), [schools, keyword, statusFilter]);
+  // Get the combined list for display based on filter
+  const filtered = useMemo(() => {
+    let data = [];
+    if (statusFilter === 'DEACTIVATED') {
+      data = deletedSchools;
+    } else {
+      data = schools;
+    }
+    
+    return data.filter(s => {
+      if (keyword && !s.name?.toLowerCase().includes(keyword.toLowerCase()) && !s.email?.toLowerCase().includes(keyword.toLowerCase())) return false;
+      if (statusFilter && statusFilter !== 'DEACTIVATED' && s.status !== statusFilter) return false;
+      return true;
+    });
+  }, [schools, deletedSchools, keyword, statusFilter]);
 
   const counts = {
     ALL:      schools.length,
@@ -79,6 +103,7 @@ export default function AdminSchools() {
     PENDING:  schools.filter(s => s.status === 'PENDING').length,
     REJECTED: schools.filter(s => s.status === 'REJECTED').length,
     SUSPENDED: schools.filter(s => s.status === 'SUSPENDED').length,
+    DEACTIVATED: deletedSchools.length,
   };
 
   const setRowLoading = (id, loading) => {
@@ -90,13 +115,38 @@ export default function AdminSchools() {
       setRowLoading(school.id, true);
       try {
         await deleteSchool(school.id);
+        // Remove from active schools list
         setSchools(prev => prev.filter(s => s.id !== school.id));
-        addToast(`${school.name} deleted successfully`, 'success');
+        // Add to deleted schools list
+        setDeletedSchools(prev => [...prev, { ...school, status: 'DEACTIVATED' }]);
+        addToast(`${school.name} deactivated successfully`, 'success');
       } catch (err) {
         console.error('Delete school error:', err);
-        // Fallback: remove locally
         setSchools(prev => prev.filter(s => s.id !== school.id));
-        addToast(`${school.name} deleted locally (backend unavailable).`, 'warning');
+        setDeletedSchools(prev => [...prev, { ...school, status: 'DEACTIVATED' }]);
+        addToast(`${school.name} deactivated locally (backend unavailable).`, 'warning');
+      } finally {
+        setRowLoading(school.id, false);
+        setConfirmAction(null);
+        setViewSchool(null);
+      }
+      return;
+    }
+
+    if (action === 'restore') {
+      setRowLoading(school.id, true);
+      try {
+        await restoreSchool(school.id);
+        // Remove from deleted schools list
+        setDeletedSchools(prev => prev.filter(s => s.id !== school.id));
+        // Add to active schools list
+        setSchools(prev => [...prev, { ...school, status: 'ACTIVE' }]);
+        addToast(`${school.name} restored successfully`, 'success');
+      } catch (err) {
+        console.error('Restore school error:', err);
+        setDeletedSchools(prev => prev.filter(s => s.id !== school.id));
+        setSchools(prev => [...prev, { ...school, status: 'ACTIVE' }]);
+        addToast(`${school.name} restored locally (backend unavailable).`, 'warning');
       } finally {
         setRowLoading(school.id, false);
         setConfirmAction(null);
@@ -130,7 +180,6 @@ export default function AdminSchools() {
       }
     } catch (err) {
       console.error('Status update error:', err);
-      // Fallback: update locally
       setSchools(prev => prev.map(s => 
         s.id === school.id ? { ...s, status: newStatus } : s
       ));
@@ -154,7 +203,6 @@ export default function AdminSchools() {
       addToast(`${school.name} is now ${isVerified ? 'verified' : 'unverified'}`, 'success');
     } catch (err) {
       console.error('Verify toggle error:', err);
-      // Fallback: update locally
       setSchools(prev => prev.map(s => 
         s.id === school.id ? { ...s, isVerified } : s
       ));
@@ -169,7 +217,6 @@ export default function AdminSchools() {
     setAddSaving(true);
     
     try {
-      // Validate required fields
       if (!addForm.name.trim()) {
         addToast('School name is required.', 'error');
         setAddSaving(false);
@@ -186,7 +233,7 @@ export default function AdminSchools() {
         return;
       }
 
-      const result = await register({
+      await register({
         schoolName: addForm.name.trim(),
         email: addForm.email.trim().toLowerCase(),
         password: addForm.password,
@@ -201,7 +248,7 @@ export default function AdminSchools() {
       addToast(`${addForm.name} created successfully.`, 'success');
       setAddSchoolModal(false);
       setAddForm({ name: '', email: '', phone: '', address: '', plan: 'BASIC', password: '' });
-      await load(); // Reload list
+      await load();
     } catch (err) {
       console.error('Add school error:', err);
       const errorMsg = err?.response?.data?.message || err?.message || 'Failed to create school';
@@ -231,7 +278,6 @@ export default function AdminSchools() {
     
     setEditSaving(true);
     try {
-      // Update school details
       const updateData = {
         name: editForm.name.trim(),
         email: editForm.email.trim().toLowerCase(),
@@ -242,49 +288,37 @@ export default function AdminSchools() {
       
       await updateSchoolDetails(editSchool.id, updateData);
       
-      // Update plan if changed
       if (editForm.plan !== editSchool.plan) {
         await updateSchoolPlan(editSchool.id, editForm.plan);
       }
       
-      setSchools(prev => prev.map(s => 
-        s.id === editSchool.id ? { 
-          ...s, 
-          ...updateData, 
-          plan: editForm.plan,
-          location: editForm.address || s.location 
-        } : s
-      ));
+      // Update in the appropriate list
+      if (editForm.status === 'DEACTIVATED') {
+        setDeletedSchools(prev => prev.map(s => 
+          s.id === editSchool.id ? { ...s, ...updateData, plan: editForm.plan, location: editForm.address || s.location } : s
+        ));
+        setSchools(prev => prev.filter(s => s.id !== editSchool.id));
+      } else {
+        setSchools(prev => prev.map(s => 
+          s.id === editSchool.id ? { ...s, ...updateData, plan: editForm.plan, location: editForm.address || s.location } : s
+        ));
+        setDeletedSchools(prev => prev.filter(s => s.id !== editSchool.id));
+      }
       
       addToast(`${editForm.name} updated successfully.`, 'success');
       setEditSchool(null);
     } catch (err) {
       console.error('Edit school error:', err);
-      // Fallback: update locally
-      setSchools(prev => prev.map(s => 
-        s.id === editSchool.id ? { 
-          ...s, 
-          name: editForm.name,
-          email: editForm.email,
-          phone: editForm.phone,
-          address: editForm.address,
-          plan: editForm.plan,
-          status: editForm.status,
-          location: editForm.address || s.location
-        } : s
-      ));
-      addToast('School updated locally (backend sync failed).', 'warning');
       setEditSchool(null);
     } finally {
       setEditSaving(false);
     }
   };
 
-  const tabs = ['ALL', 'PENDING', 'ACTIVE', 'REJECTED', 'SUSPENDED'];
+  const tabs = ['ALL', 'PENDING', 'ACTIVE', 'REJECTED', 'SUSPENDED', 'DEACTIVATED'];
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 tracking-tight">School Management</h1>
@@ -455,18 +489,33 @@ export default function AdminSchools() {
                           Suspend
                         </button>
                       )}
-                      <button 
-                        onClick={() => setConfirmAction({ school, action: 'delete' })} 
-                        className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors" 
-                        title="Delete School"
-                        disabled={actionLoading[school.id]}
-                      >
-                        {actionLoading[school.id] ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : (
-                          <Trash className="h-4 w-4" />
-                        )}
-                      </button>
+                      {school.status === 'DEACTIVATED' ? (
+                        <button 
+                          onClick={() => setConfirmAction({ school, action: 'restore' })} 
+                          className="p-1.5 text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-md transition-colors" 
+                          title="Restore School"
+                          disabled={actionLoading[school.id]}
+                        >
+                          {actionLoading[school.id] ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <RotateCcw className="h-4 w-4" />
+                          )}
+                        </button>
+                      ) : (
+                        <button 
+                          onClick={() => setConfirmAction({ school, action: 'delete' })} 
+                          className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors" 
+                          title="Deactivate School"
+                          disabled={actionLoading[school.id]}
+                        >
+                          {actionLoading[school.id] ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Trash className="h-4 w-4" />
+                          )}
+                        </button>
+                      )}
                     </div>
                   </td>
                 </tr>
@@ -476,7 +525,7 @@ export default function AdminSchools() {
         </div>
       </div>
 
-      {/* View School Details Modal */}
+      {/* Rest of the modals remain the same */}
       {viewSchool && (
         <Modal isOpen={!!viewSchool} onClose={() => setViewSchool(null)} title={viewSchool.name} subtitle="School registration details">
           <div className="space-y-5 pt-2">
@@ -530,30 +579,46 @@ export default function AdminSchools() {
                 </button>
               </div>
             )}
+            {viewSchool.status === 'DEACTIVATED' && (
+              <div className="flex gap-3 pt-4 border-t border-gray-100">
+                <button 
+                  onClick={() => setConfirmAction({ school: viewSchool, action: 'restore' })} 
+                  className="flex-1 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-semibold transition-colors"
+                >
+                  Restore School
+                </button>
+              </div>
+            )}
           </div>
         </Modal>
       )}
 
-      {/* Confirm Action Modal */}
       {confirmAction && (
         <Modal
           isOpen={!!confirmAction}
           onClose={() => setConfirmAction(null)}
-          title={confirmAction.action === 'approve' ? 'Approve School' : confirmAction.action === 'reject' ? 'Reject School' : confirmAction.action === 'delete' ? 'Delete School' : 'Suspend School'}
+          title={
+            confirmAction.action === 'approve' ? 'Approve School' : 
+            confirmAction.action === 'reject' ? 'Reject School' : 
+            confirmAction.action === 'restore' ? 'Restore School' :
+            confirmAction.action === 'delete' ? 'Deactivate School' : 'Suspend School'
+          }
           subtitle={confirmAction.school.name}
         >
           <div className="space-y-5 pt-2">
             <div className={`rounded-xl p-4 ${
-              confirmAction.action === 'approve' ? 'bg-emerald-50 border border-emerald-200' :
+              confirmAction.action === 'approve' || confirmAction.action === 'restore' ? 'bg-emerald-50 border border-emerald-200' :
               'bg-red-50 border border-red-200'
             }`}>
               <p className="text-sm text-gray-700">
                 {confirmAction.action === 'approve'
                   ? `You are about to approve ${confirmAction.school.name}. They will gain full platform access and can start onboarding their staff and students.`
+                  : confirmAction.action === 'restore'
+                  ? `You are about to restore ${confirmAction.school.name} from the deleted schools list. They will become active again.`
                   : confirmAction.action === 'reject'
                   ? `You are about to reject ${confirmAction.school.name}. They will be notified and will not be able to access the platform.`
                   : confirmAction.action === 'delete'
-                  ? `You are about to permanently delete ${confirmAction.school.name}. This action cannot be undone.`
+                  ? `You are about to deactivate ${confirmAction.school.name}. They will be moved to the deleted schools list.`
                   : `You are about to suspend ${confirmAction.school.name}. All users in this school will lose access immediately.`}
               </p>
             </div>
@@ -567,7 +632,7 @@ export default function AdminSchools() {
               <button
                 onClick={() => applyAction(confirmAction.school, confirmAction.action)}
                 className={`flex-1 py-2 rounded-lg text-white text-sm font-semibold transition-colors ${
-                  confirmAction.action === 'approve' ? 'bg-emerald-600 hover:bg-emerald-500' : 'bg-red-600 hover:bg-red-500'
+                  confirmAction.action === 'approve' || confirmAction.action === 'restore' ? 'bg-emerald-600 hover:bg-emerald-500' : 'bg-red-600 hover:bg-red-500'
                 }`}
                 disabled={actionLoading[confirmAction.school.id]}
               >
@@ -575,8 +640,9 @@ export default function AdminSchools() {
                   <Loader2 className="h-4 w-4 animate-spin" />
                 ) : (
                   confirmAction.action === 'approve' ? 'Yes, Approve' : 
+                  confirmAction.action === 'restore' ? 'Yes, Restore' :
                   confirmAction.action === 'reject' ? 'Yes, Reject' : 
-                  confirmAction.action === 'delete' ? 'Yes, Delete' : 'Yes, Suspend'
+                  confirmAction.action === 'delete' ? 'Yes, Deactivate' : 'Yes, Suspend'
                 )}
               </button>
             </div>
@@ -584,7 +650,6 @@ export default function AdminSchools() {
         </Modal>
       )}
 
-      {/* ── Edit School Modal ── */}
       {editSchool && (
         <Modal isOpen onClose={() => setEditSchool(null)} title={`Edit School — ${editSchool.name}`} subtitle="Update school details and plan.">
           <div className="space-y-4 pt-2">
@@ -670,7 +735,6 @@ export default function AdminSchools() {
         </Modal>
       )}
 
-      {/* Add School Modal */}
       {addSchoolModal && (
         <Modal isOpen onClose={() => setAddSchoolModal(false)} title="Add New School" subtitle="Manually register a new school.">
           <form onSubmit={handleAddSchool} className="space-y-4 pt-2">

@@ -39,6 +39,7 @@ import {
   Scale,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { useSocket } from '../context/SocketContext';
 import Avatar from '../components/ui/Avatar';
 
 const superAdminNav = [
@@ -113,7 +114,6 @@ const superAdminNav = [
 ];
 
 // Staff/admin nav — School Admin, Class Teacher, Subject Teacher.
-// Each item's `roles` list matches section 5 of the Project Documentation.
 const navGroups = [
   {
     label: 'Overview',
@@ -209,10 +209,9 @@ export default function AppLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const { user, logout } = useAuth();
+  const { unreadCount } = useSocket();
   const navigate = useNavigate();
 
-  // No silent fallback to SCHOOL_ADMIN — an unrecognized/missing role gets
-  // an empty nav rather than being shown admin navigation it doesn't have.
   const userRole = user?.role;
 
   const baseNav =
@@ -355,13 +354,17 @@ export default function AppLayout() {
 
           {/* Right side */}
           <div className="flex items-center gap-2">
-            {/* Notifications */}
+            {/* Notifications with unread count */}
             <Link
               to="/notifications"
               className="relative p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
             >
               <Bell className="h-5 w-5" />
-              <span className="absolute top-1.5 right-1.5 h-2 w-2 bg-red-500 rounded-full ring-2 ring-white" />
+              {unreadCount > 0 && (
+                <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white shadow-lg shadow-red-500/30">
+                  {unreadCount > 99 ? '99+' : unreadCount}
+                </span>
+              )}
             </Link>
 
             {/* Profile dropdown */}

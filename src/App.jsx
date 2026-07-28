@@ -2,6 +2,7 @@ import { lazy, Suspense } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { ToastProvider } from './context/ToastContext';
 import { AuthProvider } from './context/AuthContext';
+import { SocketProvider } from './context/SocketContext';
 import ProtectedRoute, { roleHome } from './routes/ProtectedRoute';
 import { useAuth } from './context/AuthContext';
 import ToastContainer from './components/ui/Toast';
@@ -88,10 +89,12 @@ const CLASS_TEACHER_ROLES = ['SUPER_ADMIN', 'SCHOOL_ADMIN', 'CLASS_TEACHER'];
 export default function App() {
   return (
     <AuthProvider>
-      <ToastProvider>
-        <ToastContainer />
-        <AppRoutes />
-      </ToastProvider>
+      <SocketProvider>
+        <ToastProvider>
+          <ToastContainer />
+          <AppRoutes />
+        </ToastProvider>
+      </SocketProvider>
     </AuthProvider>
   );
 }

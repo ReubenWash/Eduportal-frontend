@@ -69,12 +69,16 @@ export function AuthProvider({ children }) {
     localStorage.removeItem('lastActivity');
   }, []);
 
+  // ─── FIXED: RETURN DATA FROM REGISTER ──────────────────────────
   const handleRegister = useCallback(async (userData) => {
     setLoading(true);
     setError(null);
     try {
       const data = await register(userData);
+      
+      console.log('✅ Registration response in AuthContext:', data);
 
+      // If the response contains accessToken and user, set them
       if (data?.accessToken) {
         setAccessToken(data.accessToken);
         localStorage.setItem('accessToken', data.accessToken);
@@ -84,7 +88,11 @@ export function AuthProvider({ children }) {
         setUser(data.user);
         localStorage.setItem('user', JSON.stringify(data.user));
       }
+      
+      // ✅ Return the data so the Register page can use it
+      return data;
     } catch (err) {
+      console.error('❌ Registration error in AuthContext:', err);
       setError(err.response?.data?.message || 'Registration failed');
       throw err;
     } finally {
@@ -103,7 +111,19 @@ export function AuthProvider({ children }) {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, accessToken, loading, initializing, error, setError, login: handleLogin, register: handleRegister, logout: handleLogout, refreshToken, setToken }}>
+    <AuthContext.Provider value={{ 
+      user, 
+      accessToken, 
+      loading, 
+      initializing, 
+      error, 
+      setError, 
+      login: handleLogin, 
+      register: handleRegister, 
+      logout: handleLogout, 
+      refreshToken, 
+      setToken 
+    }}>
       {children}
     </AuthContext.Provider>
   );

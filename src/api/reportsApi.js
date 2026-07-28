@@ -78,6 +78,15 @@ export const downloadClassZip = async (classId, termId) => {
   return res.data;
 };
 
+// ─── EXPORT REPORTS ────────────────────────────────────────────
+export const exportReports = async (params) => {
+  const res = await api.get('/reports/export', {
+    params,
+    responseType: 'blob',
+  });
+  return res.data;
+};
+
 // ─── UTILITY ───────────────────────────────────────────────────
 export const getReportDownloadUrl = (id) => {
   return `${api.defaults.baseURL}/reports/${id}/download`;
