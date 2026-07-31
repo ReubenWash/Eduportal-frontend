@@ -56,6 +56,47 @@ export const resetPassword = async (token, password) => {
   }
 };
 
+// ─── NEW: Student self-service password reset ──────────────────
+// POST /auth/student-reset-password
+export const resetStudentPassword = async (data) => {
+  try {
+    const res = await api.post('/auth/student-reset-password', {
+      studentNumber: data.studentNumber,
+      dateOfBirth: data.dateOfBirth,
+      newPassword: data.newPassword,
+      confirmPassword: data.confirmPassword,
+    });
+    return unwrapItem(res.data);
+  } catch (error) {
+    console.error('Student reset password error:', error);
+    throw error;
+  }
+};
+
+// ─── NEW: Admin reset student password ─────────────────────────
+// POST /auth/admin/reset-student-password/:studentId
+export const adminResetStudentPassword = async (studentId) => {
+  try {
+    const res = await api.post(`/auth/admin/reset-student-password/${studentId}`);
+    return unwrapItem(res.data);
+  } catch (error) {
+    console.error('Admin reset student password error:', error);
+    throw error;
+  }
+};
+
+// ─── NEW: Admin change password for any user ───────────────────
+// POST /auth/admin/change-password/:userId
+export const adminChangePassword = async (userId, newPassword) => {
+  try {
+    const res = await api.post(`/auth/admin/change-password/${userId}`, { newPassword });
+    return unwrapItem(res.data);
+  } catch (error) {
+    console.error('Admin change password error:', error);
+    throw error;
+  }
+};
+
 // POST /auth/verify-email  (body: { code })
 export const verifyEmail = async (code) => {
   try {
@@ -63,6 +104,18 @@ export const verifyEmail = async (code) => {
     return unwrapItem(res.data);
   } catch (error) {
     console.error('Verify email error:', error);
+    throw error;
+  }
+};
+
+// ─── NEW: Resend verification email ────────────────────────────
+// POST /auth/resend-verification
+export const resendVerification = async (email) => {
+  try {
+    const res = await api.post('/auth/resend-verification', { email });
+    return unwrapItem(res.data);
+  } catch (error) {
+    console.error('Resend verification error:', error);
     throw error;
   }
 };
@@ -135,4 +188,22 @@ export const getPublicSettings = async () => {
     console.error('Get public settings error:', error);
     throw error;
   }
+};
+
+// ─── Default export for convenience ────────────────────────────
+export default {
+  login,
+  refreshToken,
+  logout,
+  forgotPassword,
+  resetPassword,
+  resetStudentPassword,      // ← NEW
+  adminResetStudentPassword, // ← NEW
+  adminChangePassword,       // ← NEW
+  verifyEmail,
+  resendVerification,        // ← NEW
+  getMe,
+  changePassword,
+  register,
+  getPublicSettings,
 };

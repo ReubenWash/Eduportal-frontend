@@ -52,6 +52,11 @@ export const getStudents = async (params) => {
 };
 
 // ─── SINGLE ────────────────────────────────────────────────────
+export const getStudentById = async (id) => {
+  const res = await api.get(`/students/${id}`);
+  return normalizeStudent(unwrapItem(res.data));
+};
+
 export const getStudent = async (id) => {
   const res = await api.get(`/students/${id}`);
   return normalizeStudent(unwrapItem(res.data));
@@ -73,6 +78,7 @@ export const createStudent = async (data) => {
   return normalizeStudent(unwrapItem(res.data));
 };
 
+// ─── FIXED: Corrected syntax ──────────────────────────────────
 export const updateStudent = async (id, data) => {
   const res = await api.patch(`/students/${id}`, data);
   return normalizeStudent(unwrapItem(res.data));

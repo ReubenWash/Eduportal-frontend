@@ -729,4 +729,4 @@ export default function Scores() {
       </div>
     </div>
   );
-}gi
+}

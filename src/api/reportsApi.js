@@ -1,6 +1,12 @@
 // frontend/src/api/reportsApi.js
 import api, { unwrapList, unwrapItem } from './axios';
 
+// ─── STATS ──────────────────────────────────────────────────────
+export const getReportStats = async (termId) => {
+  const res = await api.get('/reports/stats', { params: { termId } });
+  return unwrapItem(res.data);
+};
+
 // ─── LIST ──────────────────────────────────────────────────────
 export const getReports = async (params) => {
   const res = await api.get('/reports', { params });
@@ -9,6 +15,11 @@ export const getReports = async (params) => {
 
 export const getClassReports = async (classId, termId) => {
   const res = await api.get(`/reports/class/${classId}/term/${termId}`);
+  return unwrapList(res.data);
+};
+
+export const getStudentReports = async (studentId) => {
+  const res = await api.get(`/reports/student/${studentId}`);
   return unwrapList(res.data);
 };
 
@@ -26,6 +37,11 @@ export const getReportPreview = async (id) => {
 // ─── GENERATE ──────────────────────────────────────────────────
 export const generateReports = async (data) => {
   const res = await api.post('/reports/generate', data);
+  return unwrapItem(res.data);
+};
+
+export const generateBatchReports = async (data) => {
+  const res = await api.post('/reports/generate-batch', data);
   return unwrapItem(res.data);
 };
 
@@ -89,5 +105,32 @@ export const exportReports = async (params) => {
 
 // ─── UTILITY ───────────────────────────────────────────────────
 export const getReportDownloadUrl = (id) => {
-  return `${api.defaults.baseURL}/reports/${id}/download`;
+  return `${api.defaults.baseURL}/reports/${id}/preview`;
+};
+
+export const getClassZipDownloadUrl = (classId, termId) => {
+  return `${api.defaults.baseURL}/reports/class/${classId}/term/${termId}`;
+};
+
+// ─── DEFAULT EXPORT ────────────────────────────────────────────
+export default {
+  getReportStats,
+  getReports,
+  getClassReports,
+  getStudentReports,
+  getReport,
+  getReportPreview,
+  generateReports,
+  generateBatchReports,
+  updateReportRemarks,
+  approveReport,
+  releaseReport,
+  releaseBulkReports,
+  regenerateReport,
+  sendReportEmail,
+  sendBulkReportEmails,
+  downloadClassZip,
+  exportReports,
+  getReportDownloadUrl,
+  getClassZipDownloadUrl,
 };

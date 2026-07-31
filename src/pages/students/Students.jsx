@@ -6,6 +6,7 @@ import Input from '../../components/ui/Input';
 import Select from '../../components/ui/Select';
 import Table from '../../components/ui/Table';
 import SlideOver from '../../components/ui/SlideOver';
+import Modal from '../../components/ui/Modal';
 import ConfirmDialog from '../../components/ui/ConfirmDialog';
 import Badge from '../../components/ui/Badge';
 import Avatar from '../../components/ui/Avatar';
@@ -14,14 +15,53 @@ import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
 import { getStudents, createStudent, updateStudent, deleteStudent } from '../../api/studentsApi';
 import { getClasses } from '../../api/classesApi';
-import { Search, UserPlus, FileDown, Eye, Edit2, Trash2 } from 'lucide-react';
+import api from '../../api/axios';
+import { Search, UserPlus, FileDown, Eye, Edit2, Trash2, Loader2 } from 'lucide-react';
+
+const GENDER_OPTIONS = [
+  { value: 'MALE', label: 'Male' },
+  { value: 'FEMALE', label: 'Female' }
+];
+
+const STATUS_OPTIONS = [
+  { value: 'ACTIVE', label: 'Active' },
+  { value: 'GRADUATED', label: 'Graduated' },
+  { value: 'TRANSFERRED', label: 'Transferred' },
+  { value: 'WITHDRAWN', label: 'Withdrawn' }
+];
+
+const statusVariant = {
+  ACTIVE: 'success',
+  GRADUATED: 'info',
+  TRANSFERRED: 'warning',
+  WITHDRAWN: 'danger',
+  REPEATED: 'default'
+};
+
+// ─── Photo Upload Function ───
+const uploadPhoto = async (file) => {
+  const formData = new FormData();
+  formData.append('file', file);
+  formData.append('folder', 'students');
+  
+  const res = await api.post('/upload/photo', formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data',
+    },
+  });
+  
+  if (res.data && res.data.data && res.data.data.url) {
+    return res.data.data.url;
+  }
+  if (res.data && res.data.url) {
+    return res.data.url;
+  }
+  throw new Error('Failed to get photo URL from response');
+};
 
 export default function Students() {
   const navigate = useNavigate();
   const { user } = useAuth();
-  // Per the Project Documentation, Class Teacher can view and update
-  // student profiles in their class, but only School/Super Admin can
-  // admit new students or delete existing ones.
   const canAdmitOrDelete = user?.role === 'SCHOOL_ADMIN' || user?.role === 'SUPER_ADMIN';
   const canEdit = canAdmitOrDelete || user?.role === 'CLASS_TEACHER';
 
@@ -33,20 +73,60 @@ export default function Students() {
   const [editing, setEditing] = useState(null);
   const [keyword, setKeyword] = useState('');
   const [classFilter, setClassFilter] = useState('');
-  const [form, setForm] = useState({ name: '', studentNo: '', classId: '', gender: 'MALE', dob: '', status: 'ACTIVE' });
+  const [saving, setSaving] = useState(false);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const [formErrors, setFormErrors] = useState({});
+  const [showTempPasswordModal, setShowTempPasswordModal] = useState(false);
+  const [tempPasswordData, setTempPasswordData] = useState(null);
+  const [form, setForm] = useState({
+    firstName: '',
+    lastName: '',
+    otherNames: '',
+    studentNumber: '',
+    classId: '',
+    gender: 'MALE',
+    dateOfBirth: '',
+    status: 'ACTIVE',
+    guardianName: '',
+    guardianPhone: '',
+    guardianEmail: '',
+    relationship: 'Father'
+  });
   const [preview, setPreview] = useState('');
-  const [photo, setPhoto] = useState(null);
+  const [photoUrl, setPhotoUrl] = useState(null);
   const { addToast } = useToast();
 
-  const load = () => getStudents().then(d => { setData(Array.isArray(d) ? d : []); setLoading(false); }).catch(err => { setLoading(false); });
+  const load = async () => {
+    try {
+      setLoading(true);
+      const [studentsRes, classesRes] = await Promise.all([
+        getStudents(),
+        getClasses()
+      ]);
+      setData(Array.isArray(studentsRes) ? studentsRes : []);
+      setClasses(Array.isArray(classesRes) ? classesRes : []);
+    } catch (error) {
+      console.error('Error loading data:', error);
+      addToast('Failed to load students', 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => { load(); }, []);
-  useEffect(() => { getClasses().then(d => setClasses(Array.isArray(d) ? d : [])).catch(err => console.error('Classes fetch error:', err)); }, []);
+
+  const generateStudentNumber = () => {
+    const year = new Date().getFullYear();
+    const random = Math.floor(Math.random() * 10000).toString().padStart(4, '0');
+    return `STU/${year}/${random}`;
+  };
 
   const filtered = useMemo(() => {
     return data.filter(s => {
       const nameMatch = !keyword ||
-        (s.name || '').toLowerCase().includes(keyword.toLowerCase()) ||
-        (s.studentNo || '').toLowerCase().includes(keyword.toLowerCase());
+        (s.firstName || '').toLowerCase().includes(keyword.toLowerCase()) ||
+        (s.lastName || '').toLowerCase().includes(keyword.toLowerCase()) ||
+        (s.studentNumber || '').toLowerCase().includes(keyword.toLowerCase());
       const classMatch = !classFilter || s.classId === classFilter;
       return nameMatch && classMatch;
     });
@@ -54,31 +134,195 @@ export default function Students() {
 
   const openCreate = () => {
     setEditing(null);
-    setForm({ name: '', studentNo: '', classId: '', gender: 'MALE', dob: '', status: 'ACTIVE' });
-    setPhoto(null);
+    setFormErrors({});
+    setForm({
+      firstName: '',
+      lastName: '',
+      otherNames: '',
+      studentNumber: generateStudentNumber(),
+      classId: '',
+      gender: 'MALE',
+      dateOfBirth: '',
+      status: 'ACTIVE',
+      guardianName: '',
+      guardianPhone: '',
+      guardianEmail: '',
+      relationship: 'Father'
+    });
+    setPhotoUrl(null);
     setPreview('');
     setDrawerOpen(true);
   };
 
   const openEdit = (row) => {
     setEditing(row);
-    setForm({ name: row.name, studentNo: row.studentNo, classId: row.classId, gender: row.gender, dob: row.dob || '', status: row.status });
-    setPhoto(null);
-    setPreview(row.photo || '');
+    setFormErrors({});
+    setForm({
+      firstName: row.firstName || '',
+      lastName: row.lastName || '',
+      otherNames: row.otherNames || '',
+      studentNumber: row.studentNumber || '',
+      classId: row.classId || '',
+      gender: row.gender || 'MALE',
+      dateOfBirth: row.dateOfBirth ? new Date(row.dateOfBirth).toISOString().split('T')[0] : '',
+      status: row.status || 'ACTIVE',
+      guardianName: row.guardianName || '',
+      guardianPhone: row.guardianPhone || '',
+      guardianEmail: row.guardianEmail || '',
+      relationship: row.relationship || 'Father'
+    });
+    setPhotoUrl(null);
+    setPreview(row.photoUrl || '');
     setDrawerOpen(true);
   };
 
-  const handleFile = (file) => { setPhoto(file); setPreview(URL.createObjectURL(file)); };
+  const handleFile = async (file) => {
+    if (!file) return;
+    
+    setPreview(URL.createObjectURL(file));
+    setUploadingPhoto(true);
+    
+    try {
+      const url = await uploadPhoto(file);
+      setPhotoUrl(url);
+      setPreview(url);
+      addToast('Photo uploaded successfully', 'success');
+    } catch (error) {
+      console.error('Photo upload error:', error);
+      addToast('Failed to upload photo', 'error');
+    } finally {
+      setUploadingPhoto(false);
+    }
+  };
+
+  const validateForm = () => {
+    const errors = {};
+    let hasError = false;
+    
+    if (!form.firstName || !form.firstName.trim()) {
+      errors.firstName = 'First name is required';
+      hasError = true;
+    }
+    if (!form.lastName || !form.lastName.trim()) {
+      errors.lastName = 'Last name is required';
+      hasError = true;
+    }
+    if (!form.gender) {
+      errors.gender = 'Gender is required';
+      hasError = true;
+    }
+    if (!form.dateOfBirth) {
+      errors.dateOfBirth = 'Date of birth is required';
+      hasError = true;
+    }
+    if (!form.studentNumber || !form.studentNumber.trim()) {
+      errors.studentNumber = 'Student number is required';
+      hasError = true;
+    }
+    if (!form.classId) {
+      errors.classId = 'Class is required';
+      hasError = true;
+    }
+    
+    setFormErrors(errors);
+    return !hasError;
+  };
 
   const handleSave = async (e) => {
     e.preventDefault();
+    
+    console.log('=== FORM DATA ===');
+    console.log('firstName:', form.firstName);
+    console.log('lastName:', form.lastName);
+    console.log('gender:', form.gender);
+    console.log('dateOfBirth:', form.dateOfBirth);
+    console.log('studentNumber:', form.studentNumber);
+    console.log('classId:', form.classId);
+    console.log('photoUrl:', photoUrl);
+    console.log('isEditing:', !!editing);
+    
+    if (!validateForm()) {
+      addToast('Please fix the validation errors', 'error');
+      Object.values(formErrors).forEach(msg => addToast(msg, 'error'));
+      return;
+    }
+
+    setSaving(true);
+
     try {
-      if (editing) await updateStudent(editing.id, form);
-      else await createStudent(form);
-      addToast(editing ? 'Student updated successfully' : 'Student admitted successfully', 'success');
+      // Build the payload
+      const payload = {
+        firstName: form.firstName.trim(),
+        lastName: form.lastName.trim(),
+        otherNames: form.otherNames?.trim() || null,
+        gender: form.gender,
+        dateOfBirth: new Date(form.dateOfBirth).toISOString(),
+        studentNumber: form.studentNumber.trim(),
+        status: form.status || 'ACTIVE',
+        guardianName: form.guardianName?.trim() || null,
+        guardianPhone: form.guardianPhone?.trim() || null,
+        guardianEmail: form.guardianEmail?.trim() || null,
+        relationship: form.relationship || null,
+        photoUrl: photoUrl || null
+      };
+
+      // Only include classId if it's changed or it's a new student
+      if (!editing || (editing && form.classId !== editing.classId)) {
+        payload.classId = form.classId;
+        console.log('Class ID included in payload:', payload.classId);
+      }
+
+      console.log('=== PAYLOAD SENT TO BACKEND ===');
+      console.log(JSON.stringify(payload, null, 2));
+
+      let response;
+      if (editing) {
+        response = await updateStudent(editing.id, payload);
+        addToast('Student updated successfully', 'success');
+      } else {
+        response = await createStudent(payload);
+        
+        // ─── Show temporary password modal ───
+        if (response?.tempPassword) {
+          setTempPasswordData({
+            password: response.tempPassword,
+            studentNumber: response.studentNumber || form.studentNumber,
+            studentName: `${form.firstName} ${form.lastName}`
+          });
+          setShowTempPasswordModal(true);
+        }
+        
+        addToast('Student admitted successfully!', 'success');
+      }
+      
+      console.log('Response from server:', response);
+      
       setDrawerOpen(false);
-      load();
-    } catch { addToast('Failed to save student', 'error'); }
+      await load();
+    } catch (error) {
+      console.error('Error saving student:', error);
+      console.error('Error response:', error.response?.data);
+      
+      if (error.response?.data?.errors) {
+        const backendErrors = error.response.data.errors;
+        backendErrors.forEach(err => {
+          addToast(`${err.param || 'Field'}: ${err.msg || err.message}`, 'error');
+        });
+        
+        const fieldErrors = {};
+        backendErrors.forEach(e => {
+          if (e.param) {
+            fieldErrors[e.param] = e.msg || e.message;
+          }
+        });
+        setFormErrors(fieldErrors);
+      } else {
+        const errorMsg = error.response?.data?.message || error.message || 'Failed to save student';
+        addToast(errorMsg, 'error');
+      }
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleDelete = async () => {
@@ -86,11 +330,22 @@ export default function Students() {
       await deleteStudent(deleteDialog.id);
       addToast('Student removed from system', 'success');
       setDeleteDialog(null);
-      load();
-    } catch { addToast('Failed to delete student', 'error'); }
+      await load();
+    } catch (error) {
+      console.error('Delete error:', error);
+      addToast('Failed to delete student', 'error');
+    }
   };
 
-  const statusVariant = { ACTIVE: 'success', INACTIVE: 'default', WITHDRAWN: 'danger' };
+  const getFullName = (student) => {
+    if (!student) return 'Unknown';
+    return `${student.firstName || ''} ${student.lastName || ''}`.trim();
+  };
+
+  const getClassLabel = (classId) => {
+    const cls = classes.find(c => c.id === classId);
+    return cls ? `${cls.level} ${cls.section}` : 'Not Assigned';
+  };
 
   const columns = [
     {
@@ -98,17 +353,31 @@ export default function Students() {
       key: 'name',
       render: (_, row) => (
         <div className="flex items-center gap-3">
-          <Avatar src={row.photo} name={row.name} size="sm" />
+          <Avatar src={row.photoUrl} name={getFullName(row)} size="sm" />
           <div>
-            <p className="text-sm font-medium text-gray-900 group-hover:text-indigo-600 transition-colors">{row.name}</p>
-            <p className="text-[11px] text-gray-500">{row.studentNo}</p>
+            <p className="text-sm font-medium text-gray-900 group-hover:text-indigo-600 transition-colors">
+              {getFullName(row)}
+            </p>
+            <p className="text-[11px] text-gray-500">{row.studentNumber}</p>
           </div>
         </div>
       )
     },
-    { header: 'Class', key: 'className', render: v => <span className="text-gray-600">{v}</span> },
-    { header: 'Gender', key: 'gender', render: v => <span className="text-gray-600 capitalize">{v?.toLowerCase()}</span> },
-    { header: 'Status', key: 'status', render: v => <Badge variant={statusVariant[v] || 'default'} dot>{v}</Badge> },
+    { 
+      header: 'Class', 
+      key: 'classId', 
+      render: (v) => <span className="text-gray-600">{getClassLabel(v)}</span> 
+    },
+    { 
+      header: 'Gender', 
+      key: 'gender', 
+      render: (v) => <span className="text-gray-600 capitalize">{v?.toLowerCase()}</span> 
+    },
+    { 
+      header: 'Status', 
+      key: 'status', 
+      render: (v) => <Badge variant={statusVariant[v] || 'default'} dot>{v}</Badge> 
+    },
   ];
 
   return (
@@ -139,7 +408,7 @@ export default function Students() {
           </div>
           <Select
             className="w-full sm:w-48"
-            options={classes.map(c => ({ value: c.id, label: c.name }))}
+            options={classes.map(c => ({ value: c.id, label: `${c.level} ${c.section}` }))}
             value={classFilter}
             onChange={e => setClassFilter(e.target.value)}
             placeholder="All Classes"
@@ -193,34 +462,151 @@ export default function Students() {
         isOpen={drawerOpen}
         onClose={() => setDrawerOpen(false)}
         title={editing ? 'Edit Student Details' : 'Admit New Student'}
-        subtitle={editing ? `Updating record for ${editing.name}` : 'Enter the details of the new student below.'}
+        subtitle={editing ? `Updating record for ${getFullName(editing)}` : 'Enter the details of the new student below.'}
       >
         <form onSubmit={handleSave} className="space-y-5">
-          <FileUpload label="Passport Photo" onFileSelect={handleFile} preview={preview} accept="image/*" />
+          <FileUpload 
+            label="Passport Photo" 
+            onFileSelect={handleFile} 
+            preview={preview} 
+            accept="image/*"
+            uploading={uploadingPhoto}
+          />
 
           <div className="space-y-4 pt-2 border-t border-gray-100">
-            <Input label="Full Name" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} required placeholder="e.g. Ama Mensah" />
             <div className="grid grid-cols-2 gap-4">
-              <Input label="Student Number" value={form.studentNo} onChange={e => setForm({ ...form, studentNo: e.target.value })} required placeholder="STU/001" />
-              <Select label="Gender" value={form.gender} onChange={e => setForm({ ...form, gender: e.target.value })} options={[{value: 'MALE', label: 'Male'}, {value: 'FEMALE', label: 'Female'}]} required />
+              <div>
+                <Input 
+                  label="First Name *" 
+                  value={form.firstName} 
+                  onChange={e => setForm({ ...form, firstName: e.target.value })} 
+                  required 
+                  placeholder="e.g. Ama"
+                  error={formErrors.firstName}
+                />
+              </div>
+              <div>
+                <Input 
+                  label="Last Name *" 
+                  value={form.lastName} 
+                  onChange={e => setForm({ ...form, lastName: e.target.value })} 
+                  required 
+                  placeholder="e.g. Mensah"
+                  error={formErrors.lastName}
+                />
+              </div>
             </div>
+            <Input 
+              label="Other Names" 
+              value={form.otherNames} 
+              onChange={e => setForm({ ...form, otherNames: e.target.value })} 
+              placeholder="e.g. Akua" 
+            />
+            
             <div className="grid grid-cols-2 gap-4">
-              <Select label="Class" value={form.classId} onChange={e => setForm({ ...form, classId: e.target.value })} options={classes.map(c => ({ value: c.id, label: c.name }))} required placeholder="Select class..." />
-              <Input label="Date of Birth" type="date" value={form.dob} onChange={e => setForm({ ...form, dob: e.target.value })} required />
+              <div>
+                <Input 
+                  label="Student Number *" 
+                  value={form.studentNumber} 
+                  onChange={e => setForm({ ...form, studentNumber: e.target.value })} 
+                  required 
+                  placeholder="STU/2024/0001"
+                  error={formErrors.studentNumber}
+                />
+              </div>
+              <div>
+                <Select 
+                  label="Gender *" 
+                  value={form.gender} 
+                  onChange={e => setForm({ ...form, gender: e.target.value })} 
+                  options={GENDER_OPTIONS} 
+                  required 
+                  error={formErrors.gender}
+                />
+              </div>
             </div>
+            
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Select 
+                  label="Class *" 
+                  value={form.classId} 
+                  onChange={e => setForm({ ...form, classId: e.target.value })} 
+                  options={classes.map(c => ({ value: c.id, label: `${c.level} ${c.section}` }))} 
+                  required 
+                  placeholder="Select class..."
+                  error={formErrors.classId}
+                />
+              </div>
+              <div>
+                <Input 
+                  label="Date of Birth *" 
+                  type="date" 
+                  value={form.dateOfBirth} 
+                  onChange={e => setForm({ ...form, dateOfBirth: e.target.value })} 
+                  required 
+                  error={formErrors.dateOfBirth}
+                />
+              </div>
+            </div>
+
             {editing && canAdmitOrDelete && (
               <Select
                 label="Status"
                 value={form.status}
                 onChange={e => setForm({ ...form, status: e.target.value })}
-                options={[{value: 'ACTIVE', label: 'Active'}, {value: 'INACTIVE', label: 'Inactive'}, {value: 'WITHDRAWN', label: 'Withdrawn'}]}
+                options={STATUS_OPTIONS}
               />
             )}
+
+            {/* Guardian Information */}
+            <div className="pt-4 border-t border-gray-200">
+              <p className="text-sm font-medium text-gray-700 mb-3">Guardian Information (Optional)</p>
+              <div className="space-y-4">
+                <Input 
+                  label="Guardian Name" 
+                  value={form.guardianName} 
+                  onChange={e => setForm({ ...form, guardianName: e.target.value })} 
+                  placeholder="e.g. Kwame Mensah" 
+                />
+                <div className="grid grid-cols-2 gap-4">
+                  <Input 
+                    label="Guardian Phone" 
+                    value={form.guardianPhone} 
+                    onChange={e => setForm({ ...form, guardianPhone: e.target.value })} 
+                    placeholder="+233 24 000 0000" 
+                  />
+                  <Input 
+                    label="Guardian Email" 
+                    type="email" 
+                    value={form.guardianEmail} 
+                    onChange={e => setForm({ ...form, guardianEmail: e.target.value })} 
+                    placeholder="guardian@email.com" 
+                  />
+                </div>
+                <Select
+                  label="Relationship"
+                  value={form.relationship}
+                  onChange={e => setForm({ ...form, relationship: e.target.value })}
+                  options={[
+                    { value: 'Father', label: 'Father' },
+                    { value: 'Mother', label: 'Mother' },
+                    { value: 'Guardian', label: 'Guardian' },
+                    { value: 'Uncle', label: 'Uncle' },
+                    { value: 'Aunt', label: 'Aunt' },
+                    { value: 'Other', label: 'Other' }
+                  ]}
+                />
+              </div>
+            </div>
           </div>
 
           <div className="pt-6 mt-6 border-t border-gray-100 flex gap-3 justify-end">
             <Button variant="secondary" onClick={() => setDrawerOpen(false)}>Cancel</Button>
-            <Button type="submit">{editing ? 'Save Changes' : 'Admit Student'}</Button>
+            <Button type="submit" disabled={saving || uploadingPhoto}>
+              {saving || uploadingPhoto ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+              {saving ? 'Saving...' : uploadingPhoto ? 'Uploading Photo...' : editing ? 'Save Changes' : 'Admit Student'}
+            </Button>
           </div>
         </form>
       </SlideOver>
@@ -231,10 +617,75 @@ export default function Students() {
         onConfirm={handleDelete}
         onCancel={() => setDeleteDialog(null)}
         title="Remove Student"
-        message={`Are you sure you want to completely remove ${deleteDialog?.name} from the system? This action cannot be undone.`}
+        message={`Are you sure you want to completely remove ${getFullName(deleteDialog)} from the system? This action cannot be undone.`}
         confirmText="Remove Student"
         isDanger={true}
       />
+
+      {/* Temporary Password Modal */}
+      {showTempPasswordModal && tempPasswordData && (
+        <Modal
+          isOpen={showTempPasswordModal}
+          onClose={() => setShowTempPasswordModal(false)}
+          title="🎓 Student Account Created"
+        >
+          <div className="space-y-4">
+            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+              <p className="text-sm text-yellow-800 font-medium mb-3">
+                Student account created successfully! Please share these credentials:
+              </p>
+              <div className="space-y-3">
+                <div className="bg-white rounded-lg p-3 border border-yellow-100">
+                  <p className="text-xs text-gray-500">Student Name</p>
+                  <p className="text-sm font-semibold text-gray-900">
+                    {tempPasswordData.studentName}
+                  </p>
+                </div>
+                <div className="bg-white rounded-lg p-3 border border-yellow-100">
+                  <p className="text-xs text-gray-500">Student Number (Username)</p>
+                  <p className="text-sm font-mono font-bold text-gray-900">
+                    {tempPasswordData.studentNumber}
+                  </p>
+                </div>
+                <div className="bg-white rounded-lg p-3 border border-yellow-100">
+                  <p className="text-xs text-gray-500">Temporary Password</p>
+                  <p className="text-sm font-mono font-bold text-indigo-600">
+                    {tempPasswordData.password}
+                  </p>
+                </div>
+              </div>
+              <div className="mt-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                <p className="text-xs text-blue-700">
+                  ⚠️ Student must change password on first login.
+                </p>
+                <p className="text-xs text-blue-600 mt-1">
+                  Login URL: <span className="font-mono">{window.location.origin}/login</span>
+                </p>
+              </div>
+            </div>
+            <div className="flex gap-3">
+              <Button 
+                onClick={() => {
+                  setShowTempPasswordModal(false);
+                  // Copy credentials to clipboard
+                  const credentials = `Student: ${tempPasswordData.studentName}\nStudent Number: ${tempPasswordData.studentNumber}\nTemporary Password: ${tempPasswordData.password}`;
+                  navigator.clipboard?.writeText(credentials).catch(() => {});
+                }}
+                variant="secondary"
+                className="flex-1"
+              >
+                📋 Copy Credentials
+              </Button>
+              <Button 
+                onClick={() => setShowTempPasswordModal(false)} 
+                className="flex-1"
+              >
+                Done
+              </Button>
+            </div>
+          </div>
+        </Modal>
+      )}
     </div>
   );
 }

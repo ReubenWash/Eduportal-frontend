@@ -1,9 +1,8 @@
 import { Link } from 'react-router-dom';
 import { useState, useEffect } from 'react';
+import { getLandingPageContent } from '../api/cmsApi';
 
 // ── Default landing page content ─────────────────────────────────────────
-// AdminCMS (Super Admin → Website CMS) writes to localStorage under 'landingContent'.
-// If no overrides exist, these defaults are used.
 const DEFAULT_CONTENT = {
   heroHeadline: "Run your school.",
   heroHeadlineHighlight: "Not paperwork.",
@@ -11,49 +10,117 @@ const DEFAULT_CONTENT = {
   heroPrimaryBtn: "Register your school",
   heroTrustText: "Trusted by 200+ schools across Ghana, Nigeria & Kenya",
   stats: [
-    { number: "200+", label: "Schools registered" },
-    { number: "84K",  label: "Students managed" },
-    { number: "1.2M", label: "Reports generated" },
-    { number: "99.9%", label: "Platform uptime" },
+    { id: 'stat-1', number: "200+", label: "Schools registered" },
+    { id: 'stat-2', number: "84K", label: "Students managed" },
+    { id: 'stat-3', number: "1.2M", label: "Reports generated" },
+    { id: 'stat-4', number: "99.9%", label: "Platform uptime" },
   ],
   schools: ["Accra Academy", "Presec Legon", "Wesley Girls", "Achimota School", "Aburi Girls", "Holy Child"],
   testimonials: [
-    { quote: "We used to spend three weeks compiling report cards. With EduPortal, the whole process takes two days. Teachers submit scores, I approve, and parents get a PDF. That's it.", author: "Abena Owusu", role: "Headmistress, Holy Child School", initials: "AO", color: "#4F46E5" },
-    { quote: "The attendance analytics alone are worth it. I can see which classes have the worst absenteeism and act on it before the term ends — not after.", author: "Kwame Darko", role: "Deputy Head, Presec Legon", initials: "KD", color: "#10B981" },
-    { quote: "As a parent, I used to wait weeks to find out how my daughter was doing. Now I get her report on my phone the same day results are released. Genuinely impressive.", author: "Efua Boateng", role: "Parent, Achimota School", initials: "EB", color: "#F59E0B" },
+    { id: 'testimonial-1', quote: "We used to spend three weeks compiling report cards. With EduPortal, the whole process takes two days. Teachers submit scores, I approve, and parents get a PDF. That's it.", author: "Abena Owusu", role: "Headmistress, Holy Child School", initials: "AO", color: "#4F46E5" },
+    { id: 'testimonial-2', quote: "The attendance analytics alone are worth it. I can see which classes have the worst absenteeism and act on it before the term ends — not after.", author: "Kwame Darko", role: "Deputy Head, Presec Legon", initials: "KD", color: "#10B981" },
+    { id: 'testimonial-3', quote: "As a parent, I used to wait weeks to find out how my daughter was doing. Now I get her report on my phone the same day results are released. Genuinely impressive.", author: "Efua Boateng", role: "Parent, Achimota School", initials: "EB", color: "#F59E0B" },
   ],
   plans: [
-    { name: "Basic",    price: "Free",     period: "/ term", desc: "For small schools getting started. Up to 150 students.", popular: false, features: ["Up to 150 students", "Scores & grading", "Attendance tracking", "PDF report cards"], disabled: ["Analytics dashboard", "Email reports to parents"] },
-    { name: "Standard", price: "GHS 299",  period: "/ term", desc: "For growing schools. Up to 800 students, full feature set.", popular: true, features: ["Up to 800 students", "Scores & grading", "Attendance tracking", "PDF report cards", "Analytics dashboard", "Email reports to parents"], disabled: [] },
-    { name: "Premium",  price: "GHS 599",  period: "/ term", desc: "For large institutions. Unlimited students, priority support.", popular: false, features: ["Unlimited students", "Everything in Standard", "Bulk import & export", "Priority email support", "Custom report branding", "Dedicated account manager"], disabled: [] },
+    { id: 'plan-basic', name: "Basic", price: "Free", period: "/ term", desc: "For small schools getting started. Up to 150 students.", popular: false, features: ["Up to 150 students", "Scores & grading", "Attendance tracking", "PDF report cards"], disabled: ["Analytics dashboard", "Email reports to parents"] },
+    { id: 'plan-standard', name: "Standard", price: "GHS 299", period: "/ term", desc: "For growing schools. Up to 800 students, full feature set.", popular: true, features: ["Up to 800 students", "Scores & grading", "Attendance tracking", "PDF report cards", "Analytics dashboard", "Email reports to parents"], disabled: [] },
+    { id: 'plan-premium', name: "Premium", price: "GHS 599", period: "/ term", desc: "For large institutions. Unlimited students, priority support.", popular: false, features: ["Unlimited students", "Everything in Standard", "Bulk import & export", "Priority email support", "Custom report branding", "Dedicated account manager"], disabled: [] },
   ],
   footerTagline: "A school management platform built specifically for schools in Ghana and across West Africa.",
+  // Legal documents will be fetched dynamically
+  legalLinks: [
+    { label: 'Privacy Policy', path: '/legal/privacy' },
+    { label: 'Terms of Service', path: '/legal/terms' },
+    { label: 'Cookie Policy', path: '/legal/cookie' },
+    { label: 'GDPR Compliance', path: '/legal/gdpr' },
+  ]
 };
-
-import { getPublicSettings } from '../api/authApi';
 
 function useLandingContent() {
   const [content, setContent] = useState(DEFAULT_CONTENT);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
   useEffect(() => {
-    getPublicSettings()
-      .then(settings => {
-        if (settings?.cms_landing) {
-          const saved = JSON.parse(settings.cms_landing);
-          setContent(prev => ({ ...prev, ...saved }));
+    const fetchContent = async () => {
+      try {
+        setLoading(true);
+        const response = await getLandingPageContent();
+        
+        if (response?.success && response?.content) {
+          // Merge CMS content with defaults
+          const mergedContent = { ...DEFAULT_CONTENT, ...response.content };
+          
+          // Ensure all arrays have unique IDs and remove duplicates
+          if (mergedContent.plans && Array.isArray(mergedContent.plans)) {
+            // Remove duplicates by name
+            const seenNames = new Set();
+            mergedContent.plans = mergedContent.plans
+              .filter(plan => {
+                if (!plan.name) return false;
+                const isDuplicate = seenNames.has(plan.name);
+                seenNames.add(plan.name);
+                return !isDuplicate;
+              })
+              .map((plan, index) => ({
+                ...plan,
+                id: plan.id || `plan-${plan.name?.toLowerCase().replace(/\s+/g, '-') || index}`
+              }));
+          }
+          
+          if (mergedContent.stats && Array.isArray(mergedContent.stats)) {
+            mergedContent.stats = mergedContent.stats.map((item, index) => ({
+              ...item,
+              id: item.id || `stat-${index}`
+            }));
+          }
+          
+          if (mergedContent.testimonials && Array.isArray(mergedContent.testimonials)) {
+            mergedContent.testimonials = mergedContent.testimonials.map((item, index) => ({
+              ...item,
+              id: item.id || `testimonial-${index}`
+            }));
+          }
+
+          // Ensure legalLinks exists
+          if (!mergedContent.legalLinks || !Array.isArray(mergedContent.legalLinks)) {
+            mergedContent.legalLinks = DEFAULT_CONTENT.legalLinks;
+          }
+          
+          setContent(mergedContent);
+        } else {
+          // Fallback to localStorage
+          try {
+            const saved = JSON.parse(localStorage.getItem('landingContent') || '{}');
+            if (Object.keys(saved).length > 0) {
+              setContent(prev => ({ ...prev, ...saved }));
+            }
+          } catch { /* ignore */ }
         }
-      })
-      .catch(() => {
+      } catch (err) {
+        console.error('Failed to fetch landing content:', err);
+        setError(err);
+        
+        // Fallback to localStorage on error
         try {
           const saved = JSON.parse(localStorage.getItem('landingContent') || '{}');
-          setContent(prev => ({ ...prev, ...saved }));
+          if (Object.keys(saved).length > 0) {
+            setContent(prev => ({ ...prev, ...saved }));
+          }
         } catch { /* ignore */ }
-      });
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchContent();
   }, []);
-  return content;
+
+  return { content, loading, error };
 }
 
 export default function LandingPage() {
-  const c = useLandingContent();
+  const { content: c, loading, error } = useLandingContent();
   const [deferredPrompt, setDeferredPrompt] = useState(null);
   const [isInstalled, setIsInstalled] = useState(false);
   const [showIosInstructions, setShowIosInstructions] = useState(false);
@@ -79,6 +146,35 @@ export default function LandingPage() {
       if (outcome === 'accepted') setDeferredPrompt(null);
     } else { setShowIosInstructions(true); }
   };
+
+  // Show loading state while fetching CMS content
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-white flex items-center justify-center">
+        <div className="text-center">
+          <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-indigo-600 border-t-transparent"></div>
+          <p className="mt-4 text-gray-600">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show error state but still render with defaults
+  if (error) {
+    console.warn('Using default content due to error:', error);
+  }
+
+  // Ensure we have arrays with unique keys
+  const plans = c.plans || [];
+  const stats = c.stats || [];
+  const testimonials = c.testimonials || [];
+  const schools = c.schools || [];
+  const legalLinks = c.legalLinks || [
+    { label: 'Privacy Policy', path: '/legal/privacy' },
+    { label: 'Terms of Service', path: '/legal/terms' },
+    { label: 'Cookie Policy', path: '/legal/cookie' },
+    { label: 'GDPR Compliance', path: '/legal/gdpr' },
+  ];
 
   return (
     <div className="landing-page min-h-screen bg-white">
@@ -122,7 +218,7 @@ export default function LandingPage() {
             <div className="hero-cta">
               <Link to="/login" className="btn-hero-primary">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 12l2 2 4-4"/></svg>
-                Register your school
+                {c.heroPrimaryBtn || "Register your school"}
               </Link>
               <a href="#features" className="btn-hero-secondary">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>
@@ -217,7 +313,11 @@ export default function LandingPage() {
         <div className="logos-inner">
           <p className="logos-label">Schools that run on EduPortal</p>
           <div className="logos-row">
-            {c.schools.map(s => <div key={s} className="school-name-pill"><span className="dot"></span>{s}</div>)}
+            {schools.map((s, index) => (
+              <div key={`school-${index}`} className="school-name-pill">
+                <span className="dot"></span>{s}
+              </div>
+            ))}
           </div>
         </div>
       </div>
@@ -332,8 +432,8 @@ export default function LandingPage() {
       {/* STATS BAND */}
       <div className="stats-band">
         <div className="stats-band-inner">
-          {c.stats.map(s => (
-            <div key={s.label}>
+          {stats.map((s, index) => (
+            <div key={s.id || `stat-${index}`}>
               <div className="stat-number">{s.number}</div>
               <div className="stat-label">{s.label}</div>
             </div>
@@ -349,8 +449,8 @@ export default function LandingPage() {
             <h2 className="section-h2" style={{maxWidth:'500px', margin:'0 auto'}}>Real feedback from real administrators</h2>
           </div>
           <div className="testimonials-grid">
-            {c.testimonials.map((t, i) => (
-              <div key={i} className="testimonial-card">
+            {testimonials.map((t, index) => (
+              <div key={t.id || `testimonial-${index}`} className="testimonial-card">
                 <div className="testimonial-stars">
                   {[1,2,3,4,5].map(n => (
                     <svg key={n} viewBox="0 0 24 24" fill="currentColor"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
@@ -358,7 +458,7 @@ export default function LandingPage() {
                 </div>
                 <p className="testimonial-quote">"{t.quote}"</p>
                 <div className="testimonial-author">
-                  <div className="author-avatar" style={{background: t.color}}>{t.initials}</div>
+                  <div className="author-avatar" style={{background: t.color || '#4F46E5'}}>{t.initials || t.author?.charAt(0) || 'U'}</div>
                   <div>
                     <div className="author-name">{t.author}</div>
                     <div className="author-role">{t.role}</div>
@@ -378,21 +478,21 @@ export default function LandingPage() {
           <p className="section-sub" style={{maxWidth:'400px', margin:'16px auto 0'}}>Pay per term or annually. Cancel any time.</p>
         </div>
         <div className="plans-grid">
-          {c.plans.map((plan, i) => (
-            <div key={plan.name} className={`plan-card ${plan.popular ? 'featured' : ''}`}>
+          {plans.map((plan, index) => (
+            <div key={`plan-${index}`} className={`plan-card ${plan.popular ? 'featured' : ''}`}>
               {plan.popular && <div className="plan-badge">Most popular</div>}
               <div className="plan-name">{plan.name}</div>
               <div className="plan-price">{plan.price} <span>{plan.period}</span></div>
               <div className="plan-desc">{plan.desc}</div>
               <ul className="plan-features">
-                {plan.features.map(f => (
-                  <li key={f}>
+                {plan.features && plan.features.map((f, idx) => (
+                  <li key={`${plan.name}-feature-${idx}`}>
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
                     {f}
                   </li>
                 ))}
-                {plan.disabled && plan.disabled.map(f => (
-                  <li key={f} className="dim">
+                {plan.disabled && plan.disabled.map((f, idx) => (
+                  <li key={`${plan.name}-disabled-${idx}`} className="dim">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
                     {f}
                   </li>
@@ -415,7 +515,7 @@ export default function LandingPage() {
           <div className="cta-buttons">
             <Link to="/login" className="btn-hero-primary">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 12l2 2 4-4"/></svg>
-              Register your school
+              {c.heroPrimaryBtn || "Register your school"}
             </Link>
             <a href="#features" className="btn-hero-secondary">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
@@ -484,9 +584,11 @@ export default function LandingPage() {
             <div>
               <div className="footer-col-title">Legal</div>
               <ul className="footer-links">
-                <li><Link to="/privacy">Privacy policy</Link></li>
-                <li><Link to="/terms-of-service">Terms of service</Link></li>
-                <li><Link to="/data">Data processing</Link></li>
+                {legalLinks.map((link, index) => (
+                  <li key={`legal-${index}`}>
+                    <Link to={link.path}>{link.label}</Link>
+                  </li>
+                ))}
               </ul>
             </div>
           </div>

@@ -1,12 +1,12 @@
 import { useState, useMemo, useEffect } from 'react';
 import {
   Search, CheckCircle, XCircle, Clock, Eye, School,
-  MapPin, Mail, Phone, Users, CalendarDays, Edit2, Save, Loader2, Trash, RotateCcw
+  MapPin, Mail, Phone, Users, CalendarDays, Edit2, Save, Loader2, Trash, RotateCcw, UserCheck
 } from 'lucide-react';
 import Badge from '../../components/ui/Badge';
 import Modal from '../../components/ui/Modal';
 import { useToast } from '../../context/ToastContext';
-import { getAllSchools, getDeletedSchools, updateSchoolStatus as apiUpdateSchoolStatus, deleteSchool, restoreSchool } from '../../api/schoolApi';
+import { getSchools, updateSchoolStatus, deleteSchool, restoreSchool, verifyAllUsersBySchool } from '../../api/superAdminApi';
 import { updateSchoolDetails, updateSchoolPlan, sendWelcomeEmail } from '../../api/superAdminApi';
 import { register } from '../../api/authApi';
 
@@ -43,13 +43,14 @@ export default function AdminSchools() {
   const [addForm, setAddForm] = useState({ name: '', email: '', phone: '', address: '', plan: 'BASIC', password: '' });
   const [addSaving, setAddSaving] = useState(false);
   const [actionLoading, setActionLoading] = useState({});
+  const [verifyingUsers, setVerifyingUsers] = useState({});
 
   const load = async () => {
     setLoading(true);
     setLoadError(false);
     try {
-      // Fetch active schools (excluding deactivated)
-      const list = await getAllSchools();
+      // Fetch all schools with cache-busting
+      const list = await getSchools({ _t: Date.now() });
       const fetchedSchools = (Array.isArray(list) ? list : []).map(s => ({
         ...s,
         location: s.district && s.region ? `${s.district}, ${s.region}` : s.address || 'Unknown',
@@ -57,18 +58,13 @@ export default function AdminSchools() {
         registeredAt: s.createdAt || new Date().toISOString(),
         isVerified: s.isVerified ?? false,
       }));
-      setSchools(fetchedSchools);
       
-      // Fetch deactivated schools separately
-      const deletedList = await getDeletedSchools();
-      const fetchedDeleted = (Array.isArray(deletedList) ? deletedList : []).map(s => ({
-        ...s,
-        location: s.district && s.region ? `${s.district}, ${s.region}` : s.address || 'Unknown',
-        students: s._count?.students || 0,
-        registeredAt: s.createdAt || new Date().toISOString(),
-        isVerified: s.isVerified ?? false,
-      }));
-      setDeletedSchools(fetchedDeleted);
+      // Separate active and deactivated schools
+      const active = fetchedSchools.filter(s => s.status !== 'DEACTIVATED');
+      const deleted = fetchedSchools.filter(s => s.status === 'DEACTIVATED');
+      
+      setSchools(active);
+      setDeletedSchools(deleted);
     } catch (err) {
       console.error('Failed to load schools:', err);
       setLoadError(true);
@@ -98,7 +94,7 @@ export default function AdminSchools() {
   }, [schools, deletedSchools, keyword, statusFilter]);
 
   const counts = {
-    ALL:      schools.length,
+    ALL:      schools.length + deletedSchools.length,
     ACTIVE:   schools.filter(s => s.status === 'ACTIVE').length,
     PENDING:  schools.filter(s => s.status === 'PENDING').length,
     REJECTED: schools.filter(s => s.status === 'REJECTED').length,
@@ -110,6 +106,34 @@ export default function AdminSchools() {
     setActionLoading(prev => ({ ...prev, [id]: loading }));
   };
 
+  // ─── Verify All Users in a School ────────────────────────────
+  const handleVerifyAllUsers = async (schoolId, schoolName) => {
+    if (!window.confirm(`Verify all users for "${schoolName}"? This will allow all users in this school to log in immediately.`)) return;
+
+    setVerifyingUsers(prev => ({ ...prev, [schoolId]: true }));
+    
+    try {
+      const response = await verifyAllUsersBySchool(schoolId);
+      
+      if (response) {
+        addToast(`✅ ${response.verifiedCount || 'All'} users in "${schoolName}" verified successfully!`, 'success');
+        
+        // Update local state to show users are verified
+        setSchools(prev => prev.map(s => 
+          s.id === schoolId ? { ...s, isVerified: true } : s
+        ));
+        
+        // Refresh the list
+        await load();
+      }
+    } catch (err) {
+      console.error('Error verifying users:', err);
+      addToast(`Failed to verify users: ${err.response?.data?.message || err.message}`, 'error');
+    } finally {
+      setVerifyingUsers(prev => ({ ...prev, [schoolId]: false }));
+    }
+  };
+
   const applyAction = async (school, action) => {
     if (action === 'delete') {
       setRowLoading(school.id, true);
@@ -118,13 +142,15 @@ export default function AdminSchools() {
         // Remove from active schools list
         setSchools(prev => prev.filter(s => s.id !== school.id));
         // Add to deleted schools list
-        setDeletedSchools(prev => [...prev, { ...school, status: 'DEACTIVATED' }]);
+        const updatedSchool = { ...school, status: 'DEACTIVATED' };
+        setDeletedSchools(prev => [...prev, updatedSchool]);
         addToast(`${school.name} deactivated successfully`, 'success');
       } catch (err) {
         console.error('Delete school error:', err);
+        // Even if API fails, update locally for better UX
         setSchools(prev => prev.filter(s => s.id !== school.id));
         setDeletedSchools(prev => [...prev, { ...school, status: 'DEACTIVATED' }]);
-        addToast(`${school.name} deactivated locally (backend unavailable).`, 'warning');
+        addToast(`${school.name} deactivated locally. Please refresh to sync.`, 'warning');
       } finally {
         setRowLoading(school.id, false);
         setConfirmAction(null);
@@ -140,13 +166,15 @@ export default function AdminSchools() {
         // Remove from deleted schools list
         setDeletedSchools(prev => prev.filter(s => s.id !== school.id));
         // Add to active schools list
-        setSchools(prev => [...prev, { ...school, status: 'ACTIVE' }]);
+        const restoredSchool = { ...school, status: 'ACTIVE' };
+        setSchools(prev => [...prev, restoredSchool]);
         addToast(`${school.name} restored successfully`, 'success');
       } catch (err) {
         console.error('Restore school error:', err);
+        // Even if API fails, update locally for better UX
         setDeletedSchools(prev => prev.filter(s => s.id !== school.id));
         setSchools(prev => [...prev, { ...school, status: 'ACTIVE' }]);
-        addToast(`${school.name} restored locally (backend unavailable).`, 'warning');
+        addToast(`${school.name} restored locally. Please refresh to sync.`, 'warning');
       } finally {
         setRowLoading(school.id, false);
         setConfirmAction(null);
@@ -159,7 +187,9 @@ export default function AdminSchools() {
     setRowLoading(school.id, true);
     
     try {
-      const updated = await apiUpdateSchoolStatus(school.id, newStatus);
+      const updated = await updateSchoolStatus(school.id, newStatus);
+      
+      // Update the school in the active list
       setSchools(prev => prev.map(s => 
         s.id === school.id ? { ...s, status: newStatus, ...updated } : s
       ));
@@ -171,44 +201,41 @@ export default function AdminSchools() {
       };
       addToast(statusMessages[newStatus] || `${school.name} status updated`, 'success');
       
+      // When school is approved, automatically verify all users
       if (newStatus === 'ACTIVE') {
         try { 
           await sendWelcomeEmail(school.id); 
+          addToast(`Welcome email sent to ${school.name}`, 'info');
         } catch (emailErr) { 
           console.warn('Welcome email failed:', emailErr);
+        }
+        
+        // Auto-verify all users in the school
+        try {
+          const verifyResponse = await verifyAllUsersBySchool(school.id);
+          if (verifyResponse) {
+            addToast(`✅ ${verifyResponse.verifiedCount || 'All'} users in "${school.name}" automatically verified!`, 'success');
+            // Update local state
+            setSchools(prev => prev.map(s => 
+              s.id === school.id ? { ...s, isVerified: true } : s
+            ));
+          }
+        } catch (verifyErr) {
+          console.warn('Auto-verify users failed:', verifyErr);
+          addToast('School approved but users need manual verification.', 'warning');
         }
       }
     } catch (err) {
       console.error('Status update error:', err);
+      // Even if API fails, update locally for better UX
       setSchools(prev => prev.map(s => 
         s.id === school.id ? { ...s, status: newStatus } : s
       ));
-      addToast(`${school.name} status updated locally (backend sync failed).`, 'warning');
+      addToast(`${school.name} status updated locally. Please refresh to sync.`, 'warning');
     } finally {
       setRowLoading(school.id, false);
       setConfirmAction(null);
       setViewSchool(null);
-    }
-  };
-
-  const toggleVerify = async (school) => {
-    const isVerified = !school.isVerified;
-    setRowLoading(school.id, true);
-    
-    try {
-      await updateSchoolDetails(school.id, { isVerified });
-      setSchools(prev => prev.map(s => 
-        s.id === school.id ? { ...s, isVerified } : s
-      ));
-      addToast(`${school.name} is now ${isVerified ? 'verified' : 'unverified'}`, 'success');
-    } catch (err) {
-      console.error('Verify toggle error:', err);
-      setSchools(prev => prev.map(s => 
-        s.id === school.id ? { ...s, isVerified } : s
-      ));
-      addToast(`Status updated locally (backend unavailable).`, 'warning');
-    } finally {
-      setRowLoading(school.id, false);
     }
   };
 
@@ -309,6 +336,8 @@ export default function AdminSchools() {
       setEditSchool(null);
     } catch (err) {
       console.error('Edit school error:', err);
+      // Even if API fails, update locally for better UX
+      addToast(`Failed to update school: ${err.message || 'Unknown error'}`, 'error');
       setEditSchool(null);
     } finally {
       setEditSaving(false);
@@ -334,7 +363,7 @@ export default function AdminSchools() {
 
       {loadError && (
         <div className="rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-800">
-          Couldn't reach the server to load schools. Check the console for details, or refresh to try again.
+          Couldn't reach the server to load schools. Please refresh to try again.
         </div>
       )}
 
@@ -381,7 +410,7 @@ export default function AdminSchools() {
           <table className="min-w-full divide-y divide-gray-100">
             <thead className="bg-gray-50/80">
               <tr>
-                {['School', 'Location', 'Plan', 'Students', 'Registered', 'Status', 'Actions'].map(h => (
+                {['School', 'Location', 'Plan', 'Students', 'Registered', 'Status', 'Verified', 'Actions'].map(h => (
                   <th key={h} className="px-5 py-3.5 text-left text-[11px] font-semibold text-gray-500 uppercase tracking-wider whitespace-nowrap">{h}</th>
                 ))}
               </tr>
@@ -389,11 +418,16 @@ export default function AdminSchools() {
             <tbody className="divide-y divide-gray-100">
               {loading ? (
                 <tr>
-                  <td colSpan={7} className="py-16 text-center text-sm text-gray-400">Loading schools…</td>
+                  <td colSpan={8} className="py-16 text-center text-sm text-gray-400">
+                    <div className="flex items-center justify-center gap-3">
+                      <Loader2 className="h-5 w-5 animate-spin text-indigo-500" />
+                      Loading schools…
+                    </div>
+                  </td>
                 </tr>
               ) : filtered.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="py-16 text-center text-sm text-gray-400">No schools match your search.</td>
+                  <td colSpan={8} className="py-16 text-center text-sm text-gray-400">No schools match your search.</td>
                 </tr>
               ) : filtered.map(school => (
                 <tr key={school.id} className="hover:bg-gray-50/60 transition-colors">
@@ -405,7 +439,6 @@ export default function AdminSchools() {
                       <div>
                         <div className="flex items-center gap-1.5">
                           <p className="text-sm font-semibold text-gray-900">{school.name}</p>
-                          {school.isVerified && <CheckCircle className="h-3 w-3 text-emerald-500" title="Verified" />}
                         </div>
                         <p className="text-[11px] text-gray-500">{school.email}</p>
                       </div>
@@ -434,6 +467,19 @@ export default function AdminSchools() {
                     </div>
                   </td>
                   <td className="px-5 py-4 whitespace-nowrap">
+                    <div className="flex items-center gap-1.5">
+                      {school.isVerified ? (
+                        <span className="flex items-center gap-1 text-xs text-emerald-600 font-medium">
+                          <CheckCircle className="h-3.5 w-3.5" /> Verified
+                        </span>
+                      ) : (
+                        <span className="flex items-center gap-1 text-xs text-yellow-600 font-medium">
+                          <Clock className="h-3.5 w-3.5" /> Pending
+                        </span>
+                      )}
+                    </div>
+                  </td>
+                  <td className="px-5 py-4 whitespace-nowrap">
                     <div className="flex items-center gap-1">
                       <button 
                         onClick={() => setViewSchool(school)} 
@@ -443,20 +489,25 @@ export default function AdminSchools() {
                       >
                         <Eye className="h-4 w-4" />
                       </button>
-                      <button 
-                        onClick={() => toggleVerify(school)} 
-                        className={`text-xs font-medium px-2 py-1 rounded-md transition-colors ${
-                          school.isVerified ? 'text-emerald-600 bg-emerald-50 hover:bg-emerald-100' : 'text-gray-500 bg-gray-50 hover:bg-gray-100'
-                        }`} 
-                        title={school.isVerified ? 'Unverify' : 'Verify'}
-                        disabled={actionLoading[school.id]}
-                      >
-                        {school.isVerified ? 'Verified' : 'Verify'}
-                      </button>
+                      {school.status === 'ACTIVE' && !school.isVerified && (
+                        <button
+                          onClick={() => handleVerifyAllUsers(school.id, school.name)}
+                          disabled={verifyingUsers[school.id]}
+                          className="p-1.5 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 rounded-md transition-colors"
+                          title="Verify All Users"
+                        >
+                          {verifyingUsers[school.id] ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <UserCheck className="h-4 w-4" />
+                          )}
+                        </button>
+                      )}
                       <button 
                         onClick={() => openEdit(school)} 
                         className="p-1.5 text-gray-400 hover:text-violet-600 hover:bg-violet-50 rounded-md transition-colors" 
                         title="Edit School"
+                        disabled={actionLoading[school.id]}
                       >
                         <Edit2 className="h-4 w-4" />
                       </button>
@@ -525,7 +576,7 @@ export default function AdminSchools() {
         </div>
       </div>
 
-      {/* Rest of the modals remain the same */}
+      {/* View School Modal */}
       {viewSchool && (
         <Modal isOpen={!!viewSchool} onClose={() => setViewSchool(null)} title={viewSchool.name} subtitle="School registration details">
           <div className="space-y-5 pt-2">
@@ -540,8 +591,18 @@ export default function AdminSchools() {
                 </div>
               </div>
               <div className="bg-gray-50 rounded-lg p-3">
-                <p className="text-[10px] font-semibold text-gray-400 uppercase mb-1">Plan</p>
-                <p className="text-sm font-semibold text-gray-900">{viewSchool.plan}</p>
+                <p className="text-[10px] font-semibold text-gray-400 uppercase mb-1">Users Verified</p>
+                <div className="flex items-center gap-1.5">
+                  {viewSchool.isVerified ? (
+                    <span className="text-sm font-semibold text-emerald-600 flex items-center gap-1">
+                      <CheckCircle className="h-4 w-4" /> Verified
+                    </span>
+                  ) : (
+                    <span className="text-sm font-semibold text-yellow-600 flex items-center gap-1">
+                      <Clock className="h-4 w-4" /> Pending
+                    </span>
+                  )}
+                </div>
               </div>
             </div>
             <div className="space-y-3">
@@ -575,7 +636,17 @@ export default function AdminSchools() {
                   onClick={() => setConfirmAction({ school: viewSchool, action: 'approve' })} 
                   className="flex-1 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-semibold transition-colors"
                 >
-                  Approve School
+                  Approve & Verify Users
+                </button>
+              </div>
+            )}
+            {viewSchool.status === 'ACTIVE' && !viewSchool.isVerified && (
+              <div className="flex gap-3 pt-4 border-t border-gray-100">
+                <button 
+                  onClick={() => handleVerifyAllUsers(viewSchool.id, viewSchool.name)}
+                  className="flex-1 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-semibold transition-colors flex items-center justify-center gap-2"
+                >
+                  <UserCheck className="h-4 w-4" /> Verify All Users
                 </button>
               </div>
             )}
@@ -593,6 +664,7 @@ export default function AdminSchools() {
         </Modal>
       )}
 
+      {/* Confirm Action Modal */}
       {confirmAction && (
         <Modal
           isOpen={!!confirmAction}
@@ -612,7 +684,7 @@ export default function AdminSchools() {
             }`}>
               <p className="text-sm text-gray-700">
                 {confirmAction.action === 'approve'
-                  ? `You are about to approve ${confirmAction.school.name}. They will gain full platform access and can start onboarding their staff and students.`
+                  ? `You are about to approve ${confirmAction.school.name}. They will gain full platform access and all users will be automatically verified.`
                   : confirmAction.action === 'restore'
                   ? `You are about to restore ${confirmAction.school.name} from the deleted schools list. They will become active again.`
                   : confirmAction.action === 'reject'
@@ -637,9 +709,9 @@ export default function AdminSchools() {
                 disabled={actionLoading[confirmAction.school.id]}
               >
                 {actionLoading[confirmAction.school.id] ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <Loader2 className="h-4 w-4 animate-spin mx-auto" />
                 ) : (
-                  confirmAction.action === 'approve' ? 'Yes, Approve' : 
+                  confirmAction.action === 'approve' ? 'Yes, Approve & Verify' : 
                   confirmAction.action === 'restore' ? 'Yes, Restore' :
                   confirmAction.action === 'reject' ? 'Yes, Reject' : 
                   confirmAction.action === 'delete' ? 'Yes, Deactivate' : 'Yes, Suspend'
@@ -650,6 +722,7 @@ export default function AdminSchools() {
         </Modal>
       )}
 
+      {/* Edit School Modal */}
       {editSchool && (
         <Modal isOpen onClose={() => setEditSchool(null)} title={`Edit School — ${editSchool.name}`} subtitle="Update school details and plan.">
           <div className="space-y-4 pt-2">
@@ -735,6 +808,7 @@ export default function AdminSchools() {
         </Modal>
       )}
 
+      {/* Add School Modal */}
       {addSchoolModal && (
         <Modal isOpen onClose={() => setAddSchoolModal(false)} title="Add New School" subtitle="Manually register a new school.">
           <form onSubmit={handleAddSchool} className="space-y-4 pt-2">

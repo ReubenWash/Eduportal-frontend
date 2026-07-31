@@ -11,7 +11,7 @@ export default function LoginPage() {
   const { addToast } = useToast();
   const navigate = useNavigate();
   const location = useLocation();
-  const [email, setEmail] = useState('');
+  const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
@@ -34,19 +34,31 @@ export default function LoginPage() {
         }
       });
     } catch (err) {
-      setError(err.response?.data?.message || 'Invalid email or password.');
+      const errorMsg = err.response?.data?.message || 'Invalid email or password.';
+      setError(errorMsg);
+      
+      // Show specific error messages
+      if (errorMsg.includes('pending approval') || errorMsg.includes('school is not verified')) {
+        addToast('Your school is pending verification. Please wait for admin approval.', 'warning');
+      } else if (errorMsg.includes('Invalid email') || errorMsg.includes('Invalid student')) {
+        addToast('Invalid email/student number or password. Please try again.', 'error');
+      } else if (errorMsg.includes('verify your email')) {
+        addToast('Please verify your email address first. Check your inbox.', 'warning');
+      } else {
+        addToast(errorMsg, 'error');
+      }
     }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    const sanitizedEmail = email.trim().toLowerCase();
-    if (!sanitizedEmail || !password) {
+    const sanitizedIdentifier = identifier.trim();
+    if (!sanitizedIdentifier || !password) {
       setError('Please fill in all fields.');
       return;
     }
     setLoading(true);
-    await doLogin({ email: sanitizedEmail, password });
+    await doLogin({ email: sanitizedIdentifier, password });
     setLoading(false);
   };
 
@@ -56,7 +68,9 @@ export default function LoginPage() {
         {/* Header */}
         <div>
           <h2 className="text-2xl font-bold text-white tracking-tight">Sign in</h2>
-          <p className="mt-2 text-sm text-slate-400">Access your EduPortal dashboard.</p>
+          <p className="mt-2 text-sm text-slate-400">
+            Enter your email or student number to access your dashboard.
+          </p>
         </div>
 
         {/* Error banner */}
@@ -70,14 +84,19 @@ export default function LoginPage() {
         {/* Form */}
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-slate-300 mb-1.5">Email or Student ID</label>
+            <label className="block text-sm font-medium text-slate-300 mb-1.5">
+              Email or Student Number
+            </label>
             <input
               type="text"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="you@school.com or JHS-..."
+              value={identifier}
+              onChange={(e) => setIdentifier(e.target.value)}
+              placeholder="you@school.com or STU/2026/0001"
               className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
             />
+            <p className="mt-1 text-xs text-slate-500">
+              Use your email address or student number (e.g., STU/2026/0001)
+            </p>
           </div>
 
           <div>
@@ -105,6 +124,15 @@ export default function LoginPage() {
             </div>
           </div>
 
+          <div className="flex items-center gap-3">
+            <Link
+              to="/student-reset-password"
+              className="text-xs text-indigo-400 hover:text-indigo-300 transition-colors"
+            >
+              Student reset password
+            </Link>
+          </div>
+
           <button
             type="submit"
             disabled={loading}
@@ -120,12 +148,17 @@ export default function LoginPage() {
           </button>
         </form>
 
-        <p className="text-center text-sm text-slate-500">
-          Don't have an account?{' '}
-          <Link to="/register" className="font-medium text-indigo-400 hover:text-indigo-300 transition-colors">
-            Create one now
-          </Link>
-        </p>
+        <div className="space-y-2 text-center">
+          <p className="text-sm text-slate-500">
+            Don't have an account?{' '}
+            <Link to="/register" className="font-medium text-indigo-400 hover:text-indigo-300 transition-colors">
+              Register your school
+            </Link>
+          </p>
+          <p className="text-xs text-slate-600">
+            Students: Use your student number and temporary password provided by your school.
+          </p>
+        </div>
       </div>
     </AuthLayout>
   );

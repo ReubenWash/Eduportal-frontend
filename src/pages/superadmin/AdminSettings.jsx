@@ -9,6 +9,7 @@ import {
   createIntegration, 
   getIntegrations 
 } from '../../api/superAdminApi';
+import { getLegalDocuments } from '../../api/legalApi';
 import api from '../../api/axios';
 
 export default function AdminSettings() {
@@ -31,7 +32,7 @@ export default function AdminSettings() {
   // Test Email
   const [testEmail, setTestEmail] = useState('');
   const [testing, setTesting] = useState(false);
-  const [testStatus, setTestStatus] = useState(null); // 'success' | 'error' | null
+  const [testStatus, setTestStatus] = useState(null);
 
   // Regional settings
   const [timeZone, setTimeZone] = useState('UTC');
@@ -43,6 +44,10 @@ export default function AdminSettings() {
     { id: 'id', name: 'Headmaster Valid ID', required: true },
     { id: 'tax', name: 'Tax Clearance Certificate', required: false },
   ]);
+
+  // Legal Documents for consent settings
+  const [legalDocuments, setLegalDocuments] = useState([]);
+  const [selectedLegalDoc, setSelectedLegalDoc] = useState('');
 
   useEffect(() => {
     const loadSettings = async () => {
@@ -62,7 +67,7 @@ export default function AdminSettings() {
         // Load integrations to get SMTP config
         const integrations = await getIntegrations();
         if (Array.isArray(integrations)) {
-          const sendgrid = integrations.find(i => i.key === 'sendgrid' || i.key === 'smtp');
+          const sendgrid = integrations.find(i => i.key === 'sendgrid' || i.key === 'smtp' || i.type === 'EMAIL');
           if (sendgrid) {
             setSmtpIntegrationId(sendgrid.id);
             if (sendgrid.config) {
@@ -75,7 +80,16 @@ export default function AdminSettings() {
         }
       } catch (err) {
         console.error('Failed to load integrations:', err);
-        // Don't show toast for integrations failure - it's not critical for UI
+      }
+
+      try {
+        // Load legal documents for consent settings
+        const legalResponse = await getLegalDocuments();
+        if (legalResponse && legalResponse.data) {
+          setLegalDocuments(legalResponse.data);
+        }
+      } catch (err) {
+        console.error('Failed to load legal documents:', err);
       }
 
       setLoading(false);
@@ -90,6 +104,7 @@ export default function AdminSettings() {
     if (settings?.theme) setTheme(settings.theme);
     if (settings?.language) setLanguage(settings.language);
     if (settings?.timeZone) setTimeZone(settings.timeZone);
+    if (settings?.maintenanceMode !== undefined) setMaintenanceMode(settings.maintenanceMode);
     
     // SMTP settings (if stored in global settings as fallback)
     if (settings?.smtpHost) setSmtpHost(settings.smtpHost);
@@ -110,6 +125,20 @@ export default function AdminSettings() {
         console.error('Failed to parse KYC requirements:', err);
       }
     }
+
+    // Consent settings
+    if (settings?.consent_settings) {
+      try {
+        const parsed = typeof settings.consent_settings === 'string'
+          ? JSON.parse(settings.consent_settings)
+          : settings.consent_settings;
+        if (parsed?.legalDocumentId) {
+          setSelectedLegalDoc(parsed.legalDocumentId);
+        }
+      } catch (err) {
+        console.error('Failed to parse consent settings:', err);
+      }
+    }
   };
 
   const toggleKycDoc = (id) => {
@@ -128,6 +157,33 @@ export default function AdminSettings() {
     setTestStatus(null);
 
     try {
+      // First, save SMTP settings if they've been changed
+      const integrationData = {
+        name: 'Brevo Email',
+        description: 'Email delivery service via Brevo SMTP',
+        isEnabled: true,
+        config: {
+          host: smtpHost,
+          port: parseInt(smtpPort, 10) || 587,
+          username: smtpUser,
+          password: smtpPass,
+        },
+      };
+
+      let integrationId = smtpIntegrationId;
+      if (integrationId) {
+        await updateIntegration(integrationId, integrationData);
+      } else {
+        const newIntegration = await createIntegration({
+          key: 'sendgrid',
+          type: 'EMAIL',
+          ...integrationData,
+        });
+        integrationId = newIntegration.id;
+        setSmtpIntegrationId(integrationId);
+      }
+
+      // Now send test email
       const response = await api.post('/test/test-email', {
         to: testEmail,
         subject: 'SMTP Configuration Test - EduTrack JHS',
@@ -164,8 +220,12 @@ export default function AdminSettings() {
         theme,
         language,
         timeZone,
-        kyc_requirements: JSON.stringify(kycDocs),
         maintenanceMode,
+        kyc_requirements: JSON.stringify(kycDocs),
+        consent_settings: JSON.stringify({
+          legalDocumentId: selectedLegalDoc,
+          updatedAt: new Date().toISOString()
+        })
       };
       
       await updateGlobalSettings(settingsPayload);
@@ -229,7 +289,6 @@ export default function AdminSettings() {
     if (!hasError) {
       addToast('System settings saved successfully!', 'success');
     } else {
-      // Show combined error message
       const combinedMsg = errorMessages.length > 1 
         ? `${errorMessages[0]} (and ${errorMessages.length - 1} more errors)`
         : errorMessages[0];
@@ -459,11 +518,11 @@ export default function AdminSettings() {
           </div>
 
           {/* KYC Configuration */}
-          <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6 space-y-4 lg:col-span-2">
+          <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6 space-y-4 lg:col-span-1">
             <h2 className="text-sm font-semibold text-gray-900 flex items-center gap-2 pb-2 border-b border-gray-100">
-              <FileText className="h-4 w-4 text-amber-500" /> KYC Requirements Configuration
+              <Shield className="h-4 w-4 text-amber-500" /> KYC Requirements
             </h2>
-            <p className="text-xs text-gray-500 mb-3">Select which documents are mandatory for a school to complete their registration.</p>
+            <p className="text-xs text-gray-500 mb-3">Select which documents are mandatory for school registration.</p>
             <div className="space-y-3">
               {kycDocs.map(doc => (
                 <label key={doc.id} className="flex items-center gap-3 p-3 border border-gray-100 rounded-lg bg-gray-50 hover:bg-gray-100 cursor-pointer transition-colors">
@@ -478,16 +537,42 @@ export default function AdminSettings() {
               ))}
             </div>
           </div>
+
+          {/* Consent Settings */}
+          <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6 space-y-4 lg:col-span-1">
+            <h2 className="text-sm font-semibold text-gray-900 flex items-center gap-2 pb-2 border-b border-gray-100">
+              <ShieldAlert className="h-4 w-4 text-purple-500" /> Consent Settings
+            </h2>
+            <p className="text-xs text-gray-500 mb-3">Select the legal document for user consent agreements.</p>
+            <div>
+              <label className="block text-xs font-semibold text-gray-500 mb-1.5">Legal Document for Consent</label>
+              <select
+                value={selectedLegalDoc}
+                onChange={e => setSelectedLegalDoc(e.target.value)}
+                className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+              >
+                <option value="">Select a legal document...</option>
+                {legalDocuments.map(doc => (
+                  <option key={doc.id} value={doc.id}>
+                    {doc.title} (v{doc.version})
+                  </option>
+                ))}
+              </select>
+              {selectedLegalDoc && (
+                <p className="mt-2 text-xs text-green-600 flex items-center gap-1">
+                  <CheckCircle2 className="h-3 w-3" />
+                  Document selected for consent agreements
+                </p>
+              )}
+            </div>
+          </div>
         </div>
 
         <div className="flex justify-end gap-3">
           <button 
             type="button" 
             className="px-5 py-2 text-sm font-semibold text-gray-700 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
-            onClick={() => {
-              // Reload settings to discard changes
-              window.location.reload();
-            }}
+            onClick={() => window.location.reload()}
           >
             Discard Changes
           </button>

@@ -19,8 +19,7 @@ export default function AdminCMS() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [activeSection, setActiveSection] = useState(null);
-  const [editingItem, setEditingItem] = useState(null);
-  const [editingIndex, setEditingIndex] = useState(null);
+  const [sectionIds, setSectionIds] = useState({});
   
   // ─── State ────────────────────────────────────────────────────
   const [heroForm, setHeroForm] = useState({
@@ -39,14 +38,14 @@ export default function AdminCMS() {
 
   const [testimonials, setTestimonials] = useState([
     {
-      quote: "We used to spend three weeks compiling report cards. With EduPortal, the whole process takes two days. Teachers submit scores, I approve, and parents get a PDF.",
+      quote: "We used to spend three weeks compiling report cards. With EduPortal, the whole process takes two days.",
       author: "Abena Owusu",
       role: "Headmistress, Holy Child School",
       initials: "AO",
       color: "#4F46E5"
     },
     {
-      quote: "The attendance analytics alone are worth it. I can see which classes have the worst absenteeism and act on it before the term ends — not after.",
+      quote: "The attendance analytics alone are worth it. I can see which classes have the worst absenteeism and act on it before the term ends.",
       author: "Kwame Darko",
       role: "Deputy Head, Presec Legon",
       initials: "KD",
@@ -125,8 +124,6 @@ export default function AdminCMS() {
     faviconUrl: null
   });
 
-  const [publicPages, setPublicPages] = useState({});
-
   // ─── Load Data ─────────────────────────────────────────────────
   useEffect(() => {
     loadData();
@@ -147,17 +144,23 @@ export default function AdminCMS() {
         if (data.footerTagline) setFooterData(prev => ({ ...prev, tagline: data.footerTagline }));
       }
 
+      // Load sections to get their IDs
+      const sectionsRes = await api.get('/admin/cms/sections');
+      if (sectionsRes.data?.data) {
+        const sections = sectionsRes.data.data;
+        const ids = {};
+        sections.forEach(section => {
+          ids[section.type.toLowerCase()] = section.id;
+        });
+        setSectionIds(ids);
+      }
+
       // Load theme
       const themeRes = await api.get('/admin/cms/theme');
       if (themeRes.data?.data) {
         setTheme(prev => ({ ...prev, ...themeRes.data.data }));
       }
 
-      // Load public pages
-      const settings = await getGlobalSettings();
-      if (settings?.cms_pages) {
-        setPublicPages(JSON.parse(settings.cms_pages));
-      }
     } catch (err) {
       console.error('Failed to load CMS data:', err);
       addToast('Failed to load CMS content', 'error');
@@ -167,10 +170,22 @@ export default function AdminCMS() {
   };
 
   // ─── Save Functions ────────────────────────────────────────────
+  const getSectionId = (type) => {
+    const id = sectionIds[type];
+    if (!id) {
+      addToast(`${type.charAt(0).toUpperCase() + type.slice(1)} section not found. Please create it first.`, 'error');
+      return null;
+    }
+    return id;
+  };
+
   const saveHeroSection = async () => {
     setSaving(true);
     try {
-      await api.patch('/admin/cms/sections/hero/content', { 
+      const sectionId = getSectionId('hero');
+      if (!sectionId) { setSaving(false); return; }
+      
+      await api.patch(`/admin/cms/sections/${sectionId}/content`, { 
         content: {
           heading: heroForm.heroHeadline,
           highlight: heroForm.heroHeadlineHighlight,
@@ -181,6 +196,7 @@ export default function AdminCMS() {
       addToast('Hero section updated successfully', 'success');
       setActiveSection(null);
     } catch (err) {
+      console.error('Save hero error:', err);
       addToast('Failed to save hero section', 'error');
     } finally {
       setSaving(false);
@@ -190,12 +206,16 @@ export default function AdminCMS() {
   const saveStats = async () => {
     setSaving(true);
     try {
-      await api.patch('/admin/cms/sections/stats/content', { 
+      const sectionId = getSectionId('stats');
+      if (!sectionId) { setSaving(false); return; }
+      
+      await api.patch(`/admin/cms/sections/${sectionId}/content`, { 
         content: { stats: statsForm }
       });
       addToast('Stats updated successfully', 'success');
       setActiveSection(null);
     } catch (err) {
+      console.error('Save stats error:', err);
       addToast('Failed to save stats', 'error');
     } finally {
       setSaving(false);
@@ -205,12 +225,16 @@ export default function AdminCMS() {
   const saveTestimonials = async () => {
     setSaving(true);
     try {
-      await api.patch('/admin/cms/sections/testimonials/content', { 
+      const sectionId = getSectionId('testimonials');
+      if (!sectionId) { setSaving(false); return; }
+      
+      await api.patch(`/admin/cms/sections/${sectionId}/content`, { 
         content: { testimonials }
       });
       addToast('Testimonials updated successfully', 'success');
       setActiveSection(null);
     } catch (err) {
+      console.error('Save testimonials error:', err);
       addToast('Failed to save testimonials', 'error');
     } finally {
       setSaving(false);
@@ -220,12 +244,16 @@ export default function AdminCMS() {
   const saveFaqs = async () => {
     setSaving(true);
     try {
-      await api.patch('/admin/cms/sections/faq/content', { 
+      const sectionId = getSectionId('faq');
+      if (!sectionId) { setSaving(false); return; }
+      
+      await api.patch(`/admin/cms/sections/${sectionId}/content`, { 
         content: { faqs }
       });
       addToast('FAQ updated successfully', 'success');
       setActiveSection(null);
     } catch (err) {
+      console.error('Save FAQ error:', err);
       addToast('Failed to save FAQ', 'error');
     } finally {
       setSaving(false);
@@ -235,12 +263,16 @@ export default function AdminCMS() {
   const savePlans = async () => {
     setSaving(true);
     try {
-      await api.patch('/admin/cms/sections/pricing/content', { 
+      const sectionId = getSectionId('pricing');
+      if (!sectionId) { setSaving(false); return; }
+      
+      await api.patch(`/admin/cms/sections/${sectionId}/content`, { 
         content: { plans }
       });
       addToast('Pricing plans updated successfully', 'success');
       setActiveSection(null);
     } catch (err) {
+      console.error('Save pricing error:', err);
       addToast('Failed to save pricing plans', 'error');
     } finally {
       setSaving(false);
@@ -254,6 +286,7 @@ export default function AdminCMS() {
       addToast('Footer updated successfully', 'success');
       setActiveSection(null);
     } catch (err) {
+      console.error('Save footer error:', err);
       addToast('Failed to save footer', 'error');
     } finally {
       setSaving(false);
@@ -267,9 +300,59 @@ export default function AdminCMS() {
       addToast('Theme updated successfully', 'success');
       setActiveSection(null);
     } catch (err) {
+      console.error('Save theme error:', err);
       addToast('Failed to save theme', 'error');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const createDefaultSections = async () => {
+    try {
+      // Get or create homepage
+      const homepageRes = await api.get('/admin/cms/pages/homepage');
+      let homepageId = homepageRes.data?.data?.id;
+      
+      if (!homepageId) {
+        const createRes = await api.post('/admin/cms/pages', {
+          title: 'Homepage',
+          slug: 'home',
+          isHomepage: true,
+          status: 'PUBLISHED'
+        });
+        homepageId = createRes.data.data.id;
+      }
+
+      // Create sections if they don't exist
+      const sectionsToCreate = [
+        { type: 'HERO', title: 'Hero Section', content: { heading: 'Run your school.', highlight: 'Not paperwork.' }, order: 1 },
+        { type: 'STATS', title: 'Statistics', content: { stats: statsForm }, order: 2 },
+        { type: 'TESTIMONIALS', title: 'Testimonials', content: { testimonials }, order: 3 },
+        { type: 'PRICING', title: 'Pricing Plans', content: { plans }, order: 4 },
+        { type: 'FOOTER', title: 'Footer', content: { tagline: footerData.tagline }, order: 5 }
+      ];
+
+      for (const section of sectionsToCreate) {
+        try {
+          await api.post('/admin/cms/sections', {
+            pageId: homepageId,
+            type: section.type,
+            title: section.title,
+            content: section.content,
+            order: section.order,
+            isActive: true
+          });
+        } catch (err) {
+          // Section might already exist
+          console.log(`Section ${section.type} may already exist`);
+        }
+      }
+
+      addToast('Default sections created successfully', 'success');
+      await loadData();
+    } catch (err) {
+      console.error('Create sections error:', err);
+      addToast('Failed to create default sections', 'error');
     }
   };
 
@@ -559,6 +642,8 @@ export default function AdminCMS() {
     );
   }
 
+  const hasSections = Object.keys(sectionIds).length > 0;
+
   return (
     <div className="space-y-6">
       <PageHeader
@@ -566,12 +651,22 @@ export default function AdminCMS() {
         subtitle="Manage landing page content and layout without touching code."
         action={
           <div className="flex gap-2">
+            {!hasSections && (
+              <Button variant="secondary" onClick={createDefaultSections}>
+                Create Default Sections
+              </Button>
+            )}
             <Button variant="outline" icon={Eye} onClick={() => window.open('/', '_blank')}>Preview Site</Button>
           </div>
         }
       />
       <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
         <h2 className="text-lg font-semibold text-gray-900 mb-4">Landing Page Sections</h2>
+        {!hasSections && (
+          <div className="mb-4 p-4 bg-amber-50 border border-amber-200 rounded-lg text-amber-700 text-sm">
+            No sections found. Click the "Create Default Sections" button above to set up your landing page.
+          </div>
+        )}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {[
             { id: 'Hero Section', desc: 'Edit main heading, subtitle, and the trust badge text.', icon: Layout },
@@ -584,8 +679,8 @@ export default function AdminCMS() {
             return (
               <div 
                 key={section.id} 
-                className="border border-gray-200 rounded-lg p-5 cursor-pointer hover:border-indigo-400 hover:shadow-md transition-all group relative flex flex-col justify-between"
-                onClick={() => setActiveSection(section.id)}
+                className={`border border-gray-200 rounded-lg p-5 transition-all group relative flex flex-col justify-between ${hasSections ? 'cursor-pointer hover:border-indigo-400 hover:shadow-md' : 'opacity-60 cursor-not-allowed'}`}
+                onClick={() => hasSections && setActiveSection(section.id)}
               >
                 <div>
                   <div className="flex items-center gap-3 mb-2">
