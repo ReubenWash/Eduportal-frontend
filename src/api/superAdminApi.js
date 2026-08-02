@@ -1,4 +1,4 @@
-/// frontend/src/api/superAdminApi.js
+// frontend/src/api/superAdminApi.js
 import api, { unwrapItem, unwrapList } from './axios';
 
 // ─── AUTH & SECURITY ────────────────────────────────────────────
@@ -329,6 +329,26 @@ export const deleteApiKey = async (id) => {
 };
 
 // ─── SUBSCRIPTIONS ──────────────────────────────────────────────
+export const getSubscriptionPlans = async () => {
+  const res = await api.get('/admin/subscriptions/plans');
+  return unwrapList(res.data);
+};
+
+export const createSubscriptionPlan = async (data) => {
+  const res = await api.post('/admin/subscriptions/plans', data);
+  return unwrapItem(res.data);
+};
+
+export const updateSubscriptionPlan = async (id, data) => {
+  const res = await api.patch(`/admin/subscriptions/plans/${id}`, data);
+  return unwrapItem(res.data);
+};
+
+export const deleteSubscriptionPlan = async (id) => {
+  const res = await api.delete(`/admin/subscriptions/plans/${id}`);
+  return unwrapItem(res.data);
+};
+
 export const getSubscriptions = async (params) => {
   const res = await api.get('/admin/subscriptions/subscriptions', { params });
   return unwrapItem(res.data);
@@ -359,7 +379,6 @@ export const cancelSubscription = async (id) => {
   return unwrapItem(res.data);
 };
 
-// ─── PAYMENTS ────────────────────────────────────────────────────
 export const getPayments = async (params) => {
   const res = await api.get('/admin/subscriptions/payments', { params });
   return unwrapItem(res.data);
@@ -370,36 +389,13 @@ export const createPayment = async (data) => {
   return unwrapItem(res.data);
 };
 
-// ─── INVOICES ────────────────────────────────────────────────────
 export const createInvoice = async (data) => {
   const res = await api.post('/admin/subscriptions/invoices', data);
   return unwrapItem(res.data);
 };
 
-// ─── REVENUE ANALYTICS ──────────────────────────────────────────
 export const getRevenueAnalytics = async (params) => {
   const res = await api.get('/admin/subscriptions/revenue', { params });
-  return unwrapItem(res.data);
-};
-
-// ─── PLANS ──────────────────────────────────────────────────────
-export const getSubscriptionPlans = async () => {
-  const res = await api.get('/admin/subscriptions/plans');
-  return unwrapList(res.data);
-};
-
-export const createSubscriptionPlan = async (data) => {
-  const res = await api.post('/admin/subscriptions/plans', data);
-  return unwrapItem(res.data);
-};
-
-export const updateSubscriptionPlan = async (id, data) => {
-  const res = await api.patch(`/admin/subscriptions/plans/${id}`, data);
-  return unwrapItem(res.data);
-};
-
-export const deleteSubscriptionPlan = async (id) => {
-  const res = await api.delete(`/admin/subscriptions/plans/${id}`);
   return unwrapItem(res.data);
 };
 
@@ -672,6 +668,9 @@ export const createAdminUser = async (data) => {
   return unwrapItem(res.data);
 };
 
+// ✅ ADD THIS - Alias for createAdminUser to match what AdminUsers.jsx expects
+export const addAdminUser = createAdminUser;
+
 export const updateAdminUser = async (id, data) => {
   const res = await api.patch(`/admin/users/${id}`, data);
   return unwrapItem(res.data);
@@ -700,7 +699,6 @@ export const verifyAllUsersBySchool = async (schoolId) => {
 
 // ─── SCHOOL ADMIN FUNCTIONS (Legacy - keep for backward compatibility) ──
 export const getAllSchools = async (params) => {
-  // This is the old endpoint - keep for backward compatibility
   const res = await api.get('/schools', { params });
   return unwrapList(res.data);
 };
@@ -754,4 +752,195 @@ export const exportAnalytics = async (params) => {
     responseType: 'blob',
   });
   return res.data;
+};
+
+// ─── DEFAULT EXPORT ────────────────────────────────────────────
+export default {
+  // Auth & Security
+  getSecuritySettings,
+  updateSecuritySettings,
+  get2FAStatus,
+  enable2FA,
+  disable2FA,
+  getIpWhitelist,
+  addIpToWhitelist,
+  removeIpFromWhitelist,
+  getLoginAttempts,
+  blockIp,
+  unblockIp,
+  toggleMaintenance,
+
+  // Audit
+  getAuditLogs,
+  getAuditLog,
+  exportAuditLogs,
+  getAuditStats,
+
+  // CMS
+  getCmsPages,
+  getCmsPage,
+  getCmsPageBySlug,
+  getHomepage,
+  createCmsPage,
+  updateCmsPage,
+  publishCmsPage,
+  unpublishCmsPage,
+  deleteCmsPage,
+  getCmsSections,
+  getCmsSection,
+  createCmsSection,
+  updateCmsSection,
+  deleteCmsSection,
+  reorderCmsSections,
+
+  // Legal
+  getLegalDocuments,
+  getLegalDocument,
+  createLegalDocument,
+  updateLegalDocument,
+  deleteLegalDocument,
+  getConsentLogs,
+
+  // Email Templates
+  getEmailTemplates,
+  getEmailTemplate,
+  createEmailTemplate,
+  updateEmailTemplate,
+  deleteEmailTemplate,
+  sendTestEmail,
+  seedEmailTemplates,
+
+  // Integrations
+  getIntegrations,
+  getIntegration,
+  createIntegration,
+  updateIntegration,
+  deleteIntegration,
+  testIntegration,
+
+  // Webhooks
+  getWebhooks,
+  getWebhook,
+  createWebhook,
+  updateWebhook,
+  deleteWebhook,
+  getWebhookLogs,
+  triggerWebhook,
+
+  // API Keys
+  getApiKeys,
+  getApiKey,
+  createApiKey,
+  updateApiKey,
+  revokeApiKey,
+  deleteApiKey,
+
+  // Subscriptions
+  getSubscriptionPlans,
+  createSubscriptionPlan,
+  updateSubscriptionPlan,
+  deleteSubscriptionPlan,
+  getSubscriptions,
+  getSubscriptionById,
+  getSchoolSubscription,
+  createSubscription,
+  updateSubscription,
+  cancelSubscription,
+
+  // Payments & Invoices
+  getPayments,
+  createPayment,
+  createInvoice,
+
+  // Revenue
+  getRevenueAnalytics,
+
+  // Support
+  getSupportTickets,
+  getSupportTicket,
+  createSupportTicket,
+  updateSupportTicket,
+  addTicketMessage,
+  assignTicket,
+  resolveTicket,
+  closeTicket,
+
+  // Feedback
+  getFeedback,
+  createFeedback,
+  replyToFeedback,
+  markFeedbackHelpful,
+
+  // Knowledge Base
+  getKnowledgeArticles,
+  getKnowledgeArticle,
+  createKnowledgeArticle,
+  updateKnowledgeArticle,
+  deleteKnowledgeArticle,
+  markArticleHelpful,
+
+  // System
+  getSystemMetrics,
+  getMetricHistory,
+  getServiceHealth,
+  checkServiceHealth,
+  getBackups,
+  getBackup,
+  createBackup,
+  restoreBackup,
+  deleteBackup,
+  getBackupSchedule,
+  updateBackupSchedule,
+  getErrorLogs,
+  resolveErrorLog,
+  getCacheEntries,
+  clearCache,
+  getDeveloperSettings,
+  updateDeveloperSetting,
+
+  // Dashboard
+  getSuperAdminDashboard,
+
+  // School Management
+  getSchools,
+  getSchoolById,
+  updateSchoolStatus,
+  updateSchoolDetails,
+  updateSchoolPlan,
+  deleteSchool,
+  restoreSchool,
+  downloadSchoolRegistrationPdf,
+  getSchoolStats,
+  getAllSchools,
+  sendWelcomeEmail,
+
+  // Debug
+  debugCheckSchool,
+  debugGetStatus,
+  debugGetAllSchools,
+
+  // Users
+  getAdminUsers,
+  getUserById,
+  createAdminUser,
+  addAdminUser, // ✅ ADDED
+  updateAdminUser,
+  updateAdminUserStatus,
+  deleteAdminUser,
+  verifyUser,
+  verifyAllUsersBySchool,
+
+  // Broadcast
+  sendBroadcast,
+  broadcastNotification,
+  sendPushNotification,
+
+  // Config
+  updateEnvConfig,
+  getGlobalSettings,
+  updateGlobalSettings,
+
+  // Analytics
+  getPlatformAnalytics,
+  exportAnalytics,
 };
