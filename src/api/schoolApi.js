@@ -7,8 +7,27 @@ export const getSchool = async () => {
   return unwrapItem(res.data);
 };
 
+// ✅ Updated with better error handling and data cleaning
 export const updateSchool = async (data) => {
-  const res = await api.patch('/schools/me', data);
+  // Remove undefined/null/empty values
+  const cleanData = {};
+  Object.keys(data).forEach(key => {
+    if (data[key] !== undefined && data[key] !== null && data[key] !== '') {
+      cleanData[key] = data[key];
+    }
+  });
+  
+  const res = await api.patch('/schools/me', cleanData);
+  return unwrapItem(res.data);
+};
+
+// ✅ New function for logo upload with FormData
+export const updateSchoolWithLogo = async (formData) => {
+  const res = await api.patch('/schools/me', formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data',
+    },
+  });
   return unwrapItem(res.data);
 };
 
@@ -253,6 +272,7 @@ export const releaseReport = async (id) => {
 export default {
   getSchool,
   updateSchool,
+  updateSchoolWithLogo, // ✅ Added new function
   getDashboardStats,
   getSchoolTerms,
   getTerms,

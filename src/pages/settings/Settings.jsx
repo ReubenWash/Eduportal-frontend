@@ -3,7 +3,7 @@ import PageHeader from '../../components/common/PageHeader';
 import Input from '../../components/ui/Input';
 import Button from '../../components/ui/Button';
 import { useToast } from '../../context/ToastContext';
-import { getSchool, updateSchool } from '../../api/schoolApi';
+import { getSchool, updateSchool, updateSchoolWithLogo } from '../../api/schoolApi';
 import { Building2, Mail, Phone, MapPin, Upload, CheckCircle, ExternalLink, GraduationCap } from 'lucide-react';
 
 export default function Settings() {
@@ -33,25 +33,32 @@ export default function Settings() {
   const { addToast } = useToast();
 
   useEffect(() => {
-    getSchool()
-      .then((data) => {
-        setForm({ 
-          name: data?.name || '', 
-          email: data?.email || '', 
-          phone: data?.phone || '', 
-          address: data?.address || '', 
-          logo: null, 
-          plan: data?.plan || '',
-          scoreLabels: data?.scoreLabels || { ca1: 'C/A 1', ca2: 'C/A 2', ca3: 'C/A 3', examScore: 'Exam Score' }
-        });
-        setPreview(data?.logoUrl || '');
-        setLoadError(false);
-      })
-      .catch((err) => {
-        setLoadError(true);
-      })
-      .finally(() => setLoading(false));
+    loadSchoolData();
   }, []);
+
+  const loadSchoolData = async () => {
+    setLoading(true);
+    setLoadError(false);
+    try {
+      const data = await getSchool();
+      setForm({ 
+        name: data?.name || '', 
+        email: data?.email || '', 
+        phone: data?.phone || '', 
+        address: data?.address || '', 
+        logo: null, 
+        plan: data?.plan || '',
+        scoreLabels: data?.scoreLabels || { ca1: 'C/A 1', ca2: 'C/A 2', ca3: 'C/A 3', examScore: 'Exam Score' }
+      });
+      setPreview(data?.logoUrl || '');
+    } catch (err) {
+      console.error('Failed to load school data:', err);
+      setLoadError(true);
+      addToast('Failed to load school settings', 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value });
 
@@ -69,16 +76,125 @@ export default function Settings() {
     setPreview(URL.createObjectURL(file));
   };
 
+  // ✅ Main submit handler - properly handles both with and without logo
   const handleSubmit = async (e) => {
     e.preventDefault();
     setSaving(true);
+    
     try {
-      await updateSchool(form);
-      // Save grading config locally
+      // ✅ Build clean data object - only include fields that have values
+      const updateData = {};
+      
+      // Only include fields if they have values
+      if (form.name && form.name.trim()) {
+        updateData.name = form.name.trim();
+      }
+      if (form.email && form.email.trim()) {
+        updateData.email = form.email.trim();
+      }
+      if (form.phone && form.phone.trim()) {
+        updateData.phone = form.phone.trim();
+      }
+      if (form.address && form.address.trim()) {
+        updateData.address = form.address.trim();
+      }
+      
+      // Handle scoreLabels - only if it's an object with values
+      if (form.scoreLabels && typeof form.scoreLabels === 'object') {
+        const hasValues = Object.values(form.scoreLabels).some(v => v && v.trim());
+        if (hasValues) {
+          updateData.scoreLabels = form.scoreLabels;
+        }
+      }
+      
+      console.log('📤 Sending clean data:', updateData);
+      console.log('📤 Has logo file?', !!form.logo);
+      
+      // ✅ Check if there's a logo file to upload
+      const hasLogo = form.logo && form.logo instanceof File;
+      
+      if (hasLogo) {
+        // ✅ Use FormData for logo upload
+        const formData = new FormData();
+        
+        // Append all the data fields as strings
+        Object.keys(updateData).forEach(key => {
+          const value = updateData[key];
+          // If value is an object, stringify it
+          formData.append(key, typeof value === 'object' ? JSON.stringify(value) : String(value));
+        });
+        
+        // Append the logo file
+        formData.append('logo', form.logo);
+        
+        console.log('📤 Uploading with logo, formData entries:', [...formData.entries()]);
+        
+        // ✅ Use updateSchoolWithLogo with FormData
+        await updateSchoolWithLogo(formData);
+      } else {
+        // ✅ No logo - use regular updateSchool with JSON
+        if (Object.keys(updateData).length === 0) {
+          addToast('No changes to save', 'info');
+          setSaving(false);
+          return;
+        }
+        console.log('📤 No logo, using regular updateSchool');
+        await updateSchool(updateData);
+      }
+      
+      // ✅ Save grading config locally
       localStorage.setItem('schoolGradingConfig', JSON.stringify(gradingConfig));
+      
       addToast('School settings updated successfully', 'success');
+      
+      // ✅ Reload school data to reflect changes
+      await loadSchoolData();
+      
     } catch (err) {
-      addToast('Failed to update settings', 'error');
+      console.error('❌ Update error:', err);
+      
+      // ✅ Show detailed error message
+      if (err.response?.data?.errors) {
+        const errorMessages = err.response.data.errors
+          .map(e => `${e.field}: ${e.message}`)
+          .join(', ');
+        addToast(`Validation failed: ${errorMessages}`, 'error');
+      } else if (err.response?.data?.message) {
+        addToast(err.response.data.message, 'error');
+      } else {
+        addToast('Failed to update settings. Please try again.', 'error');
+      }
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // ✅ Separate function for saving grading config
+  const handleSaveGradingConfig = async () => {
+    setSaving(true);
+    try {
+      localStorage.setItem('schoolGradingConfig', JSON.stringify(gradingConfig));
+      addToast('Grading configuration saved successfully', 'success');
+    } catch (err) {
+      addToast('Failed to save grading configuration', 'error');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // ✅ Separate function for saving score labels
+  const handleSaveScoreLabels = async () => {
+    setSaving(true);
+    try {
+      const updateData = {
+        scoreLabels: form.scoreLabels
+      };
+      await updateSchool(updateData);
+      addToast('Score labels updated successfully', 'success');
+      await loadSchoolData();
+    } catch (err) {
+      console.error('❌ Error saving score labels:', err);
+      addToast('Failed to save score labels', 'error');
     } finally {
       setSaving(false);
     }
@@ -248,7 +364,12 @@ export default function Settings() {
             </div>
 
             <div className="mt-5 flex items-center justify-end">
-              <Button type="button" onClick={handleSubmit} loading={saving} icon={saving ? undefined : CheckCircle}>
+              <Button 
+                type="button" 
+                onClick={handleSaveGradingConfig} 
+                loading={saving} 
+                icon={saving ? undefined : CheckCircle}
+              >
                 Save Grading Config
               </Button>
             </div>
@@ -303,7 +424,12 @@ export default function Settings() {
             </div>
 
             <div className="mt-5 flex items-center justify-end">
-              <Button type="button" onClick={handleSubmit} loading={saving} icon={saving ? undefined : CheckCircle}>
+              <Button 
+                type="button" 
+                onClick={handleSaveScoreLabels} 
+                loading={saving} 
+                icon={saving ? undefined : CheckCircle}
+              >
                 Save Score Labels
               </Button>
             </div>
@@ -316,7 +442,16 @@ export default function Settings() {
           <div className="bg-white rounded-xl shadow-sm border border-red-200 p-5">
             <h3 className="text-sm font-semibold text-red-700 mb-1">Danger Zone</h3>
             <p className="text-xs text-gray-500 mb-4">These actions are irreversible. Proceed with caution.</p>
-            <Button variant="danger" size="sm" className="w-full">
+            <Button 
+              variant="danger" 
+              size="sm" 
+              className="w-full"
+              onClick={() => {
+                if (window.confirm('Are you sure you want to delete your school account? This action cannot be undone.')) {
+                  addToast('This feature is disabled in demo mode', 'warning');
+                }
+              }}
+            >
               Delete School Account
             </Button>
           </div>

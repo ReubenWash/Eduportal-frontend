@@ -12,6 +12,7 @@ export const getClassSummary = async (params) => {
   return unwrapItem(res.data);
 };
 
+// ✅ GET /scores/submission-status
 export const getSubmissionStatus = async (params) => {
   const res = await api.get('/scores/submission-status', { params });
   return unwrapItem(res.data);
@@ -41,12 +42,29 @@ export const importScoresExcel = async (formData, params) => {
 
 // ─── CRUD ──────────────────────────────────────────────────────
 export const createScore = async (data) => {
-  const res = await api.post('/scores', data);
+  // Clean data before sending
+  const cleanData = {};
+  if (data.studentId) cleanData.studentId = data.studentId;
+  if (data.subjectId) cleanData.subjectId = data.subjectId;
+  if (data.termId) cleanData.termId = data.termId;
+  if (data.ca1 !== undefined && data.ca1 !== null && data.ca1 !== '') cleanData.ca1 = Number(data.ca1);
+  if (data.ca2 !== undefined && data.ca2 !== null && data.ca2 !== '') cleanData.ca2 = Number(data.ca2);
+  if (data.ca3 !== undefined && data.ca3 !== null && data.ca3 !== '') cleanData.ca3 = Number(data.ca3);
+  if (data.examScore !== undefined && data.examScore !== null && data.examScore !== '') cleanData.examScore = Number(data.examScore);
+  
+  const res = await api.post('/scores', cleanData);
   return unwrapItem(res.data);
 };
 
 export const updateScore = async (id, data) => {
-  const res = await api.patch(`/scores/${id}`, data);
+  // Clean data before sending
+  const cleanData = {};
+  if (data.ca1 !== undefined && data.ca1 !== null && data.ca1 !== '') cleanData.ca1 = Number(data.ca1);
+  if (data.ca2 !== undefined && data.ca2 !== null && data.ca2 !== '') cleanData.ca2 = Number(data.ca2);
+  if (data.ca3 !== undefined && data.ca3 !== null && data.ca3 !== '') cleanData.ca3 = Number(data.ca3);
+  if (data.examScore !== undefined && data.examScore !== null && data.examScore !== '') cleanData.examScore = Number(data.examScore);
+  
+  const res = await api.patch(`/scores/${id}`, cleanData);
   return unwrapItem(res.data);
 };
 
@@ -54,4 +72,34 @@ export const updateScore = async (id, data) => {
 export const computeGrades = async (data) => {
   const res = await api.post('/scores/compute', data);
   return unwrapItem(res.data);
+};
+
+// ─── EXPORT ────────────────────────────────────────────────────
+export const exportScores = async (params) => {
+  const res = await api.get('/scores/export', {
+    params,
+    responseType: 'blob',
+  });
+  return res.data;
+};
+
+// ─── BULK IMPORT ──────────────────────────────────────────────
+export const bulkImportScores = async (data) => {
+  const res = await api.post('/scores/bulk-import', data);
+  return unwrapItem(res.data);
+};
+
+// ─── EXPORT DEFAULT ────────────────────────────────────────────
+export default {
+  getScores,
+  getClassSummary,
+  getSubmissionStatus,
+  downloadScoreTemplate,
+  getScoreTemplateUrl,
+  importScoresExcel,
+  createScore,
+  updateScore,
+  computeGrades,
+  exportScores,
+  bulkImportScores,
 };

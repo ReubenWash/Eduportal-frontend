@@ -12,8 +12,9 @@ import Avatar from '../../components/ui/Avatar';
 import { useToast } from '../../context/ToastContext';
 import { getStaff, createStaff, updateStaff, deleteStaff, assignSubjects } from '../../api/staffApi';
 import { getSubjects } from '../../api/subjectsApi';
+import { getClasses } from '../../api/classesApi';
 import { formatDate } from '../../utils/helpers';
-import { Search, UserPlus, FileDown, BookOpen, Edit2, Trash2 } from 'lucide-react';
+import { Search, UserPlus, FileDown, BookOpen, Edit2, Trash2, Loader2 } from 'lucide-react';
 
 export default function Staff() {
   const [data, setData] = useState([]);
@@ -23,10 +24,14 @@ export default function Staff() {
   const [deleteDialog, setDeleteDialog] = useState(null);
   const [editing, setEditing] = useState(null);
   const [subjects, setSubjects] = useState([]);
+  const [classes, setClasses] = useState([]);
   const [selectedSubj, setSelectedSubj] = useState([]);
+  const [selectedClass, setSelectedClass] = useState('');
   const [keyword, setKeyword] = useState('');
   const [roleFilter, setRoleFilter] = useState('');
   const [form, setForm] = useState({ firstName: '', lastName: '', email: '', role: 'SUBJECT_TEACHER', phone: '' });
+  const [assigning, setAssigning] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const { addToast } = useToast();
 
   // Map backend shape { firstName, lastName, user: { email, role } } → flat display shape
@@ -35,12 +40,28 @@ export default function Staff() {
     name: `${s.firstName || ''} ${s.lastName || ''}`.trim(),
     email: s.user?.email || s.email || '',
     role:  s.user?.role  || s.role  || '',
+    isActive: s.user?.isActive !== undefined ? s.user.isActive : true,
   });
 
-  const load = () => getStaff().then(d => {
-    setData(Array.isArray(d) ? d.map(mapStaff) : []);
-    setLoading(false);
-  }).catch(() => setLoading(false));
+  const load = async () => {
+    setLoading(true);
+    try {
+      const staffData = await getStaff();
+      // ✅ Filter out inactive staff from the list
+      const activeStaff = Array.isArray(staffData) 
+        ? staffData.filter(s => s.user?.isActive !== false).map(mapStaff)
+        : [];
+      setData(activeStaff);
+      console.log('📊 Loaded staff:', activeStaff.length);
+    } catch (err) {
+      console.error('Failed to load staff:', err);
+      setData([]);
+      addToast('Failed to load staff data', 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => { load(); }, []);
 
   const filtered = useMemo(() => {
@@ -51,13 +72,42 @@ export default function Staff() {
     });
   }, [data, keyword, roleFilter]);
 
-  const openCreate = () => { setEditing(null); setForm({ firstName: '', lastName: '', email: '', role: 'SUBJECT_TEACHER', phone: '' }); setDrawerOpen(true); };
-  const openEdit = (s) => { setEditing(s); setForm({ firstName: s.firstName || '', lastName: s.lastName || '', email: s.email, role: s.role, phone: s.phone || '' }); setDrawerOpen(true); };
+  const openCreate = () => { 
+    setEditing(null); 
+    setForm({ firstName: '', lastName: '', email: '', role: 'SUBJECT_TEACHER', phone: '' }); 
+    setDrawerOpen(true); 
+  };
+
+  const openEdit = (s) => { 
+    setEditing(s); 
+    setForm({ 
+      firstName: s.firstName || '', 
+      lastName: s.lastName || '', 
+      email: s.email, 
+      role: s.role, 
+      phone: s.phone || '' 
+    }); 
+    setDrawerOpen(true); 
+  };
+
   const openSubjects = async (s) => {
-    const subs = await getSubjects();
-    setSubjects(subs);
-    setSelectedSubj(s.subjects || []);
-    setSubjectsModal(s);
+    try {
+      const [subs, classList] = await Promise.all([
+        getSubjects(),
+        getClasses()
+      ]);
+      setSubjects(Array.isArray(subs) ? subs : []);
+      setClasses(Array.isArray(classList) ? classList : []);
+      
+      // Get existing subject assignments
+      const existingSubjects = s.subjectAssignments?.map(sa => sa.subjectId) || [];
+      setSelectedSubj(existingSubjects);
+      setSelectedClass('');
+      setSubjectsModal(s);
+    } catch (err) {
+      console.error('Failed to load subjects/classes:', err);
+      addToast('Failed to load data for assignment', 'error');
+    }
   };
 
   const handleSave = async (e) => {
@@ -70,33 +120,79 @@ export default function Staff() {
         role:      form.role,
         phone:     form.phone || undefined,
       };
-      if (editing) await updateStaff(editing.id, payload);
-      else await createStaff(payload);
-      addToast(editing ? 'Staff member updated' : `Staff added! A welcome email with login details has been sent to ${form.email}`, 'success');
+      
+      if (editing) {
+        await updateStaff(editing.id, payload);
+        addToast('Staff member updated successfully', 'success');
+      } else {
+        await createStaff(payload);
+        addToast(`Staff added! A welcome email with login details has been sent to ${form.email}`, 'success');
+      }
       setDrawerOpen(false);
-      load();
+      await load(); // ✅ Wait for reload to complete
     } catch (err) {
+      console.error('Save error:', err);
       const msg = err?.response?.data?.message || 'Failed to save staff details';
       addToast(msg, 'error');
     }
   };
 
+  // ✅ FIXED: Delete handler with proper refresh
   const handleDelete = async () => {
+    if (!deleteDialog) return;
+    setDeleting(true);
     try {
+      console.log('🗑️ Deleting staff:', deleteDialog.id);
       await deleteStaff(deleteDialog.id);
-      addToast('Staff member removed', 'success');
+      addToast('Staff member removed successfully', 'success');
       setDeleteDialog(null);
-      load();
-    } catch { addToast('Failed to delete staff member', 'error'); }
+      
+      // ✅ Force a fresh load after deletion
+      await load();
+    } catch (err) {
+      console.error('Delete error:', err);
+      addToast(err?.response?.data?.message || 'Failed to delete staff member', 'error');
+    } finally {
+      setDeleting(false);
+    }
   };
 
   const handleAssign = async () => {
+    if (!subjectsModal) return;
+    
+    if (selectedSubj.length === 0) {
+      addToast('Please select at least one subject to assign', 'error');
+      return;
+    }
+
+    if (!selectedClass) {
+      addToast('Please select a class for the assignment', 'error');
+      return;
+    }
+
+    setAssigning(true);
     try {
-      await assignSubjects(subjectsModal.id, { subjectIds: selectedSubj });
-      addToast('Subjects assigned successfully', 'success');
+      const promises = selectedSubj.map(subjectId => 
+        assignSubjects(subjectsModal.id, {
+          subjectId: subjectId,
+          classId: selectedClass
+        })
+      );
+      
+      await Promise.all(promises);
+      
+      addToast(`${selectedSubj.length} subject(s) assigned successfully to ${subjectsModal.name} for class ${selectedClass}`, 'success');
       setSubjectsModal(null);
-      load();
-    } catch { addToast('Failed to assign subjects', 'error'); }
+      setSelectedSubj([]);
+      setSelectedClass('');
+      await load(); // ✅ Refresh after assignment
+    } catch (err) {
+      console.error('Assign error:', err);
+      const msg = err?.response?.data?.message || 'Failed to assign subjects';
+      addToast(msg, 'error');
+    } finally {
+      setAssigning(false);
+    }
   };
 
   const roleVariant = { SCHOOL_ADMIN: 'primary', CLASS_TEACHER: 'info', SUBJECT_TEACHER: 'default' };
@@ -109,7 +205,9 @@ export default function Staff() {
         subtitle="Manage teaching and administrative staff accounts"
         action={
           <div className="flex items-center gap-2">
-            <Button variant="secondary" icon={FileDown} className="hidden sm:flex">Export</Button>
+            <Button variant="secondary" icon={FileDown} className="hidden sm:flex" onClick={() => addToast('Export feature coming soon', 'info')}>
+              Export
+            </Button>
             <Button onClick={openCreate} icon={UserPlus}>Add Staff</Button>
           </div>
         }
@@ -165,12 +263,19 @@ export default function Staff() {
             },
             { header: 'Role', key: 'role', render: v => <Badge variant={roleVariant[v] || 'default'}>{roleLabels[v] || v}</Badge> },
             { header: 'Phone', key: 'phone', render: v => <span className="text-gray-600">{v || '—'}</span> },
-            { header: 'Subjects', key: 'subjects', render: v => <span className="text-gray-600">{v?.length || 0} assigned</span> },
+            { 
+              header: 'Subjects', 
+              key: 'subjectAssignments', 
+              render: (v) => {
+                const count = Array.isArray(v) ? v.length : 0;
+                return <span className="text-gray-600">{count} assigned</span>;
+              }
+            },
             { header: 'Joined', key: 'createdAt', render: v => <span className="text-gray-600">{formatDate(v)}</span> },
           ]}
           rowActions={(row) => (
             <div className="flex items-center gap-1">
-              {row.role === 'SUBJECT_TEACHER' && (
+              {(row.role === 'SUBJECT_TEACHER' || row.role === 'CLASS_TEACHER') && (
                 <button
                   onClick={() => openSubjects(row)}
                   className="p-1.5 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-md transition-colors"
@@ -231,37 +336,69 @@ export default function Staff() {
 
       <Modal isOpen={!!subjectsModal} onClose={() => setSubjectsModal(null)} title="Assign Subjects" subtitle={`For ${subjectsModal?.name}`}>
         <div className="space-y-5">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-72 overflow-y-auto p-1">
-            {subjects.length === 0 ? (
-              <p className="text-sm text-gray-500 col-span-2">No subjects available to assign.</p>
-            ) : (
-              subjects.map(s => {
-                const isSelected = selectedSubj.includes(s.id);
-                return (
-                  <label
-                    key={s.id}
-                    className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-all ${
-                      isSelected ? 'border-indigo-500 bg-indigo-50/50' : 'border-gray-200 hover:bg-gray-50'
-                    }`}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={isSelected}
-                      onChange={e => setSelectedSubj(e.target.checked ? [...selectedSubj, s.id] : selectedSubj.filter(x => x !== s.id))}
-                      className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
-                    />
-                    <div className="flex-1 min-w-0">
-                      <p className={`text-sm font-medium truncate ${isSelected ? 'text-indigo-900' : 'text-gray-900'}`}>{s.name}</p>
-                      <p className={`text-[11px] ${isSelected ? 'text-indigo-600' : 'text-gray-500'}`}>{s.code}</p>
-                    </div>
-                  </label>
-                );
-              })
+          {/* Class Selection */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1.5">Select Class</label>
+            <Select
+              value={selectedClass}
+              onChange={e => setSelectedClass(e.target.value)}
+              options={classes.map(c => ({ value: c.id, label: c.name }))}
+              placeholder="Select a class..."
+            />
+            <p className="text-xs text-gray-400 mt-1">Subjects will be assigned to this staff member for the selected class.</p>
+          </div>
+
+          {/* Subject Selection */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1.5">Select Subjects</label>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-72 overflow-y-auto p-1 border border-gray-200 rounded-lg">
+              {subjects.length === 0 ? (
+                <p className="text-sm text-gray-500 col-span-2 p-4 text-center">No subjects available to assign.</p>
+              ) : (
+                subjects.map(s => {
+                  const isSelected = selectedSubj.includes(s.id);
+                  return (
+                    <label
+                      key={s.id}
+                      className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-all ${
+                        isSelected ? 'border-indigo-500 bg-indigo-50/50' : 'border-gray-200 hover:bg-gray-50'
+                      }`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={isSelected}
+                        onChange={e => {
+                          if (e.target.checked) {
+                            setSelectedSubj([...selectedSubj, s.id]);
+                          } else {
+                            setSelectedSubj(selectedSubj.filter(x => x !== s.id));
+                          }
+                        }}
+                        className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                      />
+                      <div className="flex-1 min-w-0">
+                        <p className={`text-sm font-medium truncate ${isSelected ? 'text-indigo-900' : 'text-gray-900'}`}>{s.name}</p>
+                        <p className={`text-[11px] ${isSelected ? 'text-indigo-600' : 'text-gray-500'}`}>{s.code}</p>
+                      </div>
+                    </label>
+                  );
+                })
+              )}
+            </div>
+            {selectedSubj.length > 0 && (
+              <p className="text-xs text-indigo-600 mt-1.5">{selectedSubj.length} subject(s) selected</p>
             )}
           </div>
-          <div className="flex justify-end gap-3 pt-2">
+
+          <div className="flex justify-end gap-3 pt-2 border-t border-gray-100">
             <Button variant="secondary" onClick={() => setSubjectsModal(null)}>Cancel</Button>
-            <Button onClick={handleAssign}>Save Assignments</Button>
+            <Button 
+              onClick={handleAssign} 
+              loading={assigning}
+              disabled={assigning || selectedSubj.length === 0 || !selectedClass}
+            >
+              {assigning ? 'Assigning...' : 'Save Assignments'}
+            </Button>
           </div>
         </div>
       </Modal>
@@ -274,6 +411,7 @@ export default function Staff() {
         message={`Are you sure you want to remove ${deleteDialog?.name} from the staff directory? Their access will be revoked immediately.`}
         confirmText="Remove Staff"
         isDanger={true}
+        loading={deleting}
       />
     </div>
   );
