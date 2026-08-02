@@ -6,11 +6,12 @@ import Modal from '../../components/ui/Modal';
 import Badge from '../../components/ui/Badge';
 import Table from '../../components/ui/Table';
 import { useToast } from '../../context/ToastContext';
+import { useAuth } from '../../context/AuthContext';
 import { getEnrollments, createEnrollment, deleteEnrollment } from '../../api/enrollmentsApi';
 import { getClasses } from '../../api/classesApi';
 import { getStudents } from '../../api/studentsApi';
 import { getSchoolTerms } from '../../api/schoolApi';
-import { UserPlus, Trash2, Loader2, Calendar, BookOpen, Users } from 'lucide-react';
+import { UserPlus, Trash2, Loader2, Calendar, BookOpen, Users, Eye } from 'lucide-react';
 
 export default function Enrollments() {
   const [data, setData] = useState([]);
@@ -24,6 +25,13 @@ export default function Enrollments() {
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({ studentId: '', classId: '', termId: '' });
   const { addToast } = useToast();
+  const { user } = useAuth();
+  
+  // ✅ Check if user can manage enrollments (School Admin or Super Admin)
+  const canManageEnrollments = user?.role === 'SCHOOL_ADMIN' || user?.role === 'SUPER_ADMIN';
+  
+  // ✅ Check if user is a Class Teacher
+  const isClassTeacher = user?.role === 'CLASS_TEACHER';
 
   const load = async () => {
     setLoading(true);
@@ -175,8 +183,13 @@ export default function Enrollments() {
     <div>
       <PageHeader
         title="Enrollments"
-        subtitle="Manage student class enrollments"
-        action={<Button onClick={openEnroll} icon={UserPlus}>Enroll Student</Button>}
+        subtitle={isClassTeacher ? 'View student class enrollments' : 'Manage student class enrollments'}
+        action={
+          // ✅ Only show Enroll Student button if user has permission
+          canManageEnrollments ? (
+            <Button onClick={openEnroll} icon={UserPlus}>Enroll Student</Button>
+          ) : null
+        }
       />
 
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
@@ -262,93 +275,103 @@ export default function Enrollments() {
             },
           ]}
           rowActions={(row) => (
-            <button
-              onClick={() => handleRemove(row)}
-              className="flex items-center gap-1 text-xs font-medium text-red-600 hover:text-red-500 hover:bg-red-50 px-2 py-1.5 rounded-md transition-colors"
-            >
-              <Trash2 className="h-3.5 w-3.5" /> Remove
-            </button>
+            // ✅ Only show Remove button if user has permission
+            canManageEnrollments ? (
+              <button
+                onClick={() => handleRemove(row)}
+                className="flex items-center gap-1 text-xs font-medium text-red-600 hover:text-red-500 hover:bg-red-50 px-2 py-1.5 rounded-md transition-colors"
+              >
+                <Trash2 className="h-3.5 w-3.5" /> Remove
+              </button>
+            ) : (
+              // ✅ For Class Teachers, show a read-only indicator
+              <span className="text-xs text-gray-400 flex items-center gap-1">
+                <Eye className="h-3.5 w-3.5" /> Read-only
+              </span>
+            )
           )}
         />
       </div>
 
-      {/* Enroll Modal */}
-      <Modal
-        isOpen={modalOpen}
-        onClose={() => {
-          setModalOpen(false);
-          setForm({ studentId: '', classId: '', termId: '' });
-        }}
-        title="Enroll Student"
-        subtitle="Select a student, class, and term to enroll."
-      >
-        <form onSubmit={handleEnroll} className="space-y-4 pt-2">
-          <Select
-            label="Student *"
-            value={form.studentId}
-            onChange={e => setForm({ ...form, studentId: e.target.value })}
-            options={availableStudents.map(s => ({ 
-              value: s.id, 
-              label: `${s.firstName} ${s.lastName} (${s.studentNumber})` 
-            }))}
-            placeholder="Select a student..."
-            required
-          />
-          
-          <Select
-            label="Class *"
-            value={form.classId}
-            onChange={e => setForm({ ...form, classId: e.target.value })}
-            options={classes.map(c => ({ 
-              value: c.id, 
-              label: `${c.level} ${c.section}` 
-            }))}
-            placeholder="Select a class..."
-            required
-          />
-          
-          <Select
-            label="Term *"
-            value={form.termId}
-            onChange={e => setForm({ ...form, termId: e.target.value })}
-            options={terms.map(t => ({ 
-              value: t.id, 
-              label: `${t.termNumber} - ${t.academicYear}` 
-            }))}
-            placeholder="Select a term..."
-            required
-          />
+      {/* ✅ Only show Modal if user has permission */}
+      {canManageEnrollments && (
+        <Modal
+          isOpen={modalOpen}
+          onClose={() => {
+            setModalOpen(false);
+            setForm({ studentId: '', classId: '', termId: '' });
+          }}
+          title="Enroll Student"
+          subtitle="Select a student, class, and term to enroll."
+        >
+          <form onSubmit={handleEnroll} className="space-y-4 pt-2">
+            <Select
+              label="Student *"
+              value={form.studentId}
+              onChange={e => setForm({ ...form, studentId: e.target.value })}
+              options={availableStudents.map(s => ({ 
+                value: s.id, 
+                label: `${s.firstName} ${s.lastName} (${s.studentNumber})` 
+              }))}
+              placeholder="Select a student..."
+              required
+            />
+            
+            <Select
+              label="Class *"
+              value={form.classId}
+              onChange={e => setForm({ ...form, classId: e.target.value })}
+              options={classes.map(c => ({ 
+                value: c.id, 
+                label: `${c.level} ${c.section}` 
+              }))}
+              placeholder="Select a class..."
+              required
+            />
+            
+            <Select
+              label="Term *"
+              value={form.termId}
+              onChange={e => setForm({ ...form, termId: e.target.value })}
+              options={terms.map(t => ({ 
+                value: t.id, 
+                label: `${t.termNumber} - ${t.academicYear}` 
+              }))}
+              placeholder="Select a term..."
+              required
+            />
 
-          {/* Show warning if student is already enrolled */}
-          {form.studentId && form.classId && form.termId && (
-            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
-              <p className="text-xs text-yellow-700 flex items-center gap-2">
-                <Users className="h-3.5 w-3.5" />
-                This student will be enrolled in <strong>{classes.find(c => c.id === form.classId)?.level || ''} {classes.find(c => c.id === form.classId)?.section || ''}</strong> for <strong>{terms.find(t => t.id === form.termId)?.termNumber || ''} - {terms.find(t => t.id === form.termId)?.academicYear || ''}</strong>.
-              </p>
+            {/* Show warning if student is already enrolled */}
+            {form.studentId && form.classId && form.termId && (
+              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+                <p className="text-xs text-yellow-700 flex items-center gap-2">
+                  <Users className="h-3.5 w-3.5" />
+                  This student will be enrolled in <strong>{classes.find(c => c.id === form.classId)?.level || ''} {classes.find(c => c.id === form.classId)?.section || ''}</strong> for <strong>{terms.find(t => t.id === form.termId)?.termNumber || ''} - {terms.find(t => t.id === form.termId)?.academicYear || ''}</strong>.
+                </p>
+              </div>
+            )}
+
+            <div className="flex justify-end gap-3 pt-4 mt-2 border-t border-gray-100">
+              <Button 
+                variant="secondary" 
+                onClick={() => {
+                  setModalOpen(false);
+                  setForm({ studentId: '', classId: '', termId: '' });
+                }}
+              >
+                Cancel
+              </Button>
+              <Button 
+                type="submit" 
+                disabled={saving || !form.studentId || !form.classId || !form.termId}
+              >
+                {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                Enroll
+              </Button>
             </div>
-          )}
-
-          <div className="flex justify-end gap-3 pt-4 mt-2 border-t border-gray-100">
-            <Button 
-              variant="secondary" 
-              onClick={() => {
-                setModalOpen(false);
-                setForm({ studentId: '', classId: '', termId: '' });
-              }}
-            >
-              Cancel
-            </Button>
-            <Button 
-              type="submit" 
-              disabled={saving || !form.studentId || !form.classId || !form.termId}
-            >
-              {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-              Enroll
-            </Button>
-          </div>
-        </form>
-      </Modal>
+          </form>
+        </Modal>
+      )}
     </div>
   );
 }

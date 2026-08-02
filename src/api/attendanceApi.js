@@ -19,17 +19,59 @@ export const getAttendanceAnalytics = async (params) => {
 
 // ─── MARK ──────────────────────────────────────────────────────
 export const markAttendance = async (data) => {
-  const res = await api.post('/attendance', data);
+  // Clean data before sending
+  const cleanData = {
+    studentId: data.studentId,
+    classId: data.classId,
+    termId: data.termId,
+    date: data.date || new Date().toISOString().split('T')[0],
+    status: data.status,
+    note: data.note || null,
+  };
+  
+  console.log('📤 Marking attendance:', cleanData);
+  
+  const res = await api.post('/attendance', cleanData);
   return unwrapItem(res.data);
 };
 
+// ─── BULK MARK ──────────────────────────────────────────────────
 export const bulkMarkAttendance = async (data) => {
-  const res = await api.post('/attendance/bulk', data);
+  // Ensure data has the correct structure
+  const cleanData = {
+    classId: data.classId,
+    termId: data.termId,
+    date: data.date || new Date().toISOString().split('T')[0],
+    records: data.records.map(r => ({
+      studentId: r.studentId || r.id, // Handle both field names
+      status: r.status || 'PRESENT',
+      note: r.note || null,
+    }))
+  };
+  
+  console.log('📤 Sending bulk attendance:', cleanData);
+  
+  const res = await api.post('/attendance/bulk', cleanData);
   return unwrapItem(res.data);
 };
 
 // ─── UPDATE ────────────────────────────────────────────────────
 export const updateAttendance = async (id, data) => {
-  const res = await api.patch(`/attendance/${id}`, data);
+  const cleanData = {
+    status: data.status,
+    note: data.note || null,
+  };
+  
+  const res = await api.patch(`/attendance/${id}`, cleanData);
   return unwrapItem(res.data);
+};
+
+// ─── EXPORT DEFAULT ────────────────────────────────────────────
+export default {
+  getAttendance,
+  getAttendanceSummary,
+  getAttendanceAnalytics,
+  markAttendance,
+  bulkMarkAttendance,
+  updateAttendance,
 };

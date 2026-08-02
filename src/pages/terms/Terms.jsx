@@ -7,9 +7,10 @@ import Select from '../../components/ui/Select';
 import Badge from '../../components/ui/Badge';
 import Table from '../../components/ui/Table';
 import { useToast } from '../../context/ToastContext';
+import { useAuth } from '../../context/AuthContext';
 import { getTerms, createTerm, updateTerm } from '../../api/schoolApi';
 import { formatDate } from '../../utils/helpers';
-import { CalendarPlus, Edit2, Loader2 } from 'lucide-react';
+import { CalendarPlus, Edit2, Loader2, Eye } from 'lucide-react';
 
 const TERM_NUMBERS = ['TERM1', 'TERM2', 'TERM3'];
 const TERM_STATUSES = ['UPCOMING', 'ACTIVE', 'COMPLETED'];
@@ -40,6 +41,13 @@ export default function Terms() {
     status: 'UPCOMING' 
   });
   const { addToast } = useToast();
+  const { user } = useAuth();
+  
+  // ✅ Check if user can manage terms (School Admin or Super Admin)
+  const canManageTerms = user?.role === 'SCHOOL_ADMIN' || user?.role === 'SUPER_ADMIN';
+  
+  // ✅ Check if user is a teacher (read-only)
+  const isTeacher = user?.role === 'CLASS_TEACHER' || user?.role === 'SUBJECT_TEACHER';
 
   const load = async () => {
     setLoading(true);
@@ -164,8 +172,13 @@ export default function Terms() {
     <div>
       <PageHeader
         title="Academic Terms"
-        subtitle="Manage school terms, holidays, and academic sessions"
-        action={<Button onClick={openCreate} icon={CalendarPlus}>New Term</Button>}
+        subtitle={canManageTerms ? 'Manage school terms, holidays, and academic sessions' : 'View academic terms'}
+        action={
+          // ✅ Only show New Term button if user has permission
+          canManageTerms ? (
+            <Button onClick={openCreate} icon={CalendarPlus}>New Term</Button>
+          ) : null
+        }
       />
 
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
@@ -201,84 +214,95 @@ export default function Terms() {
             },
           ]}
           rowActions={(row) => (
-            <div className="flex items-center gap-1">
-              <button
-                onClick={() => openEdit(row)}
-                className="p-1.5 text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-md transition-colors"
-                title="Edit Term"
-              >
-                <Edit2 className="h-4 w-4" />
-              </button>
-            </div>
+            // ✅ Only show Edit button if user has permission
+            canManageTerms ? (
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={() => openEdit(row)}
+                  className="p-1.5 text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-md transition-colors"
+                  title="Edit Term"
+                >
+                  <Edit2 className="h-4 w-4" />
+                </button>
+              </div>
+            ) : (
+              // ✅ For teachers, show read-only indicator
+              <span className="text-xs text-gray-400 flex items-center gap-1">
+                <Eye className="h-3.5 w-3.5" /> View only
+              </span>
+            )
           )}
         />
       </div>
 
-      <Modal
-        isOpen={modalOpen}
-        onClose={() => setModalOpen(false)}
-        title={editing ? 'Edit Academic Term' : 'Create Academic Term'}
-        subtitle={editing ? `Updating ${getTermLabel(editing.termNumber)} ${editing.academicYear}` : 'Define the dates for the new academic session.'}
-      >
-        <form onSubmit={handleSubmit} className="space-y-4 pt-2">
-          <Select
-            label="Academic Year"
-            value={form.academicYear}
-            onChange={e => setForm({...form, academicYear: e.target.value})}
-            options={getAcademicYearOptions().map(year => ({ value: year, label: year }))}
-            required
-          />
-
-          <Select
-            label="Term"
-            value={form.termNumber}
-            onChange={e => setForm({...form, termNumber: e.target.value})}
-            options={TERM_NUMBERS.map(t => ({ value: t, label: TERM_LABELS[t] }))}
-            required
-          />
-
-          <div className="grid grid-cols-2 gap-4">
-            <Input 
-              label="Start Date" 
-              type="date" 
-              value={form.startDate} 
-              onChange={e => setForm({...form, startDate: e.target.value})} 
-              required 
-            />
-            <Input 
-              label="End Date" 
-              type="date" 
-              value={form.endDate} 
-              onChange={e => setForm({...form, endDate: e.target.value})} 
-              required 
-            />
-          </div>
-
-          {editing && (
+      {/* ✅ Only show Modal if user has permission */}
+      {canManageTerms && (
+        <Modal
+          isOpen={modalOpen}
+          onClose={() => setModalOpen(false)}
+          title={editing ? 'Edit Academic Term' : 'Create Academic Term'}
+          subtitle={editing ? `Updating ${getTermLabel(editing.termNumber)} ${editing.academicYear}` : 'Define the dates for the new academic session.'}
+        >
+          <form onSubmit={handleSubmit} className="space-y-4 pt-2">
             <Select
-              label="Status"
-              value={form.status}
-              onChange={e => setForm({...form, status: e.target.value})}
-              options={TERM_STATUSES.map(s => ({ value: s, label: s }))}
+              label="Academic Year"
+              value={form.academicYear}
+              onChange={e => setForm({...form, academicYear: e.target.value})}
+              options={getAcademicYearOptions().map(year => ({ value: year, label: year }))}
               required
             />
-          )}
 
-          {editing && (
-            <div className="text-sm text-gray-500 bg-gray-50 p-3 rounded-lg">
-              <p>Changing status to <strong>ACTIVE</strong> will automatically deactivate other terms.</p>
+            <Select
+              label="Term"
+              value={form.termNumber}
+              onChange={e => setForm({...form, termNumber: e.target.value})}
+              options={TERM_NUMBERS.map(t => ({ value: t, label: TERM_LABELS[t] }))}
+              required
+            />
+
+            <div className="grid grid-cols-2 gap-4">
+              <Input 
+                label="Start Date" 
+                type="date" 
+                value={form.startDate} 
+                onChange={e => setForm({...form, startDate: e.target.value})} 
+                required 
+              />
+              <Input 
+                label="End Date" 
+                type="date" 
+                value={form.endDate} 
+                onChange={e => setForm({...form, endDate: e.target.value})} 
+                required 
+              />
             </div>
-          )}
 
-          <div className="flex justify-end gap-3 pt-4 mt-2 border-t border-gray-100">
-            <Button variant="secondary" type="button" onClick={() => setModalOpen(false)}>Cancel</Button>
-            <Button type="submit" disabled={saving}>
-              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-              {saving ? 'Saving...' : (editing ? 'Save Changes' : 'Create Term')}
-            </Button>
-          </div>
-        </form>
-      </Modal>
+            {editing && (
+              <Select
+                label="Status"
+                value={form.status}
+                onChange={e => setForm({...form, status: e.target.value})}
+                options={TERM_STATUSES.map(s => ({ value: s, label: s }))}
+                required
+              />
+            )}
+
+            {editing && (
+              <div className="text-sm text-gray-500 bg-gray-50 p-3 rounded-lg">
+                <p>Changing status to <strong>ACTIVE</strong> will automatically deactivate other terms.</p>
+              </div>
+            )}
+
+            <div className="flex justify-end gap-3 pt-4 mt-2 border-t border-gray-100">
+              <Button variant="secondary" type="button" onClick={() => setModalOpen(false)}>Cancel</Button>
+              <Button type="submit" disabled={saving}>
+                {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                {saving ? 'Saving...' : (editing ? 'Save Changes' : 'Create Term')}
+              </Button>
+            </div>
+          </form>
+        </Modal>
+      )}
     </div>
   );
 }

@@ -633,6 +633,7 @@ export default function Scores() {
 
   const gradingConfig = getGradingConfig();
 
+  // ✅ Filter tabs based on user role
   const allTabs = [
     { 
       label: 'Score Entry', 
@@ -667,11 +668,15 @@ export default function Scores() {
     },
   ];
 
-  const tabs = allTabs.filter(t => !role || t.roles.includes(role));
+  // ✅ Filter tabs based on user role
+  const tabs = allTabs.filter(t => {
+    if (!role) return true;
+    return t.roles.includes(role);
+  });
 
   const subtitleMap = {
     SUBJECT_TEACHER: 'Enter scores for your assigned classes and subjects',
-    CLASS_TEACHER: 'View class scores and submission status',
+    CLASS_TEACHER: 'View class scores and submission status for your class',
     SCHOOL_ADMIN: 'Enter and manage student scores and grades',
   };
 

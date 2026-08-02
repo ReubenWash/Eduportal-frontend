@@ -4,7 +4,9 @@ import PageHeader from '../components/common/PageHeader';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import { getDashboardStats } from '../api/schoolApi';
-import { getSubmissionStatus } from '../api/scoresApi'; // ✅ Import directly (not dynamic)
+import { getSubmissionStatus } from '../api/scoresApi';
+import { getAttendance } from '../api/attendanceApi';
+import { getStudents } from '../api/studentsApi';
 import {
   Users, GraduationCap, BookOpen, CalendarDays,
   ArrowRight, UserPlus, BookPlus, FileBarChart, TrendingUp,
@@ -45,7 +47,6 @@ function SchoolAdminDashboard({ stats, loading, loadError }) {
     ? new Date(stats.activeTerm.endDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
     : '—';
 
-  // ✅ Fetch real submission status using direct import
   useEffect(() => {
     const fetchSubmissionStatus = async () => {
       if (!stats.activeTerm?.id) {
@@ -69,7 +70,6 @@ function SchoolAdminDashboard({ stats, loading, loadError }) {
     fetchSubmissionStatus();
   }, [stats.activeTerm?.id]);
 
-  // Format submission status for display
   const submissionRows = submissionStatus.slice(0, 5).map(s => ({
     teacher: s.teacher?.firstName && s.teacher?.lastName 
       ? `${s.teacher.firstName} ${s.teacher.lastName}` 
@@ -81,7 +81,6 @@ function SchoolAdminDashboard({ stats, loading, loadError }) {
     totalStudents: s.totalStudents || 0
   }));
 
-  // If no submissions data, show a message
   const displayRows = submissionRows.length > 0 ? submissionRows : [
     { teacher: 'No submissions data available', subject: '—', class: '—', done: false }
   ];
@@ -117,7 +116,6 @@ function SchoolAdminDashboard({ stats, loading, loadError }) {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Submission Status Overview */}
         <div className="lg:col-span-2 bg-white rounded-xl shadow-sm border border-gray-200">
           <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
             <div className="flex items-center gap-2">
@@ -151,7 +149,6 @@ function SchoolAdminDashboard({ stats, loading, loadError }) {
         </div>
 
         <div className="space-y-5">
-          {/* Current Term card */}
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
             <div className="bg-gradient-to-br from-indigo-600 to-indigo-700 px-5 py-4">
               <p className="text-indigo-200 text-xs font-medium uppercase tracking-wider mb-1">Current Term</p>
@@ -174,7 +171,6 @@ function SchoolAdminDashboard({ stats, loading, loadError }) {
             </div>
           </div>
 
-          {/* Quick Actions */}
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
             <h4 className="text-sm font-semibold text-gray-900 mb-3">Quick Actions</h4>
             <div className="space-y-1">
@@ -203,26 +199,140 @@ function SchoolAdminDashboard({ stats, loading, loadError }) {
 }
 
 /* ─────────────────────────────────────────
-   CLASS TEACHER DASHBOARD
+   CLASS TEACHER DASHBOARD - FIXED WITH REAL DATA
 ───────────────────────────────────────── */
 function ClassTeacherDashboard({ user, stats }) {
+  const [attendanceData, setAttendanceData] = useState([]);
+  const [loadingAttendance, setLoadingAttendance] = useState(false);
+  const [students, setStudents] = useState([]);
+  const [loadingStudents, setLoadingStudents] = useState(false);
+  const [pendingRemarks, setPendingRemarks] = useState(0);
+  const { addToast } = useToast();
+
+  // Get class students from stats (already provided by backend)
   const classStudents = stats?.myClass?.students || [];
   const present = classStudents.filter(s => s.presentToday).length;
   const total = classStudents.length;
   const attendancePct = total > 0 ? Math.round((present / total) * 100) : 0;
   const className = stats?.myClass?.name || 'My Class';
+  const classId = stats?.myClass?.id;
+
+  // ✅ Debug: Log what we're getting from backend
+  useEffect(() => {
+    console.log('📊 ClassTeacherDashboard - Stats received:', stats);
+    console.log('📊 ClassTeacherDashboard - MyClass:', stats?.myClass);
+    console.log('📊 ClassTeacherDashboard - Students:', stats?.myClass?.students);
+    console.log('📊 ClassTeacherDashboard - Student count:', stats?.myClass?.students?.length || 0);
+  }, [stats]);
+
+  // ✅ Fetch today's attendance for the class
+  useEffect(() => {
+    const fetchAttendance = async () => {
+      if (!classId) {
+        console.log('⚠️ No classId available, skipping attendance fetch');
+        return;
+      }
+      setLoadingAttendance(true);
+      try {
+        const today = new Date().toISOString().split('T')[0];
+        console.log('📤 Fetching attendance for class:', classId, 'date:', today);
+        const data = await getAttendance({
+          classId: classId,
+          date: today
+        });
+        console.log('✅ Attendance data received:', data);
+        setAttendanceData(Array.isArray(data) ? data : []);
+      } catch (err) {
+        console.error('❌ Failed to fetch attendance:', err);
+        setAttendanceData([]);
+      } finally {
+        setLoadingAttendance(false);
+      }
+    };
+
+    fetchAttendance();
+  }, [classId]);
+
+  // ✅ Fetch students in the class if not provided by stats
+  useEffect(() => {
+    const fetchStudents = async () => {
+      if (!classId) {
+        console.log('⚠️ No classId available, skipping students fetch');
+        return;
+      }
+      if (classStudents.length > 0) {
+        console.log('✅ Using students from stats:', classStudents.length);
+        return;
+      }
+      setLoadingStudents(true);
+      try {
+        console.log('📤 Fetching students for class:', classId);
+        const data = await getStudents({ classId: classId });
+        console.log('✅ Students data received:', data);
+        setStudents(Array.isArray(data) ? data : []);
+      } catch (err) {
+        console.error('❌ Failed to fetch students:', err);
+        setStudents([]);
+      } finally {
+        setLoadingStudents(false);
+      }
+    };
+
+    fetchStudents();
+  }, [classId, classStudents.length]);
+
+  // ✅ Calculate pending remarks based on students with incomplete profiles
+  useEffect(() => {
+    const displayStudentsList = classStudents.length > 0 ? classStudents : students;
+    const incompleteProfiles = displayStudentsList.filter(s => 
+      !s.photo || !s.gender || !s.dateOfBirth
+    ).length;
+    setPendingRemarks(incompleteProfiles);
+  }, [classStudents, students]);
+
+  // Use students from stats or fallback to fetched students
+  const displayStudents = classStudents.length > 0 ? classStudents : students;
 
   const statCards = [
-    { title: 'My Class Students', value: String(total), icon: GraduationCap, color: 'indigo' },
-    { title: "Today's Attendance", value: `${attendancePct}%`, icon: CheckSquare, color: 'green' },
-    { title: 'Pending Remarks', value: stats?.pendingRemarks || '0', icon: PenLine, color: 'amber' },
-    { title: 'Current Term', value: stats?.activeTerm?.termNumber?.replace('TERM', 'Term ') || '—', icon: CalendarDays, color: 'blue' },
+    { 
+      title: 'My Class Students', 
+      value: String(total), 
+      icon: GraduationCap, 
+      color: 'indigo' 
+    },
+    { 
+      title: "Today's Attendance", 
+      value: `${attendancePct}%`, 
+      icon: CheckSquare, 
+      color: 'green' 
+    },
+    { 
+      title: 'Pending Remarks', 
+      value: String(pendingRemarks), 
+      icon: PenLine, 
+      color: 'amber' 
+    },
+    { 
+      title: 'Current Term', 
+      value: stats?.activeTerm?.termNumber?.replace('TERM', 'Term ') || '—', 
+      icon: CalendarDays, 
+      color: 'blue' 
+    },
+  ];
+
+  const quickActions = [
+    { label: 'My Class Roster', icon: Users, href: '/students', color: 'indigo' },
+    { label: 'Mark Attendance', icon: CheckSquare, href: '/attendance', color: 'green' },
+    { label: 'Enter Scores', icon: BarChart2, href: '/scores', color: 'amber' },
+    { label: 'Add Remarks', icon: MessageSquare, href: '/students', color: 'emerald' },
   ];
 
   return (
     <div>
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5 mb-7">
-        {statCards.map((s, i) => <StatCard key={i} icon={s.icon} title={s.title} value={s.value} color={s.color} />)}
+        {statCards.map((s, i) => (
+          <StatCard key={i} icon={s.icon} title={s.title} value={s.value} color={s.color} />
+        ))}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -247,16 +357,31 @@ function ClassTeacherDashboard({ user, stats }) {
               </div>
               <span className="text-sm font-semibold text-gray-900">{present}/{total}</span>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              {classStudents.map(s => (
-                <div key={s.id} className={`flex items-center gap-2.5 px-3 py-2 rounded-lg border text-sm ${s.presentToday ? 'bg-emerald-50 border-emerald-100 text-emerald-800' : 'bg-red-50 border-red-100 text-red-700'}`}>
-                  {s.presentToday
-                    ? <CheckCircle2 className="h-3.5 w-3.5 flex-shrink-0" />
-                    : <AlertCircle className="h-3.5 w-3.5 flex-shrink-0" />}
-                  <span className="font-medium truncate">{s.name}</span>
-                  <span className="ml-auto text-xs opacity-60">{s.studentNo}</span>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-64 overflow-y-auto">
+              {loadingStudents || loadingAttendance ? (
+                <div className="col-span-2 flex items-center justify-center py-8">
+                  <Loader2 className="h-6 w-6 text-indigo-500 animate-spin" />
                 </div>
-              ))}
+              ) : displayStudents.length > 0 ? (
+                displayStudents.map(s => {
+                  const isPresent = s.presentToday || attendanceData.some(a => a.studentId === s.id && a.status === 'PRESENT');
+                  return (
+                    <div key={s.id} className={`flex items-center gap-2.5 px-3 py-2 rounded-lg border text-sm ${
+                      isPresent ? 'bg-emerald-50 border-emerald-100 text-emerald-800' : 'bg-red-50 border-red-100 text-red-700'
+                    }`}>
+                      {isPresent
+                        ? <CheckCircle2 className="h-3.5 w-3.5 flex-shrink-0" />
+                        : <AlertCircle className="h-3.5 w-3.5 flex-shrink-0" />}
+                      <span className="font-medium truncate">{s.name}</span>
+                      <span className="ml-auto text-xs opacity-60">{s.studentNo}</span>
+                    </div>
+                  );
+                })
+              ) : (
+                <div className="col-span-2 text-center text-sm text-gray-500 py-4">
+                  No students found in your class.
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -277,10 +402,16 @@ function ClassTeacherDashboard({ user, stats }) {
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-xs text-gray-500">Current Term</span>
-                <span className="text-xs font-medium text-gray-900">{stats?.activeTerm?.termNumber?.replace('TERM', 'Term ') || '—'}</span>
+                <span className="text-xs font-medium text-gray-900">
+                  {stats?.activeTerm?.termNumber?.replace('TERM', 'Term ') || '—'}
+                </span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-xs text-gray-500">Missing Today</span>
+                <span className="text-xs text-gray-500">Present Today</span>
+                <span className="text-xs font-medium text-emerald-600">{present} students</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-gray-500">Absent Today</span>
                 <span className="text-xs font-medium text-red-600">{total - present} absent</span>
               </div>
             </div>
@@ -290,16 +421,14 @@ function ClassTeacherDashboard({ user, stats }) {
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
             <h4 className="text-sm font-semibold text-gray-900 mb-3">Quick Actions</h4>
             <div className="space-y-1">
-              {[
-                { label: 'Mark Attendance', icon: CheckSquare, href: '/attendance', color: 'indigo' },
-                { label: 'My Class Roster', icon: GraduationCap, href: '/students', color: 'blue' },
-                { label: 'Add Remarks', icon: MessageSquare, href: '/students', color: 'emerald' },
-                { label: 'View Scores', icon: BarChart2, href: '/scores', color: 'amber' },
-              ].map((link) => {
+              {quickActions.map((link) => {
                 const c = colorMap[link.color] || colorMap.indigo;
                 return (
-                  <Link key={link.label} to={link.href}
-                    className="flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-sm text-gray-700 hover:bg-gray-50 hover:text-indigo-600 transition-all group">
+                  <Link
+                    key={link.label}
+                    to={link.href}
+                    className="flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-sm text-gray-700 hover:bg-gray-50 hover:text-indigo-600 transition-all group"
+                  >
                     <div className={`h-7 w-7 rounded-md ${c.bg} flex items-center justify-center flex-shrink-0`}>
                       <link.icon className={`h-3.5 w-3.5 ${c.text}`} />
                     </div>
@@ -338,7 +467,6 @@ function SubjectTeacherDashboard({ user, stats }) {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Submission Checklist */}
         <div className="lg:col-span-2 bg-white rounded-xl shadow-sm border border-gray-200">
           <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
             <div className="flex items-center gap-2">
@@ -380,9 +508,7 @@ function SubjectTeacherDashboard({ user, stats }) {
           </div>
         </div>
 
-        {/* Right column */}
         <div className="space-y-5">
-          {/* Progress card */}
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
             <div className="bg-gradient-to-br from-indigo-600 to-indigo-700 px-5 py-4">
               <p className="text-indigo-200 text-xs font-medium uppercase tracking-wider mb-1">Progress</p>
@@ -409,7 +535,6 @@ function SubjectTeacherDashboard({ user, stats }) {
             </div>
           </div>
 
-          {/* Quick Actions */}
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
             <h4 className="text-sm font-semibold text-gray-900 mb-3">Quick Actions</h4>
             <div className="space-y-1">
