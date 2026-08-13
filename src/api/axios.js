@@ -115,8 +115,15 @@ api.interceptors.response.use(
       return Promise.reject(error);
     }
 
+    // ── Skip refresh handling for auth endpoints themselves ────
+    // A 401 from /auth/login means bad credentials, not an expired
+    // session — retrying via /auth/refresh here is pointless and just
+    // produces a confusing second error in the console.
+    const authEndpoints = ['/auth/login', '/auth/refresh', '/auth/register', '/auth/forgot-password', '/auth/reset-password'];
+    const isAuthEndpoint = authEndpoints.some((path) => originalRequest?.url?.includes(path));
+
     // ── Handle 401 (Unauthorized) - Token refresh ──────────────
-    if (error.response && error.response.status === 401 && !originalRequest._retry) {
+    if (error.response && error.response.status === 401 && !originalRequest._retry && !isAuthEndpoint) {
       originalRequest._retry = true;
 
       try {

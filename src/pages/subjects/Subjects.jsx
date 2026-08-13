@@ -29,7 +29,10 @@ export default function Subjects() {
   const load = () => getSubjects().then(d => { 
     setData(Array.isArray(d) ? d : []); 
     setLoading(false); 
-  }).catch(() => setLoading(false));
+  }).catch((err) => {
+    console.error('Failed to load subjects:', err);
+    setLoading(false);
+  });
   
   useEffect(() => { load(); }, []);
 
@@ -127,9 +130,9 @@ export default function Subjects() {
             },
             { 
               header: 'Teachers', 
-              key: 'teachers', 
-              render: v => (
-                <span className="text-gray-600">{v?.length || 0} assigned</span>
+              key: 'teacherCount',  // ✅ Changed from 'teachers' to 'teacherCount'
+              render: (v) => (
+                <span className="text-gray-600">{v || 0} assigned</span>
               ) 
             },
           ]}
