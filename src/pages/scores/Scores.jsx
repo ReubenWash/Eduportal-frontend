@@ -115,10 +115,17 @@ function ScoreEntry({ selectedClass, selectedSubject, selectedTerm, gradingConfi
   };
 
   const getTotal = (row) => {
-    const caScores = Array.from({ length: gradingConfig.caCount }).map((_, i) => Number(row[`ca${i+1}`]) || 0);
-    const caTotal = caScores.reduce((a, b) => a + b, 0);
-    const exam = Number(row.exam) || 0;
-    return caTotal + exam;
+    const caScores = Array.from({ length: gradingConfig.caCount }).map((_, i) => {
+      const value = row[`ca${i + 1}`];
+      if (value === '' || value === null || value === undefined) return null;
+      return Number(value);
+    }).filter((value) => value !== null && value !== undefined);
+
+    const caAverage = caScores.length > 0 ? caScores.reduce((sum, value) => sum + value, 0) / caScores.length : 0;
+    const caTotal = (caAverage / gradingConfig.caMaxScore) * 30;
+    const exam = row.exam === '' || row.exam === null || row.exam === undefined ? 0 : Number(row.exam);
+    const examContribution = (exam / gradingConfig.examMaxScore) * 70;
+    return caTotal + examContribution;
   };
 
   const saveRow = async (id) => {
@@ -565,6 +572,7 @@ export default function Scores() {
   const [scoreLabels, setScoreLabels] = useState(null);
   const [computing, setComputing] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [dataLoading, setDataLoading] = useState(true);
   
   const { addToast } = useToast();
   const { user } = useAuth();
@@ -572,42 +580,82 @@ export default function Scores() {
 
   const loadData = async () => {
     try {
-      // Load classes
-      const classList = await getClasses();
-      setClasses(Array.isArray(classList) ? classList : []);
-      if (classList.length > 0 && !selectedClass) {
-        setSelectedClass(classList[0].id);
-      }
+      setDataLoading(true);
 
-      // Load subjects
-      const subjectList = await getSubjects();
-      setSubjects(Array.isArray(subjectList) ? subjectList : []);
-      if (subjectList.length > 0 && !selectedSubject) {
-        setSelectedSubject(subjectList[0].id);
-      }
+      const [classList, subjectList, termList, school] = await Promise.all([
+        getClasses(),
+        getSubjects(),
+        getSchoolTerms(),
+        getSchool(),
+      ]);
 
-      // Load terms
-      const termList = await getSchoolTerms();
-      setTerms(Array.isArray(termList) ? termList : []);
-      if (termList.length > 0 && !selectedTerm) {
-        const activeTerm = termList.find(t => t.status === 'ACTIVE');
-        setSelectedTerm(activeTerm?.id || termList[0].id);
-      }
+      const safeClasses = Array.isArray(classList) ? classList : [];
+      const safeSubjects = Array.isArray(subjectList) ? subjectList : [];
+      const safeTerms = Array.isArray(termList) ? termList : [];
 
-      // Load score labels from school settings
-      const school = await getSchool();
+      setClasses(safeClasses);
+      setSubjects(safeSubjects);
+      setTerms(safeTerms);
+
       if (school?.scoreLabels) {
         setScoreLabels(school.scoreLabels);
       }
+
+      const defaultClass = safeClasses.some(c => c.id === selectedClass)
+        ? selectedClass
+        : safeClasses[0]?.id || '';
+      const defaultSubject = safeSubjects.some(s => s.id === selectedSubject)
+        ? selectedSubject
+        : safeSubjects[0]?.id || '';
+      const defaultTerm = safeTerms.some(t => t.id === selectedTerm)
+        ? selectedTerm
+        : (safeTerms.find(t => t.status === 'ACTIVE') || safeTerms[0])?.id || '';
+
+      setSelectedClass(defaultClass);
+      setSelectedSubject(defaultSubject);
+      setSelectedTerm(defaultTerm);
     } catch (err) {
       console.error('Failed to load data:', err);
       addToast('Failed to load required data', 'error');
+    } finally {
+      setDataLoading(false);
     }
   };
 
   useEffect(() => {
     loadData();
   }, []);
+
+  useEffect(() => {
+    if (!classes.length) {
+      setSelectedClass('');
+      return;
+    }
+    if (selectedClass && !classes.some(c => c.id === selectedClass)) {
+      setSelectedClass(classes[0].id);
+    }
+  }, [classes, selectedClass]);
+
+  useEffect(() => {
+    if (!subjects.length) {
+      setSelectedSubject('');
+      return;
+    }
+    if (selectedSubject && !subjects.some(s => s.id === selectedSubject)) {
+      setSelectedSubject(subjects[0].id);
+    }
+  }, [subjects, selectedSubject]);
+
+  useEffect(() => {
+    if (!terms.length) {
+      setSelectedTerm('');
+      return;
+    }
+    if (selectedTerm && !terms.some(t => t.id === selectedTerm)) {
+      const activeTerm = terms.find(t => t.status === 'ACTIVE') || terms[0];
+      setSelectedTerm(activeTerm?.id || '');
+    }
+  }, [terms, selectedTerm]);
 
   const handleComputeGrades = async () => {
     if (!selectedClass || !selectedTerm) {

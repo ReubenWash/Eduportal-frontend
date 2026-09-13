@@ -66,9 +66,9 @@ export default function Attendance() {
     loadData();
   }, []);
 
-  // Load students when class changes
+  // Load students when class, term, or date changes
   useEffect(() => {
-    if (!selectedClass) {
+    if (!selectedClass || !selectedTerm) {
       setRecords([]);
       setHasUnsavedChanges(false);
       return;
@@ -80,14 +80,12 @@ export default function Attendance() {
         const students = await getStudents({ classId: selectedClass });
         const list = Array.isArray(students) ? students : [];
         
-        // ✅ Check if there's existing attendance for today
-        const today = new Date().toISOString().split('T')[0];
         let existingAttendance = {};
         
         try {
           const attendanceData = await getAttendance({
             classId: selectedClass,
-            date: today,
+            date: date,
             termId: selectedTerm
           });
           
@@ -97,7 +95,7 @@ export default function Attendance() {
             });
           }
         } catch (err) {
-          console.log('No existing attendance found, using defaults');
+          console.log('No existing attendance found for selected date, using defaults');
         }
         
         const recordsData = list.map(s => ({
@@ -111,7 +109,7 @@ export default function Attendance() {
         }));
         
         setRecords(recordsData);
-        setHasUnsavedChanges(false); // ✅ Reset changes flag
+        setHasUnsavedChanges(false);
       } catch (err) {
         console.error('Failed to load students:', err);
         setRecords([]);
@@ -122,7 +120,7 @@ export default function Attendance() {
     };
 
     loadStudents();
-  }, [selectedClass, selectedTerm]);
+  }, [selectedClass, selectedTerm, date]);
 
   // Load attendance stats when class or term changes
   useEffect(() => {
@@ -283,12 +281,24 @@ export default function Attendance() {
     total: records.length,
   };
 
-  // Prepare chart data from real stats or fallback
-  const chartData = attendanceStats.length > 0 
-    ? attendanceStats.slice(0, 8).map((s, i) => ({
-        day: s.date ? new Date(s.date).toLocaleDateString('en-US', { weekday: 'short' }) : `Day ${i + 1}`,
-        rate: s.presentCount && s.totalCount ? Math.round((s.presentCount / s.totalCount) * 100) : 0
-      }))
+  // Prepare chart data from the real attendance records returned by the backend.
+  const chartData = attendanceStats.length > 0
+    ? Object.values(attendanceStats.reduce((acc, record) => {
+        const dateKey = record.date ? new Date(record.date).toISOString().split('T')[0] : 'unknown';
+        if (!acc[dateKey]) {
+          acc[dateKey] = { day: dateKey, total: 0, present: 0 };
+        }
+
+        acc[dateKey].total += 1;
+        if (record.status === STATUS.PRESENT) acc[dateKey].present += 1;
+        return acc;
+      }, {}))
+        .sort((a, b) => new Date(a.day) - new Date(b.day))
+        .slice(-8)
+        .map((entry) => ({
+          day: entry.day ? new Date(entry.day).toLocaleDateString('en-US', { weekday: 'short' }) : 'Day',
+          rate: entry.total > 0 ? Math.round((entry.present / entry.total) * 100) : 0,
+        }))
     : summaryData;
 
   return (
