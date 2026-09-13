@@ -17,6 +17,7 @@ import {
   generateBatchReports,
   regenerateReport,
   getReportDownloadUrl,
+  getReportPreviewUrl,
   getClassZipDownloadUrl,
   downloadClassZip,
 } from '../../api/reportsApi';
@@ -722,6 +723,7 @@ export default function Reports() {
                                 href={getReportDownloadUrl(row.id)}
                                 target="_blank"
                                 rel="noreferrer"
+                                download
                                 className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium text-gray-500 hover:text-gray-700 hover:bg-gray-100 transition-colors"
                               >
                                 <Download className="h-3.5 w-3.5" /> PDF
@@ -752,15 +754,26 @@ export default function Reports() {
             {getStudentName(previewModal || {})} • {getTerm(previewModal || {})} • Average:{' '}
             {getAvg(previewModal || {})}%
           </p>
-          {previewModal && previewModal.status === 'RELEASED' && (
-            <a
-              href={getReportDownloadUrl(previewModal.id)}
-              target="_blank"
-              rel="noreferrer"
-              className="mt-4 inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white text-sm font-semibold rounded-lg hover:bg-indigo-500 transition-colors"
-            >
-              <Download className="h-4 w-4" /> Download PDF
-            </a>
+          {previewModal && (
+            <div className="mt-4 flex flex-wrap justify-center gap-3">
+              <a
+                href={getReportPreviewUrl(previewModal.id)}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white text-sm font-semibold rounded-lg hover:bg-indigo-500 transition-colors"
+              >
+                <Eye className="h-4 w-4" /> Open Preview
+              </a>
+              <a
+                href={getReportDownloadUrl(previewModal.id)}
+                target="_blank"
+                rel="noreferrer"
+                download
+                className="inline-flex items-center gap-2 px-4 py-2 bg-gray-900 text-white text-sm font-semibold rounded-lg hover:bg-gray-700 transition-colors"
+              >
+                <Download className="h-4 w-4" /> Download PDF
+              </a>
+            </div>
           )}
           {previewModal && previewModal.status !== 'RELEASED' && (
             <p className="mt-4 text-xs text-amber-600">

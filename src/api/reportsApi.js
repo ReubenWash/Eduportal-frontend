@@ -105,6 +105,10 @@ export const exportReports = async (params) => {
 
 // ─── UTILITY ───────────────────────────────────────────────────
 export const getReportDownloadUrl = (id) => {
+  return `${api.defaults.baseURL}/reports/${id}/pdf`;
+};
+
+export const getReportPreviewUrl = (id) => {
   return `${api.defaults.baseURL}/reports/${id}/preview`;
 };
 
