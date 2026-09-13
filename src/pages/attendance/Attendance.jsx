@@ -34,6 +34,14 @@ export default function Attendance() {
   const [saving, setSaving] = useState(false);
   const [attendanceStats, setAttendanceStats] = useState([]);
   const [loadingStats, setLoadingStats] = useState(false);
+  const [attendanceHistory, setAttendanceHistory] = useState([]);
+  const [loadingHistory, setLoadingHistory] = useState(false);
+  const [historyStartDate, setHistoryStartDate] = useState(() => {
+    const d = new Date();
+    d.setDate(d.getDate() - 7);
+    return d.toISOString().split('T')[0];
+  });
+  const [historyEndDate, setHistoryEndDate] = useState(new Date().toISOString().split('T')[0]);
   const { addToast } = useToast();
   const { user } = useAuth();
   const role = user?.role;
@@ -148,6 +156,32 @@ export default function Attendance() {
 
     loadStats();
   }, [selectedClass, selectedTerm]);
+
+  useEffect(() => {
+    if (!selectedClass || !selectedTerm) {
+      setAttendanceHistory([]);
+      return;
+    }
+
+    const loadHistory = async () => {
+      setLoadingHistory(true);
+      try {
+        const params = { classId: selectedClass, termId: selectedTerm };
+        if (historyStartDate) params.from = historyStartDate;
+        if (historyEndDate) params.to = historyEndDate;
+
+        const history = await getAttendance(params);
+        setAttendanceHistory(Array.isArray(history) ? history : []);
+      } catch (err) {
+        console.error('Failed to load attendance history:', err);
+        setAttendanceHistory([]);
+      } finally {
+        setLoadingHistory(false);
+      }
+    };
+
+    loadHistory();
+  }, [selectedClass, selectedTerm, historyStartDate, historyEndDate]);
 
   // ✅ Track changes when status or notes are updated
   const setStatus = (id, status) => {
@@ -493,6 +527,86 @@ export default function Attendance() {
             </ResponsiveContainer>
           )}
         </div>
+      </div>
+
+      <div className="mt-6 bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-5 py-4 border-b border-gray-200">
+          <div>
+            <h3 className="text-sm font-semibold text-gray-900">Attendance History</h3>
+            <p className="text-xs text-gray-500">View all marked records across a date range</p>
+          </div>
+          <div className="flex flex-col sm:flex-row gap-2 items-stretch sm:items-center">
+            <div>
+              <label className="block text-[10px] font-medium text-gray-500 uppercase tracking-wide mb-1">From</label>
+              <input
+                type="date"
+                value={historyStartDate}
+                onChange={(e) => setHistoryStartDate(e.target.value)}
+                className="border border-gray-300 rounded-lg px-2.5 py-1.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-400"
+              />
+            </div>
+            <div>
+              <label className="block text-[10px] font-medium text-gray-500 uppercase tracking-wide mb-1">To</label>
+              <input
+                type="date"
+                value={historyEndDate}
+                onChange={(e) => setHistoryEndDate(e.target.value)}
+                className="border border-gray-300 rounded-lg px-2.5 py-1.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-400"
+              />
+            </div>
+          </div>
+        </div>
+
+        {loadingHistory ? (
+          <div className="flex items-center justify-center py-12">
+            <Loader2 className="h-6 w-6 text-indigo-500 animate-spin" />
+          </div>
+        ) : !selectedClass || !selectedTerm ? (
+          <div className="py-12 text-center text-sm text-gray-400">Select a class and term to view attendance history.</div>
+        ) : attendanceHistory.length === 0 ? (
+          <div className="py-12 text-center text-sm text-gray-400">No attendance records were found for this range.</div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200 text-sm">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-5 py-3 text-left font-medium text-gray-600">Date</th>
+                  <th className="px-5 py-3 text-left font-medium text-gray-600">Student</th>
+                  <th className="px-5 py-3 text-left font-medium text-gray-600">Status</th>
+                  <th className="px-5 py-3 text-left font-medium text-gray-600">Note</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-200">
+                {attendanceHistory.map((record) => {
+                  const cfg = statusConfig[record.status] || { label: record.status || 'Unknown', color: 'text-gray-600', bg: 'bg-gray-50 border-gray-200' };
+                  const studentName = record.student
+                    ? `${record.student.firstName || ''} ${record.student.lastName || ''}`.trim()
+                    : 'Unknown student';
+
+                  return (
+                    <tr key={record.id} className="hover:bg-gray-50/60">
+                      <td className="px-5 py-3 text-gray-700">
+                        {record.date ? new Date(record.date).toLocaleDateString() : '—'}
+                      </td>
+                      <td className="px-5 py-3">
+                        <div className="font-medium text-gray-900">{studentName}</div>
+                        <div className="text-xs text-gray-500">{record.student?.studentNumber || ''}</div>
+                      </td>
+                      <td className="px-5 py-3">
+                        <span className={`inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-medium ${cfg.bg} ${cfg.color}`}>
+                          {cfg.label}
+                        </span>
+                      </td>
+                      <td className="px-5 py-3 text-gray-600">
+                        {record.note || '—'}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
     </div>
   );
