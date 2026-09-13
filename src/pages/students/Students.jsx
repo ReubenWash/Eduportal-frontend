@@ -13,7 +13,7 @@ import Avatar from '../../components/ui/Avatar';
 import FileUpload from '../../components/common/FileUpload';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
-import { getStudents, createStudent, updateStudent, deleteStudent } from '../../api/studentsApi';
+import { getStudents, createStudent, updateStudent, deleteStudent, exportStudents } from '../../api/studentsApi';
 import { getClasses } from '../../api/classesApi';
 import api from '../../api/axios';
 import { Search, UserPlus, FileDown, Eye, Edit2, Trash2, Loader2 } from 'lucide-react';
@@ -337,6 +337,28 @@ export default function Students() {
     }
   };
 
+  const handleExport = async () => {
+    try {
+      const blob = await exportStudents({
+        classId: classFilter || undefined,
+      });
+
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `students-export-${new Date().toISOString().slice(0, 10)}.xlsx`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+
+      addToast('Students export downloaded successfully', 'success');
+    } catch (error) {
+      console.error('Student export failed:', error);
+      addToast(error?.response?.data?.message || 'Failed to export students', 'error');
+    }
+  };
+
   const getFullName = (student) => {
     if (!student) return 'Unknown';
     return `${student.firstName || ''} ${student.lastName || ''}`.trim();
@@ -387,7 +409,7 @@ export default function Students() {
         subtitle="Manage student records, enrollments, and profiles"
         action={
           <div className="flex items-center gap-2">
-            <Button variant="secondary" icon={FileDown} className="hidden sm:flex">Export</Button>
+            <Button variant="secondary" icon={FileDown} className="hidden sm:flex" onClick={handleExport}>Export</Button>
             {canAdmitOrDelete && <Button onClick={openCreate} icon={UserPlus}>Admit Student</Button>}
           </div>
         }
