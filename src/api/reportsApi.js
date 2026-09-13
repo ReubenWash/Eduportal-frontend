@@ -131,14 +131,10 @@ export const openReportPreview = async (id) => {
     }
     return objectUrl;
   } catch (error) {
-    const report = await api.get(`/reports/${id}`);
-    const item = unwrapItem(report.data);
-    if (item?.pdfUrl) {
-      const newWindow = window.open(item.pdfUrl, '_blank', 'noopener,noreferrer');
-      if (newWindow) newWindow.opener = null;
-      return item.pdfUrl;
-    }
-    throw error;
+    const previewUrl = getReportPreviewUrl(id);
+    const newWindow = window.open(previewUrl, '_blank', 'noopener,noreferrer');
+    if (newWindow) newWindow.opener = null;
+    return previewUrl;
   }
 };
 
@@ -158,19 +154,15 @@ export const downloadReportPDF = async (id, fileName = `report-${id}.pdf`) => {
     setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
     return objectUrl;
   } catch (error) {
-    const report = await api.get(`/reports/${id}`);
-    const item = unwrapItem(report.data);
-    if (item?.pdfUrl) {
-      const link = document.createElement('a');
-      link.href = item.pdfUrl;
-      link.download = fileName;
-      link.target = '_blank';
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      return item.pdfUrl;
-    }
-    throw error;
+    const downloadUrl = getReportDownloadUrl(id);
+    const link = document.createElement('a');
+    link.href = downloadUrl;
+    link.download = fileName;
+    link.target = '_blank';
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    return downloadUrl;
   }
 };
 
