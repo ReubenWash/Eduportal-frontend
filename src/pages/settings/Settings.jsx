@@ -10,9 +10,20 @@ export default function Settings() {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
   const [saving, setSaving] = useState(false);
+  const defaultReportConfig = {
+    primaryColor: '#4F46E5',
+    secondaryColor: '#0F172A',
+    accentColor: '#E2E8F0',
+    title: 'End of Term Report Card',
+    footerText: 'This is a computer-generated report card. No signature is required.',
+    showLogo: true,
+    showSchoolName: true
+  };
+
   const [form, setForm] = useState({ 
     name: '', email: '', phone: '', address: '', logo: null, plan: '',
-    scoreLabels: { ca1: 'C/A 1', ca2: 'C/A 2', ca3: 'C/A 3', examScore: 'Exam Score' }
+    scoreLabels: { ca1: 'C/A 1', ca2: 'C/A 2', ca3: 'C/A 3', examScore: 'Exam Score' },
+    reportConfig: defaultReportConfig
   });
   const [preview, setPreview] = useState('');
   
@@ -48,7 +59,8 @@ export default function Settings() {
         address: data?.address || '', 
         logo: null, 
         plan: data?.plan || '',
-        scoreLabels: data?.scoreLabels || { ca1: 'C/A 1', ca2: 'C/A 2', ca3: 'C/A 3', examScore: 'Exam Score' }
+        scoreLabels: data?.scoreLabels || { ca1: 'C/A 1', ca2: 'C/A 2', ca3: 'C/A 3', examScore: 'Exam Score' },
+        reportConfig: data?.reportConfig || defaultReportConfig
       });
       setPreview(data?.logoUrl || '');
     } catch (err) {
@@ -66,6 +78,16 @@ export default function Settings() {
     setForm({
       ...form,
       scoreLabels: { ...form.scoreLabels, [e.target.name]: e.target.value }
+    });
+  };
+
+  const handleReportConfigChange = (field, value) => {
+    setForm({
+      ...form,
+      reportConfig: {
+        ...form.reportConfig,
+        [field]: value
+      }
     });
   };
 
@@ -105,6 +127,10 @@ export default function Settings() {
         if (hasValues) {
           updateData.scoreLabels = form.scoreLabels;
         }
+      }
+
+      if (form.reportConfig && typeof form.reportConfig === 'object') {
+        updateData.reportConfig = form.reportConfig;
       }
       
       console.log('📤 Sending clean data:', updateData);
@@ -195,6 +221,23 @@ export default function Settings() {
     } catch (err) {
       console.error('❌ Error saving score labels:', err);
       addToast('Failed to save score labels', 'error');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleSaveReportTheme = async () => {
+    setSaving(true);
+    try {
+      const updateData = {
+        reportConfig: form.reportConfig
+      };
+      await updateSchool(updateData);
+      addToast('Report card branding updated successfully', 'success');
+      await loadSchoolData();
+    } catch (err) {
+      console.error('❌ Error saving report branding:', err);
+      addToast('Failed to save report branding', 'error');
     } finally {
       setSaving(false);
     }
@@ -371,6 +414,96 @@ export default function Settings() {
                 icon={saving ? undefined : CheckCircle}
               >
                 Save Grading Config
+              </Button>
+            </div>
+          </div>
+
+          {/* Report Card Branding */}
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <h2 className="text-sm font-semibold text-gray-900 mb-2">Report Card Branding</h2>
+            <p className="text-xs text-gray-500 mb-5">Customize how each school report card looks for this institution.</p>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+              <div>
+                <label className="block text-xs font-semibold text-gray-600 mb-1">Primary Color</label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="color"
+                    value={form.reportConfig.primaryColor}
+                    onChange={(e) => handleReportConfigChange('primaryColor', e.target.value)}
+                    className="h-10 w-12 rounded border border-gray-200 bg-transparent"
+                  />
+                  <span className="text-xs text-gray-500">{form.reportConfig.primaryColor}</span>
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-600 mb-1">Secondary Color</label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="color"
+                    value={form.reportConfig.secondaryColor}
+                    onChange={(e) => handleReportConfigChange('secondaryColor', e.target.value)}
+                    className="h-10 w-12 rounded border border-gray-200 bg-transparent"
+                  />
+                  <span className="text-xs text-gray-500">{form.reportConfig.secondaryColor}</span>
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-600 mb-1">Accent Color</label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="color"
+                    value={form.reportConfig.accentColor}
+                    onChange={(e) => handleReportConfigChange('accentColor', e.target.value)}
+                    className="h-10 w-12 rounded border border-gray-200 bg-transparent"
+                  />
+                  <span className="text-xs text-gray-500">{form.reportConfig.accentColor}</span>
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-600 mb-1">Report Title</label>
+                <input
+                  type="text"
+                  value={form.reportConfig.title}
+                  onChange={(e) => handleReportConfigChange('title', e.target.value)}
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/30"
+                />
+              </div>
+              <div className="sm:col-span-2">
+                <label className="block text-xs font-semibold text-gray-600 mb-1">Footer Text</label>
+                <textarea
+                  rows={3}
+                  value={form.reportConfig.footerText}
+                  onChange={(e) => handleReportConfigChange('footerText', e.target.value)}
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/30"
+                />
+              </div>
+            </div>
+
+            <div className="mt-5 rounded-xl border border-gray-200 p-4" style={{ background: `linear-gradient(135deg, ${form.reportConfig.primaryColor}, ${form.reportConfig.secondaryColor})` }}>
+              <div className="text-white">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <div className="text-xs uppercase tracking-[0.2em] opacity-80">School Report</div>
+                    <div className="text-lg font-bold">{form.name || 'School Name'}</div>
+                  </div>
+                  <div className="rounded-full bg-white/20 px-3 py-1 text-xs font-semibold">{form.reportConfig.title}</div>
+                </div>
+                <div className="mt-4 flex items-center justify-between text-xs opacity-80">
+                  <span>Student Progress</span>
+                  <span>{new Date().getFullYear()}</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-5 flex items-center justify-end">
+              <Button
+                type="button"
+                onClick={handleSaveReportTheme}
+                loading={saving}
+                icon={saving ? undefined : CheckCircle}
+              >
+                Save Report Branding
               </Button>
             </div>
           </div>
