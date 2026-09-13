@@ -10,7 +10,7 @@ import ConfirmDialog from '../../components/ui/ConfirmDialog';
 import Badge from '../../components/ui/Badge';
 import Avatar from '../../components/ui/Avatar';
 import { useToast } from '../../context/ToastContext';
-import { getStaff, createStaff, updateStaff, deleteStaff, assignSubjects } from '../../api/staffApi';
+import { getStaff, createStaff, updateStaff, deleteStaff, assignSubjects, exportStaff } from '../../api/staffApi';
 import { getSubjects } from '../../api/subjectsApi';
 import { getClasses } from '../../api/classesApi';
 import { formatDate } from '../../utils/helpers';
@@ -195,6 +195,28 @@ export default function Staff() {
     }
   };
 
+  const handleExport = async () => {
+    try {
+      const blob = await exportStaff({
+        role: roleFilter || undefined,
+      });
+
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `staff-export-${new Date().toISOString().slice(0, 10)}.xlsx`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+
+      addToast('Staff export downloaded successfully', 'success');
+    } catch (err) {
+      console.error('Staff export failed:', err);
+      addToast(err?.response?.data?.message || 'Failed to export staff list', 'error');
+    }
+  };
+
   const roleVariant = { SCHOOL_ADMIN: 'primary', CLASS_TEACHER: 'info', SUBJECT_TEACHER: 'default' };
   const roleLabels = { SCHOOL_ADMIN: 'School Admin', CLASS_TEACHER: 'Class Teacher', SUBJECT_TEACHER: 'Subject Teacher' };
 
@@ -205,7 +227,7 @@ export default function Staff() {
         subtitle="Manage teaching and administrative staff accounts"
         action={
           <div className="flex items-center gap-2">
-            <Button variant="secondary" icon={FileDown} className="hidden sm:flex" onClick={() => addToast('Export feature coming soon', 'info')}>
+            <Button variant="secondary" icon={FileDown} className="hidden sm:flex" onClick={handleExport}>
               Export
             </Button>
             <Button onClick={openCreate} icon={UserPlus}>Add Staff</Button>
