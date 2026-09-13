@@ -3,7 +3,7 @@ import PageHeader from '../../components/common/PageHeader';
 import Badge from '../../components/ui/Badge';
 import Avatar from '../../components/ui/Avatar';
 import { getMyProfile, getMyReportCards, getMyGrades } from '../../api/studentselfApi';
-import { getReportDownloadUrl } from '../../api/reportsApi';
+import { openReportPreview, downloadReportPDF } from '../../api/reportsApi';
 import {
   LayoutDashboard, BarChart2, CheckSquare, FileText, User,
   GraduationCap, CalendarDays, TrendingUp, Download, Eye, Bell,
@@ -276,14 +276,13 @@ function MyReportsTab({ reports }) {
             >
               <Eye className="h-3.5 w-3.5" /> View
             </button>
-            <a
-              href={r.url || getReportDownloadUrl(r.id)}
-              target="_blank"
-              rel="noreferrer"
+            <button
+              type="button"
+              onClick={() => downloadReportPDF(r.id)}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-gray-600 bg-gray-50 hover:bg-gray-100 transition-colors"
             >
               <Download className="h-3.5 w-3.5" /> Download
-            </a>
+            </button>
           </div>
         </div>
       ))}
@@ -297,14 +296,20 @@ function MyReportsTab({ reports }) {
             <div className="bg-gray-50 rounded-xl border border-gray-200 p-12 text-center">
               <FileText className="h-12 w-12 text-gray-300 mx-auto mb-3" />
               <p className="text-sm text-gray-600 font-medium">Report Card</p>
-              <a
-                href={getReportDownloadUrl(previewId)}
-                target="_blank"
-                rel="noreferrer"
+              <button
+                type="button"
+                onClick={() => openReportPreview(previewId)}
                 className="mt-4 inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white text-sm font-semibold rounded-lg hover:bg-indigo-500 transition-colors"
               >
+                <Eye className="h-4 w-4" /> Open Preview
+              </button>
+              <button
+                type="button"
+                onClick={() => downloadReportPDF(previewId)}
+                className="mt-4 inline-flex items-center gap-2 px-4 py-2 bg-gray-900 text-white text-sm font-semibold rounded-lg hover:bg-gray-700 transition-colors"
+              >
                 <Download className="h-4 w-4" /> Download PDF
-              </a>
+              </button>
             </div>
           </div>
         </div>

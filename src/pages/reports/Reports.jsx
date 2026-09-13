@@ -16,8 +16,8 @@ import {
   generateReports,
   generateBatchReports,
   regenerateReport,
-  getReportDownloadUrl,
-  getReportPreviewUrl,
+  openReportPreview,
+  downloadReportPDF,
   getClassZipDownloadUrl,
   downloadClassZip,
 } from '../../api/reportsApi';
@@ -719,15 +719,13 @@ export default function Reports() {
                                 variant="blue"
                                 loading={!!actionLoading[row.id]}
                               />
-                              <a
-                                href={getReportDownloadUrl(row.id)}
-                                target="_blank"
-                                rel="noreferrer"
-                                download
+                              <button
+                                type="button"
+                                onClick={() => downloadReportPDF(row.id)}
                                 className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium text-gray-500 hover:text-gray-700 hover:bg-gray-100 transition-colors"
                               >
                                 <Download className="h-3.5 w-3.5" /> PDF
-                              </a>
+                              </button>
                             </>
                           )}
                         </div>
@@ -756,23 +754,20 @@ export default function Reports() {
           </p>
           {previewModal && (
             <div className="mt-4 flex flex-wrap justify-center gap-3">
-              <a
-                href={getReportPreviewUrl(previewModal.id)}
-                target="_blank"
-                rel="noreferrer"
+              <button
+                type="button"
+                onClick={() => openReportPreview(previewModal.id)}
                 className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white text-sm font-semibold rounded-lg hover:bg-indigo-500 transition-colors"
               >
                 <Eye className="h-4 w-4" /> Open Preview
-              </a>
-              <a
-                href={getReportDownloadUrl(previewModal.id)}
-                target="_blank"
-                rel="noreferrer"
-                download
+              </button>
+              <button
+                type="button"
+                onClick={() => downloadReportPDF(previewModal.id)}
                 className="inline-flex items-center gap-2 px-4 py-2 bg-gray-900 text-white text-sm font-semibold rounded-lg hover:bg-gray-700 transition-colors"
               >
                 <Download className="h-4 w-4" /> Download PDF
-              </a>
+              </button>
             </div>
           )}
           {previewModal && previewModal.status !== 'RELEASED' && (

@@ -104,6 +104,35 @@ export const exportReports = async (params) => {
 };
 
 // ─── UTILITY ───────────────────────────────────────────────────
+export const openReportPreview = async (id) => {
+  const res = await api.get(`/reports/${id}/preview`, { responseType: 'blob' });
+  const blob = new Blob([res.data], {
+    type: res.headers['content-type'] || 'application/pdf',
+  });
+  const objectUrl = URL.createObjectURL(blob);
+  const newWindow = window.open('', '_blank', 'noopener,noreferrer');
+  if (newWindow) {
+    newWindow.location.href = objectUrl;
+  }
+  return objectUrl;
+};
+
+export const downloadReportPDF = async (id, fileName = `report-${id}.pdf`) => {
+  const res = await api.get(`/reports/${id}/pdf`, { responseType: 'blob' });
+  const blob = new Blob([res.data], {
+    type: res.headers['content-type'] || 'application/pdf',
+  });
+  const objectUrl = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = objectUrl;
+  link.download = fileName;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
+  return objectUrl;
+};
+
 export const getReportDownloadUrl = (id) => {
   return `${api.defaults.baseURL}/reports/${id}/pdf`;
 };
@@ -135,6 +164,8 @@ export default {
   sendBulkReportEmails,
   downloadClassZip,
   exportReports,
+  openReportPreview,
+  downloadReportPDF,
   getReportDownloadUrl,
   getClassZipDownloadUrl,
 };
