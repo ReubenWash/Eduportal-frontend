@@ -3,7 +3,7 @@ import PageHeader from '../../components/common/PageHeader';
 import Badge from '../../components/ui/Badge';
 import Avatar from '../../components/ui/Avatar';
 import { getMyChildren, getChildReportCards, getChildGrades, getChildAttendance } from '../../api/parentApi';
-import { getReportDownloadUrl } from '../../api/reportsApi';
+import { openReportPreview, downloadReportPDF } from '../../api/reportsApi';
 import {
   LayoutDashboard, BarChart2, CheckSquare, FileText, User, Bell,
   Mail, Download, Eye, CheckCircle2, XCircle, Clock,
@@ -136,9 +136,13 @@ function DashboardTab({ child, scores, attendance, reports }) {
               <p className="text-xs text-gray-500">Average: {latest.average}% · Position: {latest.position}</p>
             </div>
             <Badge variant="success">{latest.status}</Badge>
-            <a href={latest.url} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-indigo-600 bg-indigo-50 hover:bg-indigo-100 transition-colors">
+            <button
+              type="button"
+              onClick={() => downloadReportPDF(latest.id)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-indigo-600 bg-indigo-50 hover:bg-indigo-100 transition-colors"
+            >
               <Download className="h-3.5 w-3.5" /> Download
-            </a>
+            </button>
           </div>
         </div>
       )}
@@ -248,9 +252,13 @@ function ReportsTab({ reports }) {
             >
               <Eye className="h-3.5 w-3.5" /> View
             </button>
-            <a href={r.url} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-gray-600 bg-gray-50 hover:bg-gray-100 transition-colors">
+            <button
+              type="button"
+              onClick={() => downloadReportPDF(r.id)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-gray-600 bg-gray-50 hover:bg-gray-100 transition-colors"
+            >
               <Download className="h-3.5 w-3.5" /> Download
-            </a>
+            </button>
           </div>
         </div>
       ))}

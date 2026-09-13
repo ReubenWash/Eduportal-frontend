@@ -326,11 +326,17 @@ export default function Reports() {
     }
 
     setBulkReleasing(true);
+    if (!classFilter || !termFilter) {
+      addToast('Please select both class and term before bulk releasing.', 'warning');
+      return;
+    }
+
+    setBulkReleasing(true);
     try {
-      const result = await releaseBulkReports({ ids: selectedRows });
+      const result = await releaseBulkReports({ ids: selectedRows, classId: classFilter, termId: termFilter });
       setData((prev) =>
         prev.map((r) =>
-          selectedRows.includes(r.id) ? { ...r, status: 'RELEASED' } : r
+          selectedRows.includes(r.id) ? { ...r, status: 'RELEASED', ...result } : r
         )
       );
       addToast(`${selectedRows.length} reports released successfully`, 'success');

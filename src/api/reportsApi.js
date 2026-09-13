@@ -65,7 +65,21 @@ export const releaseReport = async (id) => {
 
 // ─── BULK RELEASE ──────────────────────────────────────────────
 export const releaseBulkReports = async (data) => {
-  const res = await api.post('/reports/release-bulk', data);
+  const payload = {
+    ...(data || {}),
+    ...(data?.classId && data?.termId ? {} : {}),
+  };
+
+  if (!payload.classId && !payload.termId && Array.isArray(data?.ids) && data.ids.length > 0) {
+    const report = await api.get(`/reports/${data.ids[0]}`);
+    const item = unwrapItem(report.data);
+    if (item?.classId && item?.termId) {
+      payload.classId = item.classId;
+      payload.termId = item.termId;
+    }
+  }
+
+  const res = await api.post('/reports/release-bulk', payload);
   return unwrapItem(res.data);
 };
 
@@ -105,32 +119,59 @@ export const exportReports = async (params) => {
 
 // ─── UTILITY ───────────────────────────────────────────────────
 export const openReportPreview = async (id) => {
-  const res = await api.get(`/reports/${id}/preview`, { responseType: 'blob' });
-  const blob = new Blob([res.data], {
-    type: res.headers['content-type'] || 'application/pdf',
-  });
-  const objectUrl = URL.createObjectURL(blob);
-  const newWindow = window.open('', '_blank', 'noopener,noreferrer');
-  if (newWindow) {
-    newWindow.location.href = objectUrl;
+  try {
+    const res = await api.get(`/reports/${id}/preview`, { responseType: 'blob' });
+    const blob = new Blob([res.data], {
+      type: res.headers['content-type'] || 'application/pdf',
+    });
+    const objectUrl = URL.createObjectURL(blob);
+    const newWindow = window.open('', '_blank', 'noopener,noreferrer');
+    if (newWindow) {
+      newWindow.location.href = objectUrl;
+    }
+    return objectUrl;
+  } catch (error) {
+    const report = await api.get(`/reports/${id}`);
+    const item = unwrapItem(report.data);
+    if (item?.pdfUrl) {
+      const newWindow = window.open(item.pdfUrl, '_blank', 'noopener,noreferrer');
+      if (newWindow) newWindow.opener = null;
+      return item.pdfUrl;
+    }
+    throw error;
   }
-  return objectUrl;
 };
 
 export const downloadReportPDF = async (id, fileName = `report-${id}.pdf`) => {
-  const res = await api.get(`/reports/${id}/pdf`, { responseType: 'blob' });
-  const blob = new Blob([res.data], {
-    type: res.headers['content-type'] || 'application/pdf',
-  });
-  const objectUrl = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = objectUrl;
-  link.download = fileName;
-  document.body.appendChild(link);
-  link.click();
-  link.remove();
-  setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
-  return objectUrl;
+  try {
+    const res = await api.get(`/reports/${id}/pdf`, { responseType: 'blob' });
+    const blob = new Blob([res.data], {
+      type: res.headers['content-type'] || 'application/pdf',
+    });
+    const objectUrl = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = objectUrl;
+    link.download = fileName;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
+    return objectUrl;
+  } catch (error) {
+    const report = await api.get(`/reports/${id}`);
+    const item = unwrapItem(report.data);
+    if (item?.pdfUrl) {
+      const link = document.createElement('a');
+      link.href = item.pdfUrl;
+      link.download = fileName;
+      link.target = '_blank';
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      return item.pdfUrl;
+    }
+    throw error;
+  }
 };
 
 export const getReportDownloadUrl = (id) => {
