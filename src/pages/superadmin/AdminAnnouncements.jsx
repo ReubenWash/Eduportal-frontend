@@ -1,18 +1,32 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import PageHeader from '../../components/common/PageHeader';
 import { Bell, Send, Mail, Users, CheckCircle2, FileText, AlertCircle } from 'lucide-react';
 import Button from '../../components/ui/Button';
 import { useToast } from '../../context/ToastContext';
-import { sendBroadcast, sendPushNotification } from '../../api/superAdminApi';
+import { getSchools, sendBroadcast, sendPushNotification } from '../../api/superAdminApi';
 
 export default function AdminAnnouncements() {
   const { addToast } = useToast();
   const [title, setTitle] = useState('');
   const [message, setMessage] = useState('');
   const [audience, setAudience] = useState('ALL_SCHOOLS');
+  const [selectedSchools, setSelectedSchools] = useState([]);
+  const [schoolOptions, setSchoolOptions] = useState([]);
   const [template, setTemplate] = useState('none');
   const [channels, setChannels] = useState({ inApp: true, email: true, push: false, sms: false });
   const [isSending, setIsSending] = useState(false);
+
+  useEffect(() => {
+    const loadSchools = async () => {
+      try {
+        const schools = await getSchools({ status: 'ACTIVE', limit: 500 });
+        setSchoolOptions(Array.isArray(schools) ? schools : []);
+      } catch {
+        setSchoolOptions([]);
+      }
+    };
+    loadSchools();
+  }, []);
 
   const templates = {
     none: { name: 'Custom Message', content: '' },
@@ -42,6 +56,10 @@ export default function AdminAnnouncements() {
       addToast('Title and message are required.', 'error');
       return;
     }
+    if (audience === 'SELECTED_SCHOOLS' && selectedSchools.length === 0) {
+      addToast('Select at least one school before sending to this audience.', 'error');
+      return;
+    }
     if (!channels.inApp && !channels.email && !channels.push && !channels.sms) {
       addToast('Please select at least one delivery channel.', 'error');
       return;
@@ -49,7 +67,14 @@ export default function AdminAnnouncements() {
 
     setIsSending(true);
     try {
-      await sendBroadcast({ title, message, audience, channels });
+      const payload = {
+        title,
+        message,
+        audience,
+        channels,
+        ...(audience === 'SELECTED_SCHOOLS' ? { selectedSchools } : {}),
+      };
+      await sendBroadcast(payload);
       if (channels.push) {
         await sendPushNotification({ title, body: message, audience });
       }
@@ -57,9 +82,10 @@ export default function AdminAnnouncements() {
       setTitle('');
       setMessage('');
       setTemplate('none');
-    } catch {
-      // Backend not yet wired — still inform the user clearly
-      addToast('Broadcast queued locally. Connect SMTP to enable real delivery.', 'warning');
+      setSelectedSchools([]);
+    } catch (err) {
+      const message = err?.response?.data?.message || 'Broadcast queued locally. Connect SMTP to enable real delivery.';
+      addToast(message, 'warning');
     } finally {
       setIsSending(false);
     }
@@ -98,6 +124,7 @@ export default function AdminAnnouncements() {
                   <label className="block text-sm font-medium text-gray-700 mb-1">Target Audience</label>
                   <select value={audience} onChange={(e) => setAudience(e.target.value)} className="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
                     <option value="ALL_SCHOOLS">All Active Schools</option>
+                    <option value="SELECTED_SCHOOLS">Selected Schools</option>
                     <option value="PREMIUM_ONLY">Premium Schools Only</option>
                     <option value="BASIC_ONLY">Basic Schools Only</option>
                     <option value="ALL_TEACHERS">All Teachers (Global)</option>
@@ -105,6 +132,26 @@ export default function AdminAnnouncements() {
                   </select>
                 </div>
               </div>
+
+              {audience === 'SELECTED_SCHOOLS' && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Choose Schools</label>
+                  <select
+                    multiple
+                    value={selectedSchools}
+                    onChange={(e) => {
+                      const values = Array.from(e.target.selectedOptions, (option) => option.value);
+                      setSelectedSchools(values);
+                    }}
+                    className="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm h-36"
+                  >
+                    {schoolOptions.map((school) => (
+                      <option key={school.id} value={school.id}>{school.name}</option>
+                    ))}
+                  </select>
+                  <p className="mt-2 text-xs text-gray-500">Hold Ctrl/Cmd to select multiple schools.</p>
+                </div>
+              )}
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Subject / Title</label>
