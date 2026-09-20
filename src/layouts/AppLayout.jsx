@@ -12,6 +12,7 @@ import {
   BarChart2,
   CheckSquare,
   FileText,
+  MessageSquareText,
   TrendingUp,
   Bell,
   Settings,
@@ -144,6 +145,7 @@ const navGroups = [
       { path: '/scores', icon: BarChart2, label: 'Scores', roles: ['SCHOOL_ADMIN', 'CLASS_TEACHER', 'SUBJECT_TEACHER'] },
       { path: '/attendance', icon: CheckSquare, label: 'Attendance', roles: ['SCHOOL_ADMIN', 'CLASS_TEACHER', 'SUBJECT_TEACHER'] },
       { path: '/reports', icon: FileText, label: 'Reports', roles: ['SCHOOL_ADMIN'] },
+      { path: '/report-remarks', icon: MessageSquareText, label: 'Report Remarks', roles: ['SCHOOL_ADMIN', 'CLASS_TEACHER'] },
     ],
   },
   {

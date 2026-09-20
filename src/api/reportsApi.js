@@ -1,6 +1,13 @@
 // frontend/src/api/reportsApi.js
 import api, { unwrapList, unwrapItem } from './axios';
 
+// ─── CLASSES THE USER CAN WRITE REMARKS FOR ────────────────────
+// School admin: every class. Class teacher: only their own class.
+export const getReportClasses = async () => {
+  const res = await api.get('/reports/my-classes');
+  return unwrapList(res.data);
+};
+
 // ─── STATS ──────────────────────────────────────────────────────
 export const getReportStats = async (termId) => {
   const res = await api.get('/reports/stats', { params: { termId } });
@@ -175,6 +182,7 @@ export const getClassZipDownloadUrl = (classId, termId) => {
 
 // ─── DEFAULT EXPORT ────────────────────────────────────────────
 export default {
+  getReportClasses,
   getReportStats,
   getReports,
   getClassReports,

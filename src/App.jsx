@@ -31,6 +31,7 @@ const Enrollments = lazy(() => import('./pages/enrollments/Enrollments'));
 const Scores = lazy(() => import('./pages/scores/Scores'));
 const Attendance = lazy(() => import('./pages/attendance/Attendance'));
 const Reports = lazy(() => import('./pages/reports/Reports'));
+const ReportRemarks = lazy(() => import('./pages/reports/ReportRemarks'));
 const Analytics = lazy(() => import('./pages/analytics/Analytics'));
 const Notifications = lazy(() => import('./pages/notifications/Notifications'));
 const ParentPortal = lazy(() => import('./pages/parent/ParentPortal'));
@@ -173,6 +174,8 @@ function AppRoutes() {
 
           {/* Report approval/generation is admin-only per doc 5.2 */}
           <Route path="/reports" element={<ProtectedRoute allowedRoles={ADMIN_ROLES}><Reports /></ProtectedRoute>} />
+          {/* Class teachers write remarks / attitude / conduct / interest for their own class */}
+          <Route path="/report-remarks" element={<ProtectedRoute allowedRoles={CLASS_TEACHER_ROLES}><ReportRemarks /></ProtectedRoute>} />
           <Route path="/analytics" element={<ProtectedRoute allowedRoles={ADMIN_ROLES}><Analytics /></ProtectedRoute>} />
 
           <Route path="/notifications" element={<Notifications />} />
