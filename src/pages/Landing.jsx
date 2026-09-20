@@ -3,6 +3,18 @@ import { useState, useEffect } from 'react';
 import { getLandingPageContent } from '../api/cmsApi';
 
 // ── Default landing page content ─────────────────────────────────────────
+const DEFAULT_THEME = {
+  primaryColor: '#4F46E5',
+  secondaryColor: '#1A3C5E',
+  accentColor: '#F59E0B',
+  fontFamily: 'Inter',
+  borderRadius: '8px',
+  buttonStyle: 'rounded',
+  logoUrl: null,
+  faviconUrl: null,
+  customCss: ''
+};
+
 const DEFAULT_CONTENT = {
   heroHeadline: "Run your school.",
   heroHeadlineHighlight: "Not paperwork.",
@@ -27,6 +39,16 @@ const DEFAULT_CONTENT = {
     { id: 'plan-premium', name: "Premium", price: "GHS 599", period: "/ term", desc: "For large institutions. Unlimited students, priority support.", popular: false, features: ["Unlimited students", "Everything in Standard", "Bulk import & export", "Priority email support", "Custom report branding", "Dedicated account manager"], disabled: [] },
   ],
   footerTagline: "A school management platform built specifically for schools in Ghana and across West Africa.",
+  footerLinks: [
+    { label: 'Features', url: '#features' },
+    { label: 'Pricing', url: '#plans' },
+    { label: 'Changelog', url: '/changelog' },
+    { label: 'Roadmap', url: '/roadmap' },
+    { label: 'Team', url: '/team' },
+  ],
+  socialLinks: [],
+  footerCopyright: '© 2025 EduPortal. All rights reserved.',
+  theme: DEFAULT_THEME,
   // Legal documents will be fetched dynamically
   legalLinks: [
     { label: 'Privacy Policy', path: '/legal/privacy' },
@@ -48,10 +70,13 @@ function useLandingContent() {
         const response = await getLandingPageContent();
         
         if (response?.success && response?.content) {
-          // Merge CMS content with defaults
           const mergedContent = { ...DEFAULT_CONTENT, ...response.content };
-          
-          // Ensure all arrays have unique IDs and remove duplicates
+          mergedContent.theme = { ...DEFAULT_THEME, ...(response.content.theme || {}) };
+
+          if (mergedContent.footerLinks && !Array.isArray(mergedContent.footerLinks)) {
+            mergedContent.footerLinks = DEFAULT_CONTENT.footerLinks;
+          }
+
           if (mergedContent.plans && Array.isArray(mergedContent.plans)) {
             // Remove duplicates by name
             const seenNames = new Set();
@@ -124,6 +149,18 @@ export default function LandingPage() {
   const [deferredPrompt, setDeferredPrompt] = useState(null);
   const [isInstalled, setIsInstalled] = useState(false);
   const [showIosInstructions, setShowIosInstructions] = useState(false);
+  const theme = c.theme || DEFAULT_THEME;
+
+  useEffect(() => {
+    const root = document.documentElement;
+    root.style.setProperty('--brand-primary', theme.primaryColor || '#4F46E5');
+    root.style.setProperty('--brand-secondary', theme.secondaryColor || '#1A3C5E');
+    root.style.setProperty('--brand-accent', theme.accentColor || '#F59E0B');
+    root.style.setProperty('--brand-font', theme.fontFamily || 'Inter');
+    if (theme.logoUrl) {
+      root.style.setProperty('--brand-logo-url', `url('${theme.logoUrl}')`);
+    }
+  }, [theme]);
 
   // Detect platform
   const isIos = () => /iphone|ipad|ipod/i.test(navigator.userAgent);
@@ -175,6 +212,9 @@ export default function LandingPage() {
     { label: 'Cookie Policy', path: '/legal/cookie' },
     { label: 'GDPR Compliance', path: '/legal/gdpr' },
   ];
+  const footerLinks = c.footerLinks || DEFAULT_CONTENT.footerLinks;
+  const socialLinks = c.socialLinks || [];
+  const footerCopyright = c.footerCopyright || '© 2025 EduPortal. All rights reserved.';
 
   return (
     <div className="landing-page min-h-screen bg-white">
@@ -539,6 +579,15 @@ export default function LandingPage() {
                 <span className="logo-name">EduPortal</span>
               </Link>
               <p className="footer-tagline">{c.footerTagline}</p>
+              {socialLinks.length > 0 && (
+                <div className="mt-4 flex gap-3 text-sm text-gray-500">
+                  {socialLinks.map((link, index) => (
+                    <a key={`${link.platform || 'social'}-${index}`} href={link.url || '#'} target="_blank" rel="noreferrer" className="hover:text-indigo-600">
+                      {link.platform || 'Link'}
+                    </a>
+                  ))}
+                </div>
+              )}
               <button 
                 onClick={handleInstallClick}
                 disabled={isInstalled}
@@ -565,11 +614,11 @@ export default function LandingPage() {
             <div>
               <div className="footer-col-title">Product</div>
               <ul className="footer-links">
-                <li><a href="#features">Features</a></li>
-                <li><a href="#plans">Pricing</a></li>
-                <li><Link to="/changelog">Changelog</Link></li>
-                <li><Link to="/roadmap">Roadmap</Link></li>
-                <li><Link to="/team">Team</Link></li>
+                {footerLinks.map((link, index) => (
+                  <li key={`footer-link-${index}`}>
+                    {link.url?.startsWith('#') ? <a href={link.url}>{link.label}</a> : <Link to={link.url || '/'}>{link.label}</Link>}
+                  </li>
+                ))}
               </ul>
             </div>
             <div>
@@ -593,7 +642,7 @@ export default function LandingPage() {
             </div>
           </div>
           <div className="footer-bottom">
-            <span>&copy; 2025 EduPortal. All rights reserved.</span>
+            <span>{footerCopyright}</span>
             <span>Made with care for African schools.</span>
           </div>
         </div>

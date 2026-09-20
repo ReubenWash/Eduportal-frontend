@@ -11,6 +11,7 @@ import Input from '../../components/ui/Input';
 import Modal from '../../components/ui/Modal';
 import { useToast } from '../../context/ToastContext';
 import api from '../../api/axios';
+import { getSubscriptionPlans } from '../../api/superAdminApi';
 
 const COLORS = ['#4F46E5', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899', '#06B6D4', '#F97316'];
 
@@ -132,7 +133,6 @@ export default function AdminCMS() {
   const loadData = async () => {
     setLoading(true);
     try {
-      // Load landing content
       const landingRes = await api.get('/admin/cms/landing');
       if (landingRes.data?.data) {
         const data = landingRes.data.data;
@@ -140,11 +140,31 @@ export default function AdminCMS() {
         if (data.stats) setStatsForm(data.stats);
         if (data.testimonials) setTestimonials(data.testimonials);
         if (data.faqs) setFaqs(data.faqs);
-        if (data.plans) setPlans(data.plans);
         if (data.footerTagline) setFooterData(prev => ({ ...prev, tagline: data.footerTagline }));
       }
 
-      // Load sections to get their IDs
+      try {
+        const subscriptionPlans = await getSubscriptionPlans();
+        if (Array.isArray(subscriptionPlans) && subscriptionPlans.length > 0) {
+          setPlans(subscriptionPlans.map((plan, index) => ({
+            id: plan.id || `plan-${index}`,
+            name: plan.displayName || plan.name || `Plan ${index + 1}`,
+            price: Number(plan.price) === 0 ? 'Free' : `$${Number(plan.price)}`,
+            period: plan.billingCycle ? `/${String(plan.billingCycle).toLowerCase()}` : '/ month',
+            desc: plan.description || `Plan for ${plan.displayName || plan.name}`,
+            popular: Boolean(plan.isDefault) || index === 1,
+            features: Array.isArray(plan.features) ? plan.features : [],
+            disabled: [],
+          })));
+        }
+      } catch (planErr) {
+        console.warn('Failed to load subscription plans for CMS pricing:', planErr);
+      }
+
+      if (landingRes.data?.data?.plans && Array.isArray(landingRes.data.data.plans) && landingRes.data.data.plans.length) {
+        setPlans(prev => prev.map((plan, idx) => ({ ...plan, ...landingRes.data.data.plans[idx] }))); 
+      }
+
       const sectionsRes = await api.get('/admin/cms/sections');
       if (sectionsRes.data?.data) {
         const sections = sectionsRes.data.data;
