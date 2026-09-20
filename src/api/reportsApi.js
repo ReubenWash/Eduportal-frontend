@@ -121,20 +121,22 @@ export const exportReports = async (params) => {
 export const openReportPreview = async (id) => {
   try {
     const res = await api.get(`/reports/${id}/preview`, { responseType: 'blob' });
+    const contentType = res.headers['content-type'] || 'application/pdf';
     const blob = new Blob([res.data], {
-      type: res.headers['content-type'] || 'application/pdf',
+      type: contentType,
     });
     const objectUrl = URL.createObjectURL(blob);
     const newWindow = window.open('', '_blank', 'noopener,noreferrer');
+
     if (newWindow) {
-      newWindow.location.href = objectUrl;
+      newWindow.document.write(`<!doctype html><html><head><title>Report Preview</title></head><body style="margin:0"><iframe src="${objectUrl}" style="width:100vw;height:100vh;border:0" /></body></html>`);
+      newWindow.document.close();
     }
+
     return objectUrl;
   } catch (error) {
-    const previewUrl = getReportPreviewUrl(id);
-    const newWindow = window.open(previewUrl, '_blank', 'noopener,noreferrer');
-    if (newWindow) newWindow.opener = null;
-    return previewUrl;
+    console.error('Failed to open report preview:', error);
+    throw error;
   }
 };
 
@@ -154,15 +156,8 @@ export const downloadReportPDF = async (id, fileName = `report-${id}.pdf`) => {
     setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
     return objectUrl;
   } catch (error) {
-    const downloadUrl = getReportDownloadUrl(id);
-    const link = document.createElement('a');
-    link.href = downloadUrl;
-    link.download = fileName;
-    link.target = '_blank';
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    return downloadUrl;
+    console.error('Failed to download report PDF:', error);
+    throw error;
   }
 };
 
