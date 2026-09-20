@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import PageHeader from '../../components/common/PageHeader';
 import { Image, Upload, Folder, Search, Trash2, Download, File, FileImage, FileVideo, FileAudio, X, RefreshCw, AlertCircle } from 'lucide-react';
 import Button from '../../components/ui/Button';
-import { getDocuments, uploadDocument, deleteDocument } from '../../api/documentsApi';
+import { getMediaFiles, uploadMediaFile, deleteMediaFile } from '../../api/mediaApi';
 
 // ── Toast System ──
 const Toast = ({ message, type, onClose }) => {
@@ -60,11 +60,10 @@ export default function AdminMedia() {
       setLoading(true);
       setError(null);
       const params = currentCategory !== 'all' ? { category: currentCategory } : {};
-      const response = await getDocuments(params);
-      
-      if (response && response.data) {
-        // Transform document data to match our media format
-        const formattedFiles = response.data.map(doc => ({
+      const response = await getMediaFiles(params);
+
+      if (Array.isArray(response)) {
+        const formattedFiles = response.map(doc => ({
           id: doc.id,
           name: doc.originalName || doc.name || 'Unnamed',
           url: doc.url,
@@ -78,9 +77,6 @@ export default function AdminMedia() {
         setMediaFiles(formattedFiles);
       } else {
         setMediaFiles([]);
-        if (response?.message) {
-          addToast(response.message, 'info');
-        }
       }
     } catch (err) {
       console.error('Error fetching documents:', err);
@@ -169,7 +165,7 @@ export default function AdminMedia() {
         formData.append('file', file);
         formData.append('category', currentCategory !== 'all' ? currentCategory : 'General');
 
-        const response = await uploadDocument(formData);
+        const response = await uploadMediaFile(formData);
         if (response) {
           addToast(`Uploaded ${file.name} successfully!`, 'success');
         } else {
@@ -200,10 +196,9 @@ export default function AdminMedia() {
     if (!window.confirm(`Are you sure you want to delete "${name}"?`)) return;
 
     try {
-      await deleteDocument(id);
+      await deleteMediaFile(id);
       addToast(`Deleted "${name}" successfully!`, 'success');
       await fetchDocuments();
-      // Remove from selection if selected
       setSelectedFiles(prev => prev.filter(fid => fid !== id));
     } catch (error) {
       console.error('Error deleting file:', error);
@@ -237,7 +232,7 @@ export default function AdminMedia() {
 
     try {
       for (const id of selectedFiles) {
-        await deleteDocument(id);
+        await deleteMediaFile(id);
       }
       addToast(`Deleted ${selectedFiles.length} files successfully!`, 'success');
       setSelectedFiles([]);
