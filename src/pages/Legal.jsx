@@ -23,14 +23,27 @@ export default function LegalPage() {
     try {
       setLoading(true);
       const response = await getLegalDocumentByType(type);
-      if (response) {
-        setDocument(response);
+      const payload = response?.data || response;
+      if (payload) {
+        setDocument(payload);
       } else {
-        setDocument(null);
+        setDocument({
+          type,
+          title: LEGAL_PAGES.find((page) => page.type === type)?.label || 'Legal Document',
+          version: '1.0',
+          updatedAt: new Date().toISOString(),
+          content: '<p>Legal content is temporarily unavailable. Please check again shortly.</p>'
+        });
       }
     } catch (error) {
       console.error('Error fetching legal document:', error);
-      setDocument(null);
+      setDocument({
+        type,
+        title: LEGAL_PAGES.find((page) => page.type === type)?.label || 'Legal Document',
+        version: '1.0',
+        updatedAt: new Date().toISOString(),
+        content: '<p>Legal content is temporarily unavailable. Please check again shortly.</p>'
+      });
     } finally {
       setLoading(false);
     }
