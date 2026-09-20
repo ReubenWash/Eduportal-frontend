@@ -329,6 +329,32 @@ export const deleteApiKey = async (id) => {
 };
 
 // ─── SUBSCRIPTIONS ──────────────────────────────────────────────
+// ─── ROLES & PERMISSIONS ─────────────────────────────────────
+export const getRolePermissions = async () => {
+  const res = await api.get('/admin/roles/permissions');
+  return unwrapItem(res.data);
+};
+
+export const getRoles = async () => {
+  const res = await api.get('/admin/roles');
+  return unwrapList(res.data);
+};
+
+export const createRole = async (data) => {
+  const res = await api.post('/admin/roles', data);
+  return unwrapItem(res.data);
+};
+
+export const updateRole = async (id, data) => {
+  const res = await api.patch(`/admin/roles/${id}`, data);
+  return unwrapItem(res.data);
+};
+
+export const deleteRole = async (id) => {
+  const res = await api.delete(`/admin/roles/${id}`);
+  return unwrapItem(res.data);
+};
+
 export const getSubscriptionPlans = async () => {
   const res = await api.get('/admin/subscriptions/plans');
   return unwrapList(res.data);
