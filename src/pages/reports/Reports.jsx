@@ -20,6 +20,8 @@ import {
   downloadReportPDF,
   getClassZipDownloadUrl,
   downloadClassZip,
+  downloadClassReports,
+  blobErrorMessage,
 } from '../../api/reportsApi';
 import { getClasses } from '../../api/classesApi';
 import { getSchoolTerms } from '../../api/schoolApi';
@@ -88,6 +90,8 @@ export default function Reports() {
   const [classes, setClasses] = useState([]);
   const [terms, setTerms] = useState([]);
   const [generating, setGenerating] = useState(false);
+  const [downloadingClass, setDownloadingClass] = useState(null); // 'pdf' | 'zip' | null
+  const [includeUnreleased, setIncludeUnreleased] = useState(false);
   const [bulkReleasing, setBulkReleasing] = useState(false);
   const [emailing, setEmailing] = useState(false);
   const [showGenerateModal, setShowGenerateModal] = useState(false);
@@ -410,32 +414,29 @@ export default function Reports() {
     }
   };
 
-  const handleDownloadClassZip = async () => {
+  // Whole class in one go. 'pdf' = one combined PDF (a card per page), 'zip' = one PDF per student.
+  // Files are named after the class ("JHS 2 A - Term 3 2024-2025 Reports.pdf").
+  const handleDownloadClass = async (format) => {
     if (!classFilter || !termFilter) {
       addToast('Please select both class and term', 'warning');
       return;
     }
 
+    setDownloadingClass(format);
     try {
-      const blob = await downloadClassZip(classFilter, termFilter);
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `reports-class-${classFilter}-term-${termFilter}.zip`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      window.URL.revokeObjectURL(url);
-      addToast('ZIP download started', 'success');
+      const { fileName, count } = await downloadClassReports(classFilter, termFilter, format, {
+        includeDrafts: includeUnreleased,
+      });
+      addToast(
+        count ? `Downloaded ${count} report cards: ${fileName}` : `Downloaded ${fileName}`,
+        'success'
+      );
     } catch (err) {
-      console.error('Download ZIP error:', err);
-      const errorMsg = err.response?.data?.message || err.message;
-      
-      if (errorMsg.includes('No students enrolled')) {
-        addToast('No students enrolled in this class for the selected term.', 'error');
-      } else {
-        addToast(`Failed to download ZIP: ${errorMsg}`, 'error');
-      }
+      console.error('Download class reports error:', err);
+      const message = (await blobErrorMessage(err)) || err.message || 'Download failed';
+      addToast(message, 'error');
+    } finally {
+      setDownloadingClass(null);
     }
   };
 
@@ -513,12 +514,32 @@ export default function Reports() {
             >
               Email Reports
             </Button>
+            <label className="flex items-center gap-1.5 text-xs text-gray-600 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                className="rounded border-gray-300"
+                checked={includeUnreleased}
+                onChange={(e) => setIncludeUnreleased(e.target.checked)}
+              />
+              Include unreleased
+            </label>
             <Button
               variant="secondary"
               icon={Download}
-              onClick={handleDownloadClassZip}
+              onClick={() => handleDownloadClass('pdf')}
+              loading={downloadingClass === 'pdf'}
+              disabled={!!downloadingClass}
             >
-              Download ZIP
+              Class PDF
+            </Button>
+            <Button
+              variant="secondary"
+              icon={Download}
+              onClick={() => handleDownloadClass('zip')}
+              loading={downloadingClass === 'zip'}
+              disabled={!!downloadingClass}
+            >
+              ZIP
             </Button>
             <Button
               icon={FileText}

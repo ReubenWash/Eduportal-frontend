@@ -147,7 +147,58 @@ export const openReportPreview = async (id) => {
   }
 };
 
-export const downloadReportPDF = async (id, fileName = `report-${id}.pdf`) => {
+// The server names the file after the student, e.g. "Acquah Frederick - Term 3 2024-2025 Results.pdf".
+// This reads that name from the Content-Disposition header (falls back to `fallback`).
+export const fileNameFromHeaders = (headers, fallback) => {
+  const cd = headers?.['content-disposition'] || '';
+  const star = cd.match(/filename\*=UTF-8''([^;]+)/i);
+  if (star) {
+    try { return decodeURIComponent(star[1]); } catch (e) { /* use the plain name below */ }
+  }
+  const plain = cd.match(/filename="?([^";]+)"?/i);
+  return plain ? plain[1] : fallback;
+};
+
+// When a file request fails, the error body is a Blob. This reads the server's message from it.
+export const blobErrorMessage = async (err) => {
+  const data = err?.response?.data;
+  if (data instanceof Blob) {
+    try {
+      return JSON.parse(await data.text())?.message || null;
+    } catch (e) {
+      return null;
+    }
+  }
+  return data?.message || null;
+};
+
+const saveBlobAs = (blob, fileName) => {
+  const objectUrl = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = objectUrl;
+  link.download = fileName;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
+};
+
+// Whole class: format 'pdf' = ONE combined PDF (a report card per page, ready to print),
+// format 'zip' = a ZIP with one PDF per student. includeDrafts also adds cards not released yet.
+export const downloadClassReports = async (classId, termId, format = 'pdf', { includeDrafts = false } = {}) => {
+  const url = format === 'zip'
+    ? `/reports/class/${classId}/term/${termId}`
+    : `/reports/class/${classId}/term/${termId}/pdf`;
+  const res = await api.get(url, {
+    params: includeDrafts ? { includeDrafts: true } : undefined,
+    responseType: 'blob',
+  });
+  const fileName = fileNameFromHeaders(res.headers, `class-reports.${format}`);
+  saveBlobAs(new Blob([res.data], { type: res.headers['content-type'] }), fileName);
+  return { fileName, count: Number(res.headers['x-report-count']) || null };
+};
+
+export const downloadReportPDF = async (id, fileName = null) => {
   try {
     const res = await api.get(`/reports/${id}/pdf`, { responseType: 'blob' });
     const blob = new Blob([res.data], {
@@ -156,7 +207,7 @@ export const downloadReportPDF = async (id, fileName = `report-${id}.pdf`) => {
     const objectUrl = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = objectUrl;
-    link.download = fileName;
+    link.download = fileName || fileNameFromHeaders(res.headers, `report-${id}.pdf`);
     document.body.appendChild(link);
     link.click();
     link.remove();
@@ -202,6 +253,7 @@ export default {
   exportReports,
   openReportPreview,
   downloadReportPDF,
+  downloadClassReports,
   getReportDownloadUrl,
   getClassZipDownloadUrl,
 };

@@ -11,12 +11,14 @@ import ConfirmDialog from '../../components/ui/ConfirmDialog';
 import Badge from '../../components/ui/Badge';
 import Avatar from '../../components/ui/Avatar';
 import FileUpload from '../../components/common/FileUpload';
+import ImportStudentsModal from './ImportStudentsModal';
+import BulkPhotosModal from './BulkPhotosModal';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
 import { getStudents, createStudent, updateStudent, deleteStudent, exportStudents } from '../../api/studentsApi';
 import { getClasses } from '../../api/classesApi';
 import api from '../../api/axios';
-import { Search, UserPlus, FileDown, Eye, Edit2, Trash2, Loader2 } from 'lucide-react';
+import { Search, UserPlus, FileDown, FileUp, ImagePlus, Eye, Edit2, Trash2, Loader2 } from 'lucide-react';
 
 const GENDER_OPTIONS = [
   { value: 'MALE', label: 'Male' },
@@ -66,6 +68,8 @@ export default function Students() {
   const canEdit = canAdmitOrDelete || user?.role === 'CLASS_TEACHER';
 
   const [data, setData] = useState([]);
+  const [showImport, setShowImport] = useState(false);
+  const [showPhotos, setShowPhotos] = useState(false);
   const [classes, setClasses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -410,9 +414,24 @@ export default function Students() {
         action={
           <div className="flex items-center gap-2">
             <Button variant="secondary" icon={FileDown} className="hidden sm:flex" onClick={handleExport}>Export</Button>
+            {canAdmitOrDelete && <Button variant="secondary" icon={FileUp} onClick={() => setShowImport(true)}>Import</Button>}
+            {canAdmitOrDelete && <Button variant="secondary" icon={ImagePlus} className="hidden sm:flex" onClick={() => setShowPhotos(true)}>Photos</Button>}
             {canAdmitOrDelete && <Button onClick={openCreate} icon={UserPlus}>Admit Student</Button>}
           </div>
         }
+      />
+
+      <BulkPhotosModal
+        isOpen={showPhotos}
+        onClose={() => setShowPhotos(false)}
+        students={data}
+        onDone={load}
+      />
+
+      <ImportStudentsModal
+        isOpen={showImport}
+        onClose={() => setShowImport(false)}
+        onImported={load}
       />
 
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">

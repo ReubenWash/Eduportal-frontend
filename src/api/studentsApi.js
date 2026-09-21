@@ -39,6 +39,33 @@ export const importStudentsExcel = async (formData) => {
   return unwrapItem(res.data);
 };
 
+// One student's passport photo (the server crops it to a portrait centred on the face)
+export const uploadStudentPhoto = async (studentId, file) => {
+  const formData = new FormData();
+  formData.append('file', file);
+  const res = await api.post(`/students/${studentId}/photo`, formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  });
+  return unwrapItem(res.data);
+};
+
+// Excel template with the school's own classes in a dropdown
+export const downloadStudentImportTemplate = async () => {
+  const res = await api.get('/students/import-template', { responseType: 'blob' });
+  return res.data;
+};
+
+// Step 1 of a bulk import: the server reads and checks the file but saves nothing
+export const previewStudentImport = async (file) => {
+  const formData = new FormData();
+  formData.append('file', file);
+  const res = await api.post('/students/import-preview', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  });
+  return unwrapItem(res.data);
+};
+
+// Step 2: save a batch of checked rows (the modal sends 20 at a time)
 export const bulkImportStudents = async (records) => {
   const res = await api.post('/students/bulk-import', { records });
   return unwrapItem(res.data);
