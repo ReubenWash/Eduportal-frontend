@@ -86,25 +86,24 @@ export default function RegisterPage() {
 
     setLoading(true);
     try {
-      console.log('📝 Submitting registration:', {
-        name: formData.name,
-        email: formData.email,
-        schoolName: formData.schoolName,
-        region: formData.region,
-        district: formData.district,
-        plan: formData.plan
-      });
-
-      const result = await register({
-        name: formData.name,
+      // The backend's `name` field is the SCHOOL's name, and it separately
+      // requires `headmasterName` for the admin's name. Our form fields are
+      // called `schoolName` and `name` respectively, so they get mapped here
+      // rather than renaming the form fields throughout the UI.
+      const payload = {
+        name: formData.schoolName,
+        headmasterName: formData.name,
         email: formData.email,
         password: formData.password,
-        schoolName: formData.schoolName,
         region: formData.region,
         district: formData.district,
         address: formData.address,
         plan: formData.plan
-      });
+      };
+
+      console.log('📝 Submitting registration:', payload);
+
+      const result = await register(payload);
 
       console.log('✅ Registration successful:', result);
 
