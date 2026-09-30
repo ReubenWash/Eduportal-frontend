@@ -12,6 +12,17 @@ import { getGuardians, createGuardian, linkStudent } from '../../api/guardiansAp
 import { getStudents } from '../../api/studentsApi';
 import { UserPlus, Link as LinkIcon, Search, X } from 'lucide-react';
 
+const RELATIONSHIP_OPTIONS = [
+  { value: 'Mother', label: 'Mother' },
+  { value: 'Father', label: 'Father' },
+  { value: 'Guardian', label: 'Guardian' },
+  { value: 'Grandparent', label: 'Grandparent' },
+  { value: 'Sibling', label: 'Sibling' },
+  { value: 'Other', label: 'Other' },
+];
+
+const EMPTY_FORM = { firstName: '', lastName: '', email: '', phone: '', relationship: '' };
+
 export default function Guardians() {
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -20,7 +31,8 @@ export default function Guardians() {
   const [students, setStudents] = useState([]);
   const [selectedStudent, setSelectedStudent] = useState('');
   const [keyword, setKeyword] = useState('');
-  const [form, setForm] = useState({ name: '', email: '', phone: '', address: '' });
+  const [form, setForm] = useState(EMPTY_FORM);
+  const [saving, setSaving] = useState(false);
   const { addToast } = useToast();
 
   const load = () => getGuardians().then(d => { setData(Array.isArray(d) ? d : []); setLoading(false); }).catch(() => setLoading(false));
@@ -28,10 +40,26 @@ export default function Guardians() {
 
   const filtered = data.filter(g => !keyword || g.name?.toLowerCase().includes(keyword.toLowerCase()) || g.email?.toLowerCase().includes(keyword.toLowerCase()));
 
-  const openCreate = () => { setForm({ name: '', email: '', phone: '', address: '' }); setDrawerOpen(true); };
+  const openCreate = () => { setForm(EMPTY_FORM); setDrawerOpen(true); };
+
   const handleSave = async (e) => {
     e.preventDefault();
-    try { await createGuardian(form); addToast('Guardian added successfully', 'success'); setDrawerOpen(false); load(); } catch { addToast('Failed to add guardian', 'error'); }
+    setSaving(true);
+    try {
+      await createGuardian(form);
+      addToast('Guardian added successfully', 'success');
+      setDrawerOpen(false);
+      load();
+    } catch (err) {
+      // Surface the backend's actual validation/error message instead of a generic one,
+      // so a bad request (missing field, duplicate email, etc.) is visible instead of silent.
+      const message = err?.response?.data?.message
+        || err?.response?.data?.errors?.[0]?.msg
+        || 'Failed to add guardian';
+      addToast(message, 'error');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const openLinkModal = async (guardian) => {
@@ -40,7 +68,9 @@ export default function Guardians() {
     try {
       const stu = await getStudents();
       setStudents(stu.filter(s => s.status === 'ACTIVE'));
-    } catch { setStudents([]); }
+    } catch {
+      setStudents([]);
+    }
   };
 
   const handleLinkStudent = async () => {
@@ -50,7 +80,10 @@ export default function Guardians() {
       addToast('Student linked successfully', 'success');
       setLinkModal(null);
       load();
-    } catch { addToast('Failed to link student', 'error'); }
+    } catch (err) {
+      const message = err?.response?.data?.message || 'Failed to link student';
+      addToast(message, 'error');
+    }
   };
 
   return (
@@ -93,6 +126,7 @@ export default function Guardians() {
                 </div>
               )
             },
+            { header: 'Relationship', key: 'relationship', render: v => <span className="text-gray-600">{v || '—'}</span> },
             { header: 'Phone', key: 'phone', render: v => <span className="text-gray-600">{v || '—'}</span> },
             { header: 'Linked Students', key: 'students', render: v => <span className="text-gray-600">{v?.length || 0} student{(v?.length || 0) !== 1 ? 's' : ''}</span> },
           ]}
@@ -114,13 +148,24 @@ export default function Guardians() {
         subtitle="Enter the contact details of the parent or guardian."
       >
         <form onSubmit={handleSave} className="space-y-4">
-          <Input label="Full Name" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} required placeholder="e.g. Kwame Asante" />
-          <Input label="Email Address" type="email" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} required placeholder="guardian@email.com" />
+          <Input label="First Name" value={form.firstName} onChange={e => setForm({ ...form, firstName: e.target.value })} required placeholder="e.g. Kwame" />
+          <Input label="Last Name" value={form.lastName} onChange={e => setForm({ ...form, lastName: e.target.value })} required placeholder="e.g. Asante" />
+          <Select
+            label="Relationship"
+            value={form.relationship}
+            onChange={e => setForm({ ...form, relationship: e.target.value })}
+            options={RELATIONSHIP_OPTIONS}
+            placeholder="Select relationship..."
+            required
+          />
           <Input label="Phone Number" value={form.phone} onChange={e => setForm({ ...form, phone: e.target.value })} required placeholder="+233 24 000 0000" />
-          <Input label="Address" value={form.address} onChange={e => setForm({ ...form, address: e.target.value })} placeholder="Home address (optional)" />
+          <Input label="Email Address" type="email" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} placeholder="guardian@email.com (optional)" />
+          <p className="text-xs text-gray-500 -mt-2">
+            If an email is provided, a parent portal account is created automatically and login details are emailed to the guardian.
+          </p>
           <div className="flex justify-end gap-3 pt-4 mt-2 border-t border-gray-100">
             <Button variant="secondary" onClick={() => setDrawerOpen(false)}>Cancel</Button>
-            <Button type="submit">Add Guardian</Button>
+            <Button type="submit" disabled={saving}>{saving ? 'Adding…' : 'Add Guardian'}</Button>
           </div>
         </form>
       </SlideOver>
