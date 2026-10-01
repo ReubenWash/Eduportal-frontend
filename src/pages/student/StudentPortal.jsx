@@ -24,6 +24,14 @@ const statusConfig = {
   LATE:    { icon: Clock,       color: 'text-amber-600',   bg: 'bg-amber-50 border-amber-100' },
 };
 
+const termLabel = (value) => {
+  if (typeof value === 'string') return value;
+  if (!value || typeof value !== 'object') return '';
+  return value.termLabel || [value.academicYear, value.termNumber]
+    .filter(Boolean)
+    .join(' - ');
+};
+
 function ScoreTermRow({ term, expanded, onToggle }) {
   const subjects = term.subjects || term.scores || [];
   return (
@@ -34,7 +42,7 @@ function ScoreTermRow({ term, expanded, onToggle }) {
       >
         <div className="flex items-center gap-3">
           <CalendarDays className="h-4 w-4 text-gray-400" />
-          <span className="text-sm font-semibold text-gray-900">{term.term || term.termName}</span>
+          <span className="text-sm font-semibold text-gray-900">{termLabel(term.term || term.termName)}</span>
         </div>
         <div className="flex items-center gap-3">
           <span className="text-xs font-medium text-gray-500">Avg: <strong className="text-gray-900">{term.average}%</strong></span>
@@ -98,7 +106,7 @@ function DashboardTab({ profile, scores, attendance, reports }) {
             <h2 className="text-xl font-bold truncate">{profile?.name}</h2>
             <p className="text-indigo-200 text-sm">{profile?.studentNo} · {profile?.className}</p>
             <p className="text-indigo-200 text-xs mt-1">
-              {latestScores?.term || latestScores?.termName || 'Current Term'}
+              {termLabel(latestScores?.term || latestScores?.termName) || 'Current Term'}
             </p>
           </div>
           {latestReport && (
@@ -123,19 +131,19 @@ function DashboardTab({ profile, scores, attendance, reports }) {
           {
             label: 'Subjects with Scores',
             value: submittedSubjects ? `${submittedSubjects}` : '—',
-            sub: latestScores?.term || latestScores?.termName || '—',
+            sub: termLabel(latestScores?.term || latestScores?.termName) || '—',
             color: 'bg-indigo-50 border-indigo-100 text-indigo-700',
           },
           {
             label: 'Latest Average',
             value: latestScores?.average != null ? `${latestScores.average}%` : '—',
-            sub: latestScores?.term || latestScores?.termName || '—',
+            sub: termLabel(latestScores?.term || latestScores?.termName) || '—',
             color: 'bg-blue-50 border-blue-100 text-blue-700',
           },
           {
             label: 'Report Status',
             value: latestReport?.status || '—',
-            sub: latestReport?.termName || latestReport?.term || '—',
+            sub: termLabel(latestReport?.termName || latestReport?.term) || '—',
             color: 'bg-amber-50 border-amber-100 text-amber-700',
           },
         ].map((s, i) => (
