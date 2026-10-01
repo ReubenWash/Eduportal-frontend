@@ -25,7 +25,7 @@ const Staff = lazy(() => import('./pages/staff/Staff'));
 const Students = lazy(() => import('./pages/students/Students'));
 const StudentDetail = lazy(() => import('./pages/students/StudentDetail'));
 const Guardians = lazy(() => import('./pages/guardians/Guardians'));
-const Documents = lazy(() => import('./pages/documents/Documents'));
+const Documents = lazy(() => import('./pages/document/Documents'));
 const Classes = lazy(() => import('./pages/classes/Classes'));
 const Subjects = lazy(() => import('./pages/subjects/Subjects'));
 const Enrollments = lazy(() => import('./pages/enrollments/Enrollments'));
