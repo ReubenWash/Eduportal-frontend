@@ -91,11 +91,11 @@ export default function LoginPage() {
               type="text"
               value={identifier}
               onChange={(e) => setIdentifier(e.target.value)}
-              placeholder="you@school.com or STU/2026/0001"
+              placeholder="you@school.com or JHS-2026-0001"
               className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
             />
             <p className="mt-1 text-xs text-slate-500">
-              Use your email address or student number (e.g., STU/2026/0001)
+              Use your email address or student number (e.g., JHS-2026-0001 or STU/2026/0001)
             </p>
           </div>
 
