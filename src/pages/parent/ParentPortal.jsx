@@ -26,6 +26,11 @@ const statusConfig = {
 };
 
 function ScoreTermRow({ term, expanded, onToggle }) {
+  const termLabel = typeof term?.term === 'string'
+    ? term.term
+    : term?.term?.termLabel || term?.termName || term?.label || 'Term';
+  const subjects = term?.subjects || term?.scores || [];
+
   return (
     <div className="border border-gray-200 rounded-xl overflow-hidden">
       <button
@@ -34,10 +39,10 @@ function ScoreTermRow({ term, expanded, onToggle }) {
       >
         <div className="flex items-center gap-3">
           <CalendarDays className="h-4 w-4 text-gray-400" />
-          <span className="text-sm font-semibold text-gray-900">{term.term}</span>
+          <span className="text-sm font-semibold text-gray-900">{termLabel}</span>
         </div>
         <div className="flex items-center gap-3">
-          <span className="text-xs font-medium text-gray-500">Avg: <strong className="text-gray-900">{term.average}%</strong></span>
+          <span className="text-xs font-medium text-gray-500">Avg: <strong className="text-gray-900">{term.average ?? 0}%</strong></span>
           {expanded ? <ChevronUp className="h-4 w-4 text-gray-400" /> : <ChevronDown className="h-4 w-4 text-gray-400" />}
         </div>
       </button>
@@ -52,16 +57,16 @@ function ScoreTermRow({ term, expanded, onToggle }) {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-50">
-              {term.subjects.map((s, i) => (
+              {subjects.map((s, i) => (
                 <tr key={i} className="hover:bg-gray-50/60 transition-colors">
-                  <td className="px-4 py-3 text-sm font-medium text-gray-900 whitespace-nowrap">{s.name}</td>
-                  <td className="px-4 py-3 text-sm text-gray-700">{s.ca1}</td>
-                  <td className="px-4 py-3 text-sm text-gray-700">{s.ca2}</td>
-                  <td className="px-4 py-3 text-sm text-gray-700">{s.ca3}</td>
-                  <td className="px-4 py-3 text-sm font-semibold text-gray-800">{s.caTotal}/30</td>
-                  <td className="px-4 py-3 text-sm text-gray-700">{s.exam}</td>
-                  <td className="px-4 py-3 text-sm font-bold text-gray-900">{s.total}</td>
-                  <td className="px-4 py-3"><Badge variant={gradeColor(s.grade)}>{s.grade}</Badge></td>
+                  <td className="px-4 py-3 text-sm font-medium text-gray-900 whitespace-nowrap">{s.name || s.subjectName || s.subject}</td>
+                  <td className="px-4 py-3 text-sm text-gray-700">{s.ca1 ?? '—'}</td>
+                  <td className="px-4 py-3 text-sm text-gray-700">{s.ca2 ?? '—'}</td>
+                  <td className="px-4 py-3 text-sm text-gray-700">{s.ca3 ?? '—'}</td>
+                  <td className="px-4 py-3 text-sm font-semibold text-gray-800">{s.caTotal ?? '—'}/30</td>
+                  <td className="px-4 py-3 text-sm text-gray-700">{s.exam ?? s.examScore ?? '—'}</td>
+                  <td className="px-4 py-3 text-sm font-bold text-gray-900">{s.total ?? '—'}</td>
+                  <td className="px-4 py-3"><Badge variant={gradeColor(s.grade)}>{s.grade || '—'}</Badge></td>
                 </tr>
               ))}
             </tbody>
