@@ -114,7 +114,7 @@ export default function Staff() {
 
   const handleSave = async (e) => {
     e.preventDefault();
-    if (form.phone && !isValidE164Phone(form.phone)) {
+    if (form.phone && !isValidE164Phone(normalizePhoneForApi(form.phone))) {
       addToast('Enter a valid phone number with its country calling code.', 'error');
       return;
     }

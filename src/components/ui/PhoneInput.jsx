@@ -56,7 +56,7 @@ export default function PhoneInput({
           className="max-w-[58%] border-0 border-r border-gray-200 bg-gray-50 px-2 py-2.5 text-sm text-gray-900 focus:outline-none"
         >
           {PHONE_COUNTRIES.map(item => (
-            <option key={item.code} value={item.code}>{item.name} (+{item.callingCode})</option>
+            <option key={item.code} value={item.code}>{item.name}</option>
           ))}
         </select>
         <span className="flex items-center bg-white px-2 text-sm text-gray-600" aria-label="Country calling code">+{country.callingCode}</span>

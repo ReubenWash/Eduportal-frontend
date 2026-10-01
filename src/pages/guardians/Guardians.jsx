@@ -46,7 +46,7 @@ export default function Guardians() {
 
   const handleSave = async (e) => {
     e.preventDefault();
-    if (!isValidE164Phone(form.phone)) {
+    if (!isValidE164Phone(normalizePhoneForApi(form.phone))) {
       addToast('Enter a valid phone number with its country calling code.', 'error');
       return;
     }

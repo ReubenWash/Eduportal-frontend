@@ -48,7 +48,10 @@ export const normalizePhoneForApi = (value, defaultCallingCode = '233') => {
   const raw = String(value || '').trim();
   if (isValidE164Phone(raw)) return raw;
   let digits = raw.replace(/\D/g, '');
-  if (raw.startsWith('00')) digits = digits.slice(2);
+  if (raw.startsWith('00')) {
+    const international = `+${digits.slice(2)}`;
+    return isValidE164Phone(international) ? international : '';
+  }
   else if (digits.startsWith('0')) digits = digits.slice(1);
   else if (digits.startsWith(defaultCallingCode)) return `+${digits}`;
   const normalized = `+${defaultCallingCode}${digits}`;

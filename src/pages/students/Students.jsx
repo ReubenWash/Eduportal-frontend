@@ -205,7 +205,7 @@ export default function Students() {
     const errors = {};
     let hasError = false;
 
-    if (form.guardianPhone && !isValidE164Phone(form.guardianPhone)) {
+    if (form.guardianPhone && !isValidE164Phone(normalizePhoneForApi(form.guardianPhone))) {
       errors.guardianPhone = 'Enter a valid phone number with its country calling code';
       hasError = true;
     }

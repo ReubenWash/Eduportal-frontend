@@ -143,7 +143,7 @@ export default function Settings() {
   // ✅ Main submit handler - properly handles both with and without logo
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (form.phone && !isValidE164Phone(form.phone)) {
+    if (form.phone && !isValidE164Phone(normalizePhoneForApi(form.phone))) {
       addToast('Enter a valid phone number with its country calling code.', 'error');
       return;
     }

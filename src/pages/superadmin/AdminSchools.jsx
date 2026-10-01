@@ -243,7 +243,7 @@ export default function AdminSchools() {
 
   const handleAddSchool = async (e) => {
     e.preventDefault();
-    if (addForm.phone && !isValidE164Phone(addForm.phone)) {
+    if (addForm.phone && !isValidE164Phone(normalizePhoneForApi(addForm.phone))) {
       addToast('Enter a valid phone number with its country calling code.', 'error');
       return;
     }
@@ -308,7 +308,7 @@ export default function AdminSchools() {
       addToast('School name is required.', 'error'); 
       return; 
     }
-    if (editForm.phone && !isValidE164Phone(editForm.phone)) {
+    if (editForm.phone && !isValidE164Phone(normalizePhoneForApi(editForm.phone))) {
       addToast('Enter a valid phone number with its country calling code.', 'error');
       return;
     }
