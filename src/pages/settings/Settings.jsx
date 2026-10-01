@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react';
 import PageHeader from '../../components/common/PageHeader';
 import Input from '../../components/ui/Input';
+import PhoneInput from '../../components/ui/PhoneInput';
 import Button from '../../components/ui/Button';
 import { useToast } from '../../context/ToastContext';
+import { isValidE164Phone, normalizePhoneForApi } from '../../utils/phone';
 import { getSchool, updateSchool, updateSchoolWithLogo } from '../../api/schoolApi';
 import { Building2, Mail, Phone, MapPin, Upload, CheckCircle, ExternalLink, GraduationCap } from 'lucide-react';
 
@@ -141,6 +143,10 @@ export default function Settings() {
   // ✅ Main submit handler - properly handles both with and without logo
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (form.phone && !isValidE164Phone(form.phone)) {
+      addToast('Enter a valid phone number with its country calling code.', 'error');
+      return;
+    }
     setSaving(true);
     
     try {
@@ -155,7 +161,7 @@ export default function Settings() {
         updateData.email = form.email.trim();
       }
       if (form.phone && form.phone.trim()) {
-        updateData.phone = form.phone.trim();
+        updateData.phone = normalizePhoneForApi(form.phone);
       }
       if (form.address && form.address.trim()) {
         updateData.address = form.address.trim();
@@ -385,9 +391,8 @@ export default function Settings() {
                     required
                     icon={Mail}
                   />
-                  <Input
+                  <PhoneInput
                     label="Phone Number"
-                    name="phone"
                     value={form.phone}
                     onChange={handleChange}
                     icon={Phone}

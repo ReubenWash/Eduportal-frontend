@@ -160,6 +160,7 @@ export const register = async (data) => {
       region: data.region,
       district: data.district,
       address: data.address,
+      phone: data.phone,
       headmasterName: data.headmasterName ?? (data.schoolName ? data.name : undefined),
       plan: data.plan,
     });

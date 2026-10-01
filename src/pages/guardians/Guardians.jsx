@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import PageHeader from '../../components/common/PageHeader';
 import Button from '../../components/ui/Button';
 import Input from '../../components/ui/Input';
+import PhoneInput from '../../components/ui/PhoneInput';
 import Table from '../../components/ui/Table';
 import SlideOver from '../../components/ui/SlideOver';
 import Modal from '../../components/ui/Modal';
@@ -10,6 +11,7 @@ import Avatar from '../../components/ui/Avatar';
 import { useToast } from '../../context/ToastContext';
 import { getGuardians, createGuardian, linkStudent } from '../../api/guardiansApi';
 import { getStudents } from '../../api/studentsApi';
+import { isValidE164Phone, normalizePhoneForApi } from '../../utils/phone';
 import { UserPlus, Link as LinkIcon, Search, X } from 'lucide-react';
 
 const RELATIONSHIP_OPTIONS = [
@@ -44,9 +46,13 @@ export default function Guardians() {
 
   const handleSave = async (e) => {
     e.preventDefault();
+    if (!isValidE164Phone(form.phone)) {
+      addToast('Enter a valid phone number with its country calling code.', 'error');
+      return;
+    }
     setSaving(true);
     try {
-      await createGuardian(form);
+      await createGuardian({ ...form, phone: normalizePhoneForApi(form.phone) });
       addToast('Guardian added successfully', 'success');
       setDrawerOpen(false);
       load();
@@ -158,7 +164,7 @@ export default function Guardians() {
             placeholder="Select relationship..."
             required
           />
-          <Input label="Phone Number" value={form.phone} onChange={e => setForm({ ...form, phone: e.target.value })} required placeholder="+233 24 000 0000" />
+          <PhoneInput label="Phone Number" value={form.phone} onChange={e => setForm({ ...form, phone: e.target.value })} required />
           <Input label="Email Address" type="email" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} placeholder="guardian@email.com (optional)" />
           <p className="text-xs text-gray-500 -mt-2">
             If an email is provided, a parent portal account is created automatically and login details are emailed to the guardian.

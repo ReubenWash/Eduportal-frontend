@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import PageHeader from '../../components/common/PageHeader';
 import Button from '../../components/ui/Button';
 import Input from '../../components/ui/Input';
+import PhoneInput from '../../components/ui/PhoneInput';
 import Select from '../../components/ui/Select';
 import Table from '../../components/ui/Table';
 import SlideOver from '../../components/ui/SlideOver';
@@ -14,6 +15,7 @@ import { getStaff, createStaff, updateStaff, deleteStaff, assignSubjects, export
 import { getSubjects } from '../../api/subjectsApi';
 import { getClasses } from '../../api/classesApi';
 import { formatDate } from '../../utils/helpers';
+import { isValidE164Phone, normalizePhoneForApi } from '../../utils/phone';
 import { Search, UserPlus, FileDown, BookOpen, Edit2, Trash2, Loader2 } from 'lucide-react';
 
 export default function Staff() {
@@ -112,13 +114,17 @@ export default function Staff() {
 
   const handleSave = async (e) => {
     e.preventDefault();
+    if (form.phone && !isValidE164Phone(form.phone)) {
+      addToast('Enter a valid phone number with its country calling code.', 'error');
+      return;
+    }
     try {
       const payload = {
         firstName: form.firstName.trim(),
         lastName:  form.lastName.trim(),
         email:     form.email.trim(),
         role:      form.role,
-        phone:     form.phone || undefined,
+        phone:     form.phone ? normalizePhoneForApi(form.phone) : undefined,
       };
       
       if (editing) {
@@ -338,7 +344,7 @@ export default function Staff() {
           </div>
           <Input label="Email Address" type="email" value={form.email} onChange={e => setForm({...form, email: e.target.value})} required placeholder="jane@school.edu.gh" disabled={!!editing} />
           {!editing && <p className="text-xs text-indigo-600 bg-indigo-50 rounded-lg px-3 py-2">📧 A welcome email with a temporary password will be sent to this address.</p>}
-          <Input label="Phone Number" value={form.phone} onChange={e => setForm({...form, phone: e.target.value})} placeholder="e.g. +233 24 000 0000" />
+          <PhoneInput label="Phone Number" value={form.phone} onChange={e => setForm({...form, phone: e.target.value})} />
           <Select
             label="System Role"
             value={form.role}

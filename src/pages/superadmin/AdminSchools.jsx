@@ -5,10 +5,12 @@ import {
 } from 'lucide-react';
 import Badge from '../../components/ui/Badge';
 import Modal from '../../components/ui/Modal';
+import PhoneInput from '../../components/ui/PhoneInput';
 import { useToast } from '../../context/ToastContext';
 import { getSchools, updateSchoolStatus, deleteSchool, restoreSchool, verifyAllUsersBySchool } from '../../api/superAdminApi';
 import { updateSchoolDetails, updateSchoolPlan, sendWelcomeEmail } from '../../api/superAdminApi';
 import { register } from '../../api/authApi';
+import { isValidE164Phone, normalizePhoneForApi } from '../../utils/phone';
 
 const statusVariant = { 
   ACTIVE: 'success', 
@@ -241,6 +243,10 @@ export default function AdminSchools() {
 
   const handleAddSchool = async (e) => {
     e.preventDefault();
+    if (addForm.phone && !isValidE164Phone(addForm.phone)) {
+      addToast('Enter a valid phone number with its country calling code.', 'error');
+      return;
+    }
     setAddSaving(true);
     
     try {
@@ -268,7 +274,7 @@ export default function AdminSchools() {
         district: addForm.district || 'Accra Metro',
         headmasterName: 'School Administrator',
         address: addForm.address || '',
-        phone: addForm.phone || '',
+        phone: addForm.phone ? normalizePhoneForApi(addForm.phone) : '',
         plan: addForm.plan || 'BASIC',
       });
 
@@ -302,13 +308,17 @@ export default function AdminSchools() {
       addToast('School name is required.', 'error'); 
       return; 
     }
+    if (editForm.phone && !isValidE164Phone(editForm.phone)) {
+      addToast('Enter a valid phone number with its country calling code.', 'error');
+      return;
+    }
     
     setEditSaving(true);
     try {
       const updateData = {
         name: editForm.name.trim(),
         email: editForm.email.trim().toLowerCase(),
-        phone: editForm.phone || '',
+        phone: editForm.phone ? normalizePhoneForApi(editForm.phone) : '',
         address: editForm.address || '',
         status: editForm.status,
       };
@@ -746,9 +756,8 @@ export default function AdminSchools() {
               </div>
               <div>
                 <label className="block text-xs font-semibold text-gray-600 mb-1">Phone</label>
-                <input 
-                  type="tel" 
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-300 outline-none" 
+                <PhoneInput
+                  label="Phone"
                   value={editForm.phone} 
                   onChange={e => setEditForm(f => ({ ...f, phone: e.target.value }))} 
                 />
@@ -836,12 +845,10 @@ export default function AdminSchools() {
               </div>
               <div>
                 <label className="block text-xs font-semibold text-gray-600 mb-1">Phone</label>
-                <input 
-                  type="tel" 
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-300 outline-none" 
+                <PhoneInput
+                  label="Phone"
                   value={addForm.phone} 
                   onChange={e => setAddForm(f => ({ ...f, phone: e.target.value }))} 
-                  placeholder="+233 24 000 0000" 
                 />
               </div>
               <div className="sm:col-span-2">

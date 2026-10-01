@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import PageHeader from '../../components/common/PageHeader';
 import Button from '../../components/ui/Button';
 import Input from '../../components/ui/Input';
+import PhoneInput from '../../components/ui/PhoneInput';
 import Select from '../../components/ui/Select';
 import Table from '../../components/ui/Table';
 import SlideOver from '../../components/ui/SlideOver';
@@ -18,6 +19,7 @@ import { useToast } from '../../context/ToastContext';
 import { getStudents, createStudent, updateStudent, deleteStudent, exportStudents } from '../../api/studentsApi';
 import { getClasses } from '../../api/classesApi';
 import api from '../../api/axios';
+import { isValidE164Phone, normalizePhoneForApi } from '../../utils/phone';
 import { Search, UserPlus, FileDown, FileUp, ImagePlus, Eye, Edit2, Trash2, Loader2 } from 'lucide-react';
 
 const GENDER_OPTIONS = [
@@ -202,6 +204,11 @@ export default function Students() {
   const validateForm = () => {
     const errors = {};
     let hasError = false;
+
+    if (form.guardianPhone && !isValidE164Phone(form.guardianPhone)) {
+      errors.guardianPhone = 'Enter a valid phone number with its country calling code';
+      hasError = true;
+    }
     
     if (!form.firstName || !form.firstName.trim()) {
       errors.firstName = 'First name is required';
@@ -264,7 +271,7 @@ export default function Students() {
         studentNumber: form.studentNumber.trim(),
         status: form.status || 'ACTIVE',
         guardianName: form.guardianName?.trim() || null,
-        guardianPhone: form.guardianPhone?.trim() || null,
+        guardianPhone: form.guardianPhone ? normalizePhoneForApi(form.guardianPhone) : null,
         guardianEmail: form.guardianEmail?.trim() || null,
         relationship: form.relationship || null,
         photoUrl: photoUrl || null
@@ -611,11 +618,11 @@ export default function Students() {
                   placeholder="e.g. Kwame Mensah" 
                 />
                 <div className="grid grid-cols-2 gap-4">
-                  <Input 
+                  <PhoneInput 
                     label="Guardian Phone" 
                     value={form.guardianPhone} 
                     onChange={e => setForm({ ...form, guardianPhone: e.target.value })} 
-                    placeholder="+233 24 000 0000" 
+                    error={formErrors.guardianPhone}
                   />
                   <Input 
                     label="Guardian Email" 
