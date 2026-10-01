@@ -38,6 +38,7 @@ import {
   Cpu,
   Code,
   Scale,
+  Paperclip,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useSocket } from '../context/SocketContext';
@@ -137,6 +138,7 @@ const navGroups = [
       { path: '/staff', icon: Users, label: 'Staff', roles: ['SCHOOL_ADMIN'] },
       { path: '/students', icon: GraduationCap, label: 'Students', roles: ['SCHOOL_ADMIN', 'CLASS_TEACHER'] },
       { path: '/guardians', icon: UserCheck, label: 'Guardians', roles: ['SCHOOL_ADMIN'] },
+      { path: '/documents', icon: Paperclip, label: 'Documents', roles: ['SCHOOL_ADMIN'] },
     ],
   },
   {

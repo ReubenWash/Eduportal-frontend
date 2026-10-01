@@ -25,6 +25,7 @@ const Staff = lazy(() => import('./pages/staff/Staff'));
 const Students = lazy(() => import('./pages/students/Students'));
 const StudentDetail = lazy(() => import('./pages/students/StudentDetail'));
 const Guardians = lazy(() => import('./pages/guardians/Guardians'));
+const Documents = lazy(() => import('./pages/documents/Documents'));
 const Classes = lazy(() => import('./pages/classes/Classes'));
 const Subjects = lazy(() => import('./pages/subjects/Subjects'));
 const Enrollments = lazy(() => import('./pages/enrollments/Enrollments'));
@@ -163,6 +164,9 @@ function AppRoutes() {
 
           {/* Guardian directory management is an admin function, not the parent's own view */}
           <Route path="/guardians" element={<ProtectedRoute allowedRoles={ADMIN_ROLES}><Guardians /></ProtectedRoute>} />
+
+          {/* Student/staff/guardian file attachments — admin-only, same as Guardians above */}
+          <Route path="/documents" element={<ProtectedRoute allowedRoles={ADMIN_ROLES}><Documents /></ProtectedRoute>} />
 
           <Route path="/classes" element={<ProtectedRoute allowedRoles={CLASS_TEACHER_ROLES}><Classes /></ProtectedRoute>} />
           <Route path="/subjects" element={<ProtectedRoute allowedRoles={STAFF_ROLES}><Subjects /></ProtectedRoute>} />

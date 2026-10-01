@@ -19,6 +19,12 @@ const gradeColor = (grade) => {
   return 'danger';
 };
 
+const formatTermLabel = (value) => {
+  if (typeof value === 'string') return value;
+  if (!value || typeof value !== 'object') return '';
+  return value.termLabel || [value.academicYear, value.termNumber].filter(Boolean).join(' - ');
+};
+
 const statusConfig = {
   PRESENT: { icon: CheckCircle2, color: 'text-emerald-600', bg: 'bg-emerald-50 border-emerald-100' },
   ABSENT: { icon: XCircle, color: 'text-red-600', bg: 'bg-red-50 border-red-100' },
@@ -26,9 +32,7 @@ const statusConfig = {
 };
 
 function ScoreTermRow({ term, expanded, onToggle }) {
-  const termLabel = typeof term?.term === 'string'
-    ? term.term
-    : term?.term?.termLabel || term?.termName || term?.label || 'Term';
+  const termLabel = formatTermLabel(term?.term) || term?.termName || term?.label || 'Term';
   const subjects = term?.subjects || term?.scores || [];
 
   return (
@@ -116,7 +120,7 @@ function DashboardTab({ child, scores, attendance, reports }) {
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         {[
           { label: 'Attendance Rate', value: `${attPct}%`, sub: `${attendance?.summary.present || 0} days present`, color: 'bg-emerald-50 border-emerald-100 text-emerald-700' },
-          { label: 'Latest Average', value: latestScores ? `${latestScores.average}%` : '—', sub: latestScores?.term || 'No data', color: 'bg-indigo-50 border-indigo-100 text-indigo-700' },
+          { label: 'Latest Average', value: latestScores ? `${latestScores.average}%` : '—', sub: formatTermLabel(latestScores?.term) || latestScores?.termName || 'No data', color: 'bg-indigo-50 border-indigo-100 text-indigo-700' },
           { label: 'Days Absent', value: String(attendance?.summary.absent || 0), sub: 'This term', color: 'bg-red-50 border-red-100 text-red-700' },
           { label: 'Report Status', value: latest?.status || 'N/A', sub: latest?.termName || 'None released', color: 'bg-amber-50 border-amber-100 text-amber-700' },
         ].map((s, i) => (

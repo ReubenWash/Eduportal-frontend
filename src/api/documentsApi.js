@@ -1,14 +1,34 @@
 import api, { unwrapList, unwrapItem } from './axios';
 
+// A fixed list rather than a backend lookup — `category` is a free-text
+// field on Document, not an enum, so there's nothing for a /categories
+// endpoint to usefully return beyond this.
+export const DOCUMENT_CATEGORIES = [
+  'Birth Certificate',
+  'ID Card',
+  'Certificate',
+  'Medical Record',
+  'Report',
+  'Other',
+];
+
 // POST /documents/upload (multipart)
-export const uploadDocument = async (formData) => {
+// data: { file, studentId?, staffId?, guardianId?, category? }
+export const uploadDocument = async (data) => {
+  const formData = new FormData();
+  formData.append('file', data.file);
+  if (data.studentId) formData.append('studentId', data.studentId);
+  if (data.staffId) formData.append('staffId', data.staffId);
+  if (data.guardianId) formData.append('guardianId', data.guardianId);
+  if (data.category) formData.append('category', data.category);
+
   const res = await api.post('/documents/upload', formData, {
     headers: { 'Content-Type': 'multipart/form-data' },
   });
   return unwrapItem(res.data);
 };
 
-// GET /documents
+// GET /documents?studentId=&staffId=&guardianId=&category=
 export const getDocuments = async (params) => {
   const res = await api.get('/documents', { params });
   return unwrapList(res.data);
@@ -20,30 +40,16 @@ export const getDocument = async (id) => {
   return unwrapItem(res.data);
 };
 
-// DELETE /documents/:id
-export const deleteDocument = async (id) => {
-  const res = await api.delete(`/documents/${id}`);
-  return unwrapItem(res.data);
-};
-
-// GET /documents/download/:id
-export const downloadDocument = async (id) => {
-  const res = await api.get(`/documents/download/${id}`, {
-    responseType: 'blob',
-  });
-  return res.data;
-};
-
-// PATCH /documents/:id (update document metadata)
+// PATCH /documents/:id — currently just re-categorizing a document
 export const updateDocument = async (id, data) => {
   const res = await api.patch(`/documents/${id}`, data);
   return unwrapItem(res.data);
 };
 
-// GET /documents/categories
-export const getDocumentCategories = async () => {
-  const res = await api.get('/documents/categories');
-  return unwrapList(res.data);
+// DELETE /documents/:id
+export const deleteDocument = async (id) => {
+  const res = await api.delete(`/documents/${id}`);
+  return unwrapItem(res.data);
 };
 
 // POST /documents/bulk-delete
