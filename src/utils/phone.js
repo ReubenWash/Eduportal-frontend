@@ -40,6 +40,7 @@ export const PHONE_COUNTRIES = [
   { code: 'MX', name: 'Mexico', callingCode: '52' },
   { code: 'JP', name: 'Japan', callingCode: '81' },
   { code: 'CN', name: 'China', callingCode: '86' },
+  { code: 'OTHER', name: 'Other country', callingCode: '' },
 ];
 
 export const isValidE164Phone = (value) => /^\+[1-9]\d{7,14}$/.test(String(value || ''));

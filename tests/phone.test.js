@@ -16,6 +16,7 @@ const changedModules = [
 
 test('phone input normalizes national and international values to E.164', () => {
   assert.equal(toE164Phone('233', '024 000 0000'), '+233240000000');
+  assert.equal(toE164Phone('358', '401234567'), '+358401234567');
   assert.equal(normalizePhoneForApi('0240000000'), '+233240000000');
   assert.equal(normalizePhoneForApi('00447911123456'), '+447911123456');
   assert.equal(isValidE164Phone('+233240000000'), true);
@@ -27,4 +28,6 @@ test('all changed phone entry modules parse successfully', () => {
     const loader = file.endsWith('.jsx') ? 'jsx' : 'js';
     assert.doesNotThrow(() => esbuild.transformSync(fs.readFileSync(file, 'utf8'), { loader }), file);
   }
+  const phoneInput = fs.readFileSync('src/components/ui/PhoneInput.jsx', 'utf8');
+  assert.match(phoneInput, /target: \{ name, value:/);
 });
