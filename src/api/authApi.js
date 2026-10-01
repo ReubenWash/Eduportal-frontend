@@ -154,13 +154,13 @@ export const register = async (data) => {
     });
 
     const res = await api.post('/schools/register', {
-      name: data.schoolName,
+      name: data.schoolName ?? data.name,
       email: data.email,
       password: data.password,
       region: data.region,
       district: data.district,
       address: data.address,
-      headmasterName: data.name,
+      headmasterName: data.headmasterName ?? (data.schoolName ? data.name : undefined),
       plan: data.plan,
     });
 

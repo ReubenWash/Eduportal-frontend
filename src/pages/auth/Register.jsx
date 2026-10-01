@@ -69,6 +69,11 @@ export default function RegisterPage() {
       return;
     }
 
+      if (!/[A-Z]/.test(formData.password) || !/[0-9]/.test(formData.password)) {
+        setError('Password must contain at least one uppercase letter and one number.');
+        return;
+      }
+
     if (formData.password !== formData.confirmPassword) {
       setError('Passwords do not match');
       return;
@@ -118,7 +123,12 @@ export default function RegisterPage() {
       if (err.response?.status === 409) {
         setError('An account with this email already exists. Please use a different email or login.');
       } else if (err.response?.status === 422) {
-        setError(err.response?.data?.message || 'Please check your input and try again.');
+        const validationMessages = err.response?.data?.errors
+          ?.map(({ message }) => message)
+          .filter(Boolean);
+        setError(validationMessages?.length
+          ? validationMessages.join(' ')
+          : err.response?.data?.message || 'Please check your input and try again.');
       } else if (err.response?.status === 500) {
         setError('Server error. Please try again later.');
       } else {
