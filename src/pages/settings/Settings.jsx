@@ -6,6 +6,29 @@ import { useToast } from '../../context/ToastContext';
 import { getSchool, updateSchool, updateSchoolWithLogo } from '../../api/schoolApi';
 import { Building2, Mail, Phone, MapPin, Upload, CheckCircle, ExternalLink, GraduationCap } from 'lucide-react';
 
+const defaultGradingConfig = {
+  caCount: 3,
+  caMaxScore: 10,
+  examMaxScore: 70,
+  boundaries: { A1: 90, B2: 80, B3: 75, C4: 70, C5: 65, C6: 60, D7: 55, E8: 50 }
+};
+
+const getStoredGradingConfig = () => {
+  try {
+    const stored = JSON.parse(localStorage.getItem('schoolGradingConfig'));
+    if (stored) {
+      return {
+        ...defaultGradingConfig,
+        ...stored,
+        boundaries: { ...defaultGradingConfig.boundaries, ...(stored.boundaries || {}) }
+      };
+    }
+    return defaultGradingConfig;
+  } catch {
+    return defaultGradingConfig;
+  }
+};
+
 export default function Settings() {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
@@ -35,18 +58,7 @@ export default function Settings() {
   const [signatureFiles, setSignatureFiles] = useState({ principal: null, classTeacher: null });
   
   // Grading config state
-  const [gradingConfig, setGradingConfig] = useState(() => {
-    const defaults = { caCount: 3, caMaxScore: 10, examMaxScore: 70, boundaries: { A1: 90, B2: 80, B3: 75, C4: 70, C5: 65, C6: 60, D7: 55, E8: 50 } };
-    try {
-      const stored = JSON.parse(localStorage.getItem('schoolGradingConfig'));
-      if (stored) {
-         return { ...defaults, ...stored, boundaries: { ...defaults.boundaries, ...(stored.boundaries || {}) } };
-      }
-      return defaults;
-    } catch {
-      return defaults;
-    }
-  });
+  const [gradingConfig, setGradingConfig] = useState(() => getStoredGradingConfig());
 
   const { addToast } = useToast();
 
@@ -69,6 +81,12 @@ export default function Settings() {
         scoreLabels: data?.scoreLabels || { ca1: 'C/A 1', ca2: 'C/A 2', ca3: 'C/A 3', examScore: 'Exam Score' },
         reportConfig: data?.reportConfig || defaultReportConfig
       });
+
+      const nextGradingConfig = data?.gradingConfig
+        ? { ...defaultGradingConfig, ...data.gradingConfig, boundaries: { ...defaultGradingConfig.boundaries, ...(data.gradingConfig.boundaries || {}) } }
+        : getStoredGradingConfig();
+      setGradingConfig(nextGradingConfig);
+      localStorage.setItem('schoolGradingConfig', JSON.stringify(nextGradingConfig));
       setPreview(data?.logoUrl || '');
     } catch (err) {
       console.error('Failed to load school data:', err);
@@ -154,6 +172,10 @@ export default function Settings() {
       if (form.reportConfig && typeof form.reportConfig === 'object') {
         updateData.reportConfig = form.reportConfig;
       }
+
+      if (gradingConfig && typeof gradingConfig === 'object') {
+        updateData.gradingConfig = gradingConfig;
+      }
       
       console.log('📤 Sending clean data:', updateData);
       console.log('📤 Has logo file?', !!form.logo);
@@ -221,9 +243,13 @@ export default function Settings() {
   const handleSaveGradingConfig = async () => {
     setSaving(true);
     try {
+      const payload = { gradingConfig };
       localStorage.setItem('schoolGradingConfig', JSON.stringify(gradingConfig));
+      await updateSchool(payload);
       addToast('Grading configuration saved successfully', 'success');
+      await loadSchoolData();
     } catch (err) {
+      console.error('❌ Error saving grading config:', err);
       addToast('Failed to save grading configuration', 'error');
     } finally {
       setSaving(false);

@@ -23,9 +23,16 @@ import { getStudents } from '../../api/studentsApi';
 import { getSchoolTerms } from '../../api/schoolApi';
 import { Calculator, Save, CheckCircle2, Download, Upload, Loader2 } from 'lucide-react';
 
+const defaultGradingConfig = {
+  caCount: 3,
+  caMaxScore: 10,
+  examMaxScore: 70,
+  boundaries: { A1: 90, B2: 80, B3: 75, C4: 70, C5: 65, C6: 60, D7: 55, E8: 50 }
+};
+
 function computeGrade(total, boundaries) {
   if (!boundaries) {
-    boundaries = { A1: 90, B2: 80, B3: 75, C4: 70, C5: 65, C6: 60, D7: 55, E8: 50 };
+    boundaries = defaultGradingConfig.boundaries;
   }
   if (total >= boundaries.A1) return { grade: 'A1', color: 'success' };
   if (total >= boundaries.B2) return { grade: 'B2', color: 'success' };
@@ -39,13 +46,14 @@ function computeGrade(total, boundaries) {
 }
 
 const getGradingConfig = () => {
-  const defaults = { caCount: 3, caMaxScore: 10, examMaxScore: 70, boundaries: { A1: 90, B2: 80, B3: 75, C4: 70, C5: 65, C6: 60, D7: 55, E8: 50 } };
   try {
     const stored = JSON.parse(localStorage.getItem('schoolGradingConfig'));
-    if (stored) return { ...defaults, ...stored, boundaries: { ...defaults.boundaries, ...(stored.boundaries || {}) } };
-    return defaults;
+    if (stored) {
+      return { ...defaultGradingConfig, ...stored, boundaries: { ...defaultGradingConfig.boundaries, ...(stored.boundaries || {}) } };
+    }
+    return defaultGradingConfig;
   } catch {
-    return defaults;
+    return defaultGradingConfig;
   }
 };
 
@@ -599,6 +607,15 @@ export default function Scores() {
 
       if (school?.scoreLabels) {
         setScoreLabels(school.scoreLabels);
+      }
+
+      if (school?.gradingConfig) {
+        const nextGradingConfig = {
+          ...defaultGradingConfig,
+          ...school.gradingConfig,
+          boundaries: { ...defaultGradingConfig.boundaries, ...(school.gradingConfig.boundaries || {}) }
+        };
+        localStorage.setItem('schoolGradingConfig', JSON.stringify(nextGradingConfig));
       }
 
       const defaultClass = safeClasses.some(c => c.id === selectedClass)
