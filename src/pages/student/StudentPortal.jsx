@@ -7,7 +7,7 @@ import { openReportPreview, downloadReportPDF } from '../../api/reportsApi';
 import {
   LayoutDashboard, BarChart2, CheckSquare, FileText, User,
   GraduationCap, CalendarDays, TrendingUp, Download, Eye, Bell,
-  CheckCircle2, XCircle, Clock, ChevronDown, ChevronUp,
+  CheckCircle2, XCircle, Clock, ChevronDown, ChevronUp, AlertCircle,
 } from 'lucide-react';
 
 /* ─── Helper components ─── */
@@ -378,6 +378,7 @@ export default function StudentPortal() {
   const [scores, setScores] = useState([]);
   const [attendance, setAttendance] = useState(null);
   const [reports, setReports] = useState([]);
+  const [loadErrors, setLoadErrors] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -387,10 +388,16 @@ export default function StudentPortal() {
       getMyReportCards(),
       getMyAttendance(),
     ]).then(([profileRes, gradesRes, reportsRes, attendanceRes]) => {
+      const failedSections = [];
       if (profileRes.status === 'fulfilled') setProfile(profileRes.value);
+      else failedSections.push('profile');
       if (gradesRes.status === 'fulfilled') setScores(Array.isArray(gradesRes.value) ? gradesRes.value : []);
+      else failedSections.push('grades');
       if (reportsRes.status === 'fulfilled') setReports(Array.isArray(reportsRes.value) ? reportsRes.value : []);
+      else failedSections.push('report cards');
       if (attendanceRes.status === 'fulfilled') setAttendance(attendanceRes.value);
+      else failedSections.push('attendance');
+      setLoadErrors(failedSections);
     }).finally(() => setLoading(false));
   }, []);
 
@@ -406,6 +413,12 @@ export default function StudentPortal() {
   return (
     <div className="space-y-6">
       <PageHeader title="Student Portal" subtitle="Your personal academic overview" />
+      {loadErrors.length > 0 && (
+        <div role="alert" className="flex items-start gap-2 border-l-4 border-amber-500 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+          <AlertCircle className="mt-0.5 h-4 w-4 flex-shrink-0" />
+          <span>Some data could not be loaded from the school server: {loadErrors.join(', ')}. Refresh the page to retry.</span>
+        </div>
+      )}
 
       <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-2">
         <div className="flex flex-wrap gap-1">
