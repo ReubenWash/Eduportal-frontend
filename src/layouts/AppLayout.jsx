@@ -154,6 +154,7 @@ const navGroups = [
     label: 'System',
     items: [
       { path: '/analytics', icon: TrendingUp, label: 'Analytics', roles: ['SCHOOL_ADMIN'] },
+      { path: '/activity-logs', icon: FileText, label: 'Activity Log', roles: ['SCHOOL_ADMIN'] },
       { path: '/notifications', icon: Bell, label: 'Notifications', roles: ['SCHOOL_ADMIN', 'CLASS_TEACHER', 'SUBJECT_TEACHER'] },
       { path: '/settings', icon: Settings, label: 'School Settings', roles: ['SCHOOL_ADMIN'] },
     ],
