@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import PageHeader from '../../components/common/PageHeader';
 import Badge from '../../components/ui/Badge';
 import Avatar from '../../components/ui/Avatar';
-import { getMyProfile, getMyReportCards, getMyGrades } from '../../api/studentselfApi';
+import { getMyProfile, getMyReportCards, getMyGrades, getMyAttendance } from '../../api/studentselfApi';
 import { openReportPreview, downloadReportPDF } from '../../api/reportsApi';
 import {
   LayoutDashboard, BarChart2, CheckSquare, FileText, User,
@@ -67,7 +67,7 @@ function ScoreTermRow({ term, expanded, onToggle }) {
                   <td className="px-4 py-3 text-sm text-gray-700">{s.ca2 ?? '—'}</td>
                   <td className="px-4 py-3 text-sm text-gray-700">{s.ca3 ?? '—'}</td>
                   <td className="px-4 py-3 text-sm font-semibold text-gray-800">{s.caTotal ?? '—'}/30</td>
-                  <td className="px-4 py-3 text-sm text-gray-700">{s.exam ?? '—'}</td>
+                  <td className="px-4 py-3 text-sm text-gray-700">{s.exam ?? s.examScore ?? '—'}</td>
                   <td className="px-4 py-3 text-sm font-bold text-gray-900">{s.total ?? '—'}</td>
                   <td className="px-4 py-3"><Badge variant={gradeColor(s.grade)}>{s.grade || '—'}</Badge></td>
                 </tr>
@@ -385,10 +385,12 @@ export default function StudentPortal() {
       getMyProfile(),
       getMyGrades(),
       getMyReportCards(),
-    ]).then(([profileRes, gradesRes, reportsRes]) => {
+      getMyAttendance(),
+    ]).then(([profileRes, gradesRes, reportsRes, attendanceRes]) => {
       if (profileRes.status === 'fulfilled') setProfile(profileRes.value);
       if (gradesRes.status === 'fulfilled') setScores(Array.isArray(gradesRes.value) ? gradesRes.value : []);
       if (reportsRes.status === 'fulfilled') setReports(Array.isArray(reportsRes.value) ? reportsRes.value : []);
+      if (attendanceRes.status === 'fulfilled') setAttendance(attendanceRes.value);
     }).finally(() => setLoading(false));
   }, []);
 
