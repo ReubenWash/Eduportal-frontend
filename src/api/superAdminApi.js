@@ -555,8 +555,13 @@ export const createBackup = async (data) => {
   return unwrapItem(res.data);
 };
 
-export const restoreBackup = async (id) => {
-  const res = await api.post(`/admin/system/backups/${id}/restore`);
+export const downloadBackup = async (id) => {
+  const res = await api.get(`/admin/system/backups/${id}/download`, { responseType: 'blob' });
+  return res.data;
+};
+
+export const restoreBackup = async (id, confirmationName) => {
+  const res = await api.post(`/admin/system/backups/${id}/restore`, { confirmationName });
   return unwrapItem(res.data);
 };
 
@@ -618,6 +623,11 @@ export const getSuperAdminDashboard = async () => {
 export const getSchools = async (params) => {
   const res = await api.get('/admin/schools', { params });
   return unwrapList(res.data);
+};
+
+export const createSchoolManually = async (data) => {
+  const res = await api.post('/schools/manual', data);
+  return unwrapItem(res.data);
 };
 
 export const getSchoolById = async (id) => {
@@ -913,6 +923,7 @@ export default {
   getBackups,
   getBackup,
   createBackup,
+  downloadBackup,
   restoreBackup,
   deleteBackup,
   getBackupSchedule,
@@ -929,6 +940,7 @@ export default {
 
   // School Management
   getSchools,
+  createSchoolManually,
   getSchoolById,
   updateSchoolStatus,
   updateSchoolDetails,

@@ -1,5 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import PageHeader from '../../components/common/PageHeader';
+import OfflineSyncStatus from '../../components/common/OfflineSyncStatus';
 import Button from '../../components/ui/Button';
 import Select from '../../components/ui/Select';
 import Tabs from '../../components/ui/Tabs';
@@ -21,6 +22,7 @@ import {
 } from '../../api/scoresApi';
 import { getStudents } from '../../api/studentsApi';
 import { getSchoolTerms } from '../../api/schoolApi';
+import useOfflineStatus from '../../hooks/useOfflineStatus';
 import { Calculator, Save, CheckCircle2, Download, Upload, Loader2 } from 'lucide-react';
 
 const defaultGradingConfig = {
@@ -59,6 +61,8 @@ const getGradingConfig = () => {
 
 function ScoreEntry({ selectedClass, selectedSubject, selectedTerm, gradingConfig, scoreLabels, onRefresh }) {
   const { addToast } = useToast();
+  const offlineStatus = useOfflineStatus();
+  const previousPending = useRef(offlineStatus.pending);
   const [scores, setScores] = useState([]);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -118,6 +122,11 @@ function ScoreEntry({ selectedClass, selectedSubject, selectedTerm, gradingConfi
     loadScores();
   }, [selectedClass, selectedSubject, selectedTerm]);
 
+  useEffect(() => {
+    if (previousPending.current > 0 && offlineStatus.pending === 0 && offlineStatus.online) loadScores();
+    previousPending.current = offlineStatus.pending;
+  }, [offlineStatus.pending, offlineStatus.online]);
+
   const updateScore = (id, field, val) => {
     setScores(prev => prev.map(s => s.id === id ? { ...s, [field]: val } : s));
   };
@@ -152,20 +161,27 @@ function ScoreEntry({ selectedClass, selectedSubject, selectedTerm, gradingConfi
         studentId: row.id,
         subjectId: selectedSubject,
         termId: selectedTerm,
+        classId: selectedClass,
         ca1: row.ca1 !== '' ? Number(row.ca1) : null,
         ca2: row.ca2 !== '' ? Number(row.ca2) : null,
         ca3: row.ca3 !== '' ? Number(row.ca3) : null,
         examScore: row.exam !== '' ? Number(row.exam) : null,
       };
 
+      let result;
       if (row.scoreId) {
-        await updateScore(row.scoreId, data);
+        result = await updateScore(row.scoreId, data);
       } else {
-        const result = await createScore(data);
+        result = await createScore(data);
         // Update with the new score ID
         setScores(prev => prev.map(s => 
           s.id === id ? { ...s, scoreId: result.id } : s
         ));
+      }
+
+      if (result?.offlineQueued) {
+        addToast('Score saved on this device. It will sync when you are back online.', 'info');
+        return;
       }
 
       addToast('Score saved successfully', 'success');
@@ -193,6 +209,7 @@ function ScoreEntry({ selectedClass, selectedSubject, selectedTerm, gradingConfi
     setSaving(true);
     let saved = 0;
     let failed = 0;
+    let queued = 0;
 
     for (const row of scores) {
       try {
@@ -203,20 +220,23 @@ function ScoreEntry({ selectedClass, selectedSubject, selectedTerm, gradingConfi
           studentId: row.id,
           subjectId: selectedSubject,
           termId: selectedTerm,
+          classId: selectedClass,
           ca1: row.ca1 !== '' ? Number(row.ca1) : null,
           ca2: row.ca2 !== '' ? Number(row.ca2) : null,
           ca3: row.ca3 !== '' ? Number(row.ca3) : null,
           examScore: row.exam !== '' ? Number(row.exam) : null,
         };
 
+        let result;
         if (row.scoreId) {
-          await updateScore(row.scoreId, data);
+          result = await updateScore(row.scoreId, data);
         } else {
-          const result = await createScore(data);
+          result = await createScore(data);
           setScores(prev => prev.map(s => 
             s.id === row.id ? { ...s, scoreId: result.id } : s
           ));
         }
+        if (result?.offlineQueued) queued++;
         saved++;
       } catch (err) {
         failed++;
@@ -225,9 +245,11 @@ function ScoreEntry({ selectedClass, selectedSubject, selectedTerm, gradingConfi
     }
 
     if (saved > 0) {
-      addToast(`${saved} scores saved successfully${failed > 0 ? `, ${failed} failed` : ''}`, 'success');
+      addToast(queued > 0
+        ? `${queued} score${queued === 1 ? '' : 's'} saved on this device and waiting to sync${failed > 0 ? `, ${failed} failed` : ''}`
+        : `${saved} scores saved successfully${failed > 0 ? `, ${failed} failed` : ''}`, queued > 0 ? 'info' : 'success');
       await loadScores();
-      if (onRefresh) onRefresh();
+      if (onRefresh && queued === 0) onRefresh();
     } else if (failed > 0) {
       addToast(`Failed to save ${failed} scores`, 'error');
     }
@@ -327,11 +349,11 @@ function ScoreEntry({ selectedClass, selectedSubject, selectedTerm, gradingConfi
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <Button variant="secondary" onClick={handleDownload} icon={Download} size="sm">Download Template</Button>
-          <label className="cursor-pointer inline-flex items-center gap-2 justify-center rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600">
+          <Button variant="secondary" onClick={handleDownload} icon={Download} size="sm" disabled={!offlineStatus.online}>Download Template</Button>
+          <label className={`cursor-pointer inline-flex items-center gap-2 justify-center rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 ${!offlineStatus.online ? 'pointer-events-none opacity-50' : ''}`}>
             <Upload className="h-4 w-4" />
             Upload CSV
-            <input type="file" accept=".csv,.xlsx" className="hidden" onChange={handleUpload} />
+            <input type="file" accept=".csv,.xlsx" className="hidden" onChange={handleUpload} disabled={!offlineStatus.online} />
           </label>
           <Button onClick={saveAll} icon={Save} size="sm" loading={saving}>Save All</Button>
         </div>
@@ -584,6 +606,7 @@ export default function Scores() {
   
   const { addToast } = useToast();
   const { user } = useAuth();
+  const offlineStatus = useOfflineStatus();
   const role = user?.role;
 
   const loadData = async () => {
@@ -757,12 +780,15 @@ export default function Scores() {
               icon={Calculator} 
               onClick={handleComputeGrades}
               loading={computing}
+              disabled={!offlineStatus.online}
+              title={!offlineStatus.online ? 'Grade computation requires an internet connection' : undefined}
             >
               Compute Grades
             </Button>
           ) : null
         }
       />
+      <OfflineSyncStatus />
       <div className="bg-white rounded-xl shadow-sm border border-gray-200">
         <div className="p-5 border-b border-gray-200">
           <p className="text-sm font-medium text-gray-700 mb-3">Filter scores by</p>

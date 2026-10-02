@@ -1,8 +1,11 @@
 import api, { unwrapList, unwrapItem } from './axios';
+import { cachedRequest } from '../utils/offlineStore';
 
 export const getSubjects = async (params) => {
-  const res = await api.get('/subjects', { params });
-  return unwrapList(res.data);
+  return cachedRequest('subjects', params, async () => {
+    const res = await api.get('/subjects', { params });
+    return unwrapList(res.data);
+  });
 };
 export const createSubject = async (data) => {
   const res = await api.post('/subjects', data);

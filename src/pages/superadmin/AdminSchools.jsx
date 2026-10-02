@@ -7,9 +7,8 @@ import Badge from '../../components/ui/Badge';
 import Modal from '../../components/ui/Modal';
 import PhoneInput from '../../components/ui/PhoneInput';
 import { useToast } from '../../context/ToastContext';
-import { getSchools, updateSchoolStatus, deleteSchool, restoreSchool, verifyAllUsersBySchool } from '../../api/superAdminApi';
+import { getSchools, createSchoolManually, updateSchoolStatus, deleteSchool, restoreSchool, verifyAllUsersBySchool } from '../../api/superAdminApi';
 import { updateSchoolDetails, updateSchoolPlan, sendWelcomeEmail } from '../../api/superAdminApi';
-import { register } from '../../api/authApi';
 import { isValidE164Phone, normalizePhoneForApi } from '../../utils/phone';
 
 const statusVariant = { 
@@ -250,8 +249,8 @@ export default function AdminSchools() {
     setAddSaving(true);
     
     try {
-      if (!addForm.name.trim()) {
-        addToast('School name is required.', 'error');
+      if (addForm.name.trim().length < 3) {
+        addToast('School name must be at least 3 characters.', 'error');
         setAddSaving(false);
         return;
       }
@@ -260,14 +259,14 @@ export default function AdminSchools() {
         setAddSaving(false);
         return;
       }
-      if (!addForm.password || addForm.password.length < 6) {
-        addToast('Password must be at least 6 characters.', 'error');
+      if (!addForm.password || addForm.password.length < 8 || !/[A-Z]/.test(addForm.password) || !/[0-9]/.test(addForm.password)) {
+        addToast('Password must be at least 8 characters and contain an uppercase letter and a number.', 'error');
         setAddSaving(false);
         return;
       }
 
-      await register({
-        schoolName: addForm.name.trim(),
+      await createSchoolManually({
+        name: addForm.name.trim(),
         email: addForm.email.trim().toLowerCase(),
         password: addForm.password,
         region: addForm.region || 'Greater Accra',
@@ -284,7 +283,12 @@ export default function AdminSchools() {
       await load();
     } catch (err) {
       console.error('Add school error:', err);
-      const errorMsg = err?.response?.data?.message || err?.message || 'Failed to create school';
+      const validationMessages = err?.response?.data?.errors
+        ?.map(({ message, msg }) => message || msg)
+        .filter(Boolean);
+      const errorMsg = validationMessages?.length
+        ? validationMessages.join(' ')
+        : err?.response?.data?.message || err?.message || 'Failed to create school';
       addToast(errorMsg, 'error');
     } finally {
       setAddSaving(false);

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import PageHeader from '../../components/common/PageHeader';
+import OfflineSyncStatus from '../../components/common/OfflineSyncStatus';
 import Button from '../../components/ui/Button';
 import Select from '../../components/ui/Select';
 import Avatar from '../../components/ui/Avatar';
@@ -99,7 +100,7 @@ export default function Attendance() {
           
           if (Array.isArray(attendanceData)) {
             attendanceData.forEach(a => {
-              existingAttendance[a.studentId] = a.status;
+              existingAttendance[a.studentId] = a;
             });
           }
         } catch (err) {
@@ -111,8 +112,8 @@ export default function Attendance() {
           name: s.name,
           studentNo: s.studentNo,
           photo: s.photo,
-          status: existingAttendance[s.id] || STATUS.PRESENT,
-          notes: '',
+          status: existingAttendance[s.id]?.status || STATUS.PRESENT,
+          notes: existingAttendance[s.id]?.note || existingAttendance[s.id]?.notes || '',
           hasAttendance: !!existingAttendance[s.id]
         }));
         
@@ -277,6 +278,11 @@ export default function Attendance() {
       console.log('📤 Saving attendance:', payload);
       
       const result = await bulkMarkAttendance(payload);
+      if (result?.offlineQueued) {
+        addToast('Attendance saved on this device. It will sync when you are back online.', 'info');
+        setHasUnsavedChanges(false);
+        return;
+      }
       addToast(`Attendance saved successfully for ${result.marked || records.length} students`, 'success');
       
       // ✅ Reset changes flag after successful save
@@ -378,6 +384,7 @@ export default function Attendance() {
           ) : null
         }
       />
+      <OfflineSyncStatus />
 
       {/* Filters */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5 mb-5">

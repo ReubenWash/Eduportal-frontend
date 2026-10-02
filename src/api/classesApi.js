@@ -1,4 +1,5 @@
 import api, { unwrapList, unwrapItem } from './axios';
+import { cachedRequest } from '../utils/offlineStore';
 
 // ── Normalizer ────────────────────────────────────────────────────
 // Backend returns { id, level:"JHS1", section:"A", academicYear, classTeacher:{firstName,lastName} }
@@ -21,9 +22,11 @@ function normalizeClass(c) {
 
 // GET /classes
 export const getClasses = async (params) => {
-  const res = await api.get('/classes', { params });
-  const list = unwrapList(res.data);
-  return Array.isArray(list) ? list.map(normalizeClass) : [];
+  return cachedRequest('classes', params, async () => {
+    const res = await api.get('/classes', { params });
+    const list = unwrapList(res.data);
+    return Array.isArray(list) ? list.map(normalizeClass) : [];
+  });
 };
 
 // GET /classes/:id

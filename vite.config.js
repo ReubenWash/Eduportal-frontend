@@ -36,9 +36,8 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
-        // Always serve the index.html from network first so the app shell
-        // never appears blank when the SW is installing for the first time.
-        navigateFallback: null,
+        // Serve the cached app shell for client-side routes while offline.
+        navigateFallback: '/index.html',
         skipWaiting: true,
         clientsClaim: true,
         runtimeCaching: [

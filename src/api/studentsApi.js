@@ -1,5 +1,6 @@
 // frontend/src/api/studentsApi.js
 import api, { unwrapList, unwrapItem } from './axios';
+import { cachedRequest } from '../utils/offlineStore';
 
 // ─── NORMALIZER ────────────────────────────────────────────────
 export function normalizeStudent(s) {
@@ -73,9 +74,11 @@ export const bulkImportStudents = async (records) => {
 
 // ─── LIST ──────────────────────────────────────────────────────
 export const getStudents = async (params) => {
-  const res = await api.get('/students', { params });
-  const list = unwrapList(res.data);
-  return Array.isArray(list) ? list.map(normalizeStudent) : [];
+  return cachedRequest('students', params, async () => {
+    const res = await api.get('/students', { params });
+    const list = unwrapList(res.data);
+    return Array.isArray(list) ? list.map(normalizeStudent) : [];
+  });
 };
 
 // ─── SINGLE ────────────────────────────────────────────────────

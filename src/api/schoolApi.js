@@ -1,10 +1,13 @@
 // src/api/schoolApi.js
 import api, { unwrapList, unwrapItem } from './axios';
+import { cachedRequest } from '../utils/offlineStore';
 
 // ─── SCHOOL PROFILE ─────────────────────────────────────────────
 export const getSchool = async () => {
-  const res = await api.get('/schools/me');
-  return unwrapItem(res.data);
+  return cachedRequest('school-profile', {}, async () => {
+    const res = await api.get('/schools/me');
+    return unwrapItem(res.data);
+  });
 };
 
 // ✅ Updated with better error handling and data cleaning
@@ -39,14 +42,18 @@ export const getDashboardStats = async () => {
 // ─── TERMS ──────────────────────────────────────────────────────
 export const getSchoolTerms = async (academicYear) => {
   const params = academicYear ? { academicYear } : {};
-  const res = await api.get('/schools/me/terms', { params });
-  return unwrapList(res.data);
+  return cachedRequest('school-terms', params, async () => {
+    const res = await api.get('/schools/me/terms', { params });
+    return unwrapList(res.data);
+  });
 };
 
 export const getTerms = async (academicYear) => {
   const params = academicYear ? { academicYear } : {};
-  const res = await api.get('/schools/me/terms', { params });
-  return unwrapList(res.data);
+  return cachedRequest('school-terms', params, async () => {
+    const res = await api.get('/schools/me/terms', { params });
+    return unwrapList(res.data);
+  });
 };
 
 export const createTerm = async (data) => {

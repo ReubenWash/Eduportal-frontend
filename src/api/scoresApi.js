@@ -1,21 +1,29 @@
 // frontend/src/api/scoresApi.js
 import api, { unwrapList, unwrapItem } from './axios';
+import { cacheData, cachedRequest, readCachedData } from '../utils/offlineStore';
+import { isNetworkFailure, queueOfflineMutation } from '../utils/offlineSync';
 
 // ─── LIST ──────────────────────────────────────────────────────
 export const getScores = async (params) => {
-  const res = await api.get('/scores', { params });
-  return unwrapList(res.data);
+  return cachedRequest('scores', params, async () => {
+    const res = await api.get('/scores', { params });
+    return unwrapList(res.data);
+  });
 };
 
 export const getClassSummary = async (params) => {
-  const res = await api.get('/scores/class-summary', { params });
-  return unwrapItem(res.data);
+  return cachedRequest('score-summary', params, async () => {
+    const res = await api.get('/scores/class-summary', { params });
+    return unwrapItem(res.data);
+  });
 };
 
 // ✅ GET /scores/submission-status
 export const getSubmissionStatus = async (params) => {
-  const res = await api.get('/scores/submission-status', { params });
-  return unwrapItem(res.data);
+  return cachedRequest('score-submission-status', params, async () => {
+    const res = await api.get('/scores/submission-status', { params });
+    return unwrapItem(res.data);
+  });
 };
 
 // ─── TEMPLATE ──────────────────────────────────────────────────
@@ -52,8 +60,25 @@ export const createScore = async (data) => {
   if (data.ca3 !== undefined && data.ca3 !== null && data.ca3 !== '') cleanData.ca3 = Number(data.ca3);
   if (data.examScore !== undefined && data.examScore !== null && data.examScore !== '') cleanData.examScore = Number(data.examScore);
   
-  const res = await api.post('/scores', cleanData);
-  return unwrapItem(res.data);
+  try {
+    const res = await api.post('/scores', cleanData);
+    return unwrapItem(res.data);
+  } catch (error) {
+    if (!isNetworkFailure(error)) throw error;
+    const identity = `${data.studentId}:${data.subjectId}:${data.termId}`;
+    const queued = queueOfflineMutation({
+      dedupeKey: `score:${identity}`,
+      entityKey: identity,
+      method: 'post',
+      url: '/scores',
+      data: { ...cleanData, studentId: data.studentId, subjectId: data.subjectId, termId: data.termId },
+    });
+    const score = { ...cleanData, id: `offline-${queued.queueId}`, studentId: data.studentId, subjectId: data.subjectId, termId: data.termId };
+    const params = { subjectId: data.subjectId, termId: data.termId, classId: data.classId };
+    const scores = readCachedData('scores', params) || [];
+    cacheData('scores', params, [...scores.filter(item => item.studentId !== data.studentId), score]);
+    return { ...queued, id: score.id };
+  }
 };
 
 export const updateScore = async (id, data) => {
@@ -64,8 +89,36 @@ export const updateScore = async (id, data) => {
   if (data.ca3 !== undefined && data.ca3 !== null && data.ca3 !== '') cleanData.ca3 = Number(data.ca3);
   if (data.examScore !== undefined && data.examScore !== null && data.examScore !== '') cleanData.examScore = Number(data.examScore);
   
-  const res = await api.patch(`/scores/${id}`, cleanData);
-  return unwrapItem(res.data);
+  if (String(id).startsWith('offline-')) {
+    const identity = `${data.studentId}:${data.subjectId}:${data.termId}`;
+    const queued = queueOfflineMutation({
+      dedupeKey: `score:${identity}`,
+      entityKey: identity,
+      method: 'post',
+      url: '/scores',
+      data: { studentId: data.studentId, subjectId: data.subjectId, termId: data.termId, ...cleanData },
+    });
+    const params = { subjectId: data.subjectId, termId: data.termId, classId: data.classId };
+    const scores = readCachedData('scores', params) || [];
+    cacheData('scores', params, scores.map(item => item.studentId === data.studentId ? { ...item, ...cleanData } : item));
+    return queued;
+  }
+  try {
+    const res = await api.patch(`/scores/${id}`, cleanData);
+    return unwrapItem(res.data);
+  } catch (error) {
+    if (!isNetworkFailure(error)) throw error;
+    const queued = queueOfflineMutation({
+      dedupeKey: `score-record:${id}`,
+      method: 'patch',
+      url: `/scores/${id}`,
+      data: cleanData,
+    });
+    const params = { subjectId: data.subjectId, termId: data.termId, classId: data.classId };
+    const scores = readCachedData('scores', params) || [];
+    cacheData('scores', params, scores.map(item => item.id === id ? { ...item, ...cleanData } : item));
+    return queued;
+  }
 };
 
 // ─── COMPUTE ────────────────────────────────────────────────────

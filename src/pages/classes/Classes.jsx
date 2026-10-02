@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import PageHeader from '../../components/common/PageHeader';
 import Button from '../../components/ui/Button';
-import Input from '../../components/ui/Input';
 import Modal from '../../components/ui/Modal';
 import Badge from '../../components/ui/Badge';
 import Avatar from '../../components/ui/Avatar';
@@ -11,9 +10,6 @@ import { useToast } from '../../context/ToastContext';
 import { getClasses, createClass, updateClass, deleteClass } from '../../api/classesApi';
 import { getStaff } from '../../api/staffApi';
 import { Users, BookOpen, FilePlus2, Search, Edit2, Trash2, Loader2, Calendar, UserCheck } from 'lucide-react';
-
-const JHS_LEVELS = ['JHS1', 'JHS2', 'JHS3'];
-const SECTIONS = ['A', 'B', 'C', 'D', 'E'];
 
 export default function Classes() {
   const { user } = useAuth();
@@ -95,12 +91,12 @@ export default function Classes() {
     e.preventDefault();
     
     // Validate
-    if (!form.level) {
-      addToast('Please select a level (JHS1, JHS2, or JHS3)', 'error');
+    if (!form.level.trim()) {
+      addToast('Please enter a class level, such as Creche, Nursery 1, Primary 1, or JHS 1.', 'error');
       return;
     }
-    if (!form.section) {
-      addToast('Please select a section', 'error');
+    if (!form.section.trim()) {
+      addToast('Please enter a section or class name, such as A, Blue, or Room 1.', 'error');
       return;
     }
     if (!form.academicYear) {
@@ -111,8 +107,8 @@ export default function Classes() {
     setSaving(true);
     try {
       const payload = {
-        level: form.level,
-        section: form.section,
+        level: form.level.trim(),
+        section: form.section.trim(),
         academicYear: form.academicYear,
         classTeacherId: form.classTeacherId || null
       };
@@ -291,33 +287,27 @@ export default function Classes() {
         >
           <form onSubmit={handleSave} className="space-y-4 pt-2">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Level *</label>
-              <select
+              <label className="block text-sm font-medium text-gray-700 mb-1">Level / Grade *</label>
+              <input
                 required
+                maxLength={40}
                 value={form.level}
                 onChange={e => setForm({ ...form, level: e.target.value })}
+                placeholder="Creche, Nursery 1, Primary 1, JHS 1…"
                 className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-300 outline-none"
-              >
-                <option value="">Select Level</option>
-                {JHS_LEVELS.map(level => (
-                  <option key={level} value={level}>{level}</option>
-                ))}
-              </select>
+              />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Section *</label>
-              <select
+              <label className="block text-sm font-medium text-gray-700 mb-1">Section / Class Name *</label>
+              <input
                 required
+                maxLength={40}
                 value={form.section}
                 onChange={e => setForm({ ...form, section: e.target.value })}
+                placeholder="A, Blue, Room 1…"
                 className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-300 outline-none"
-              >
-                <option value="">Select Section</option>
-                {SECTIONS.map(section => (
-                  <option key={section} value={section}>Section {section}</option>
-                ))}
-              </select>
+              />
             </div>
 
             <div>
