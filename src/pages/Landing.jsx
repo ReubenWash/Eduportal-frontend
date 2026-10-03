@@ -214,7 +214,7 @@ export default function LandingPage() {
   ];
   const footerLinks = c.footerLinks || DEFAULT_CONTENT.footerLinks;
   const socialLinks = c.socialLinks || [];
-  const footerCopyright = c.footerCopyright || '© 2026 EduPortal. All rights reserved.';
+  const footerCopyright =  '© 2026 EduPortal. All rights reserved.';
 
   return (
     <div className="landing-page min-h-screen bg-white">
@@ -351,7 +351,7 @@ export default function LandingPage() {
       {/* LOGOS */}
       <div className="logos-section">
         <div className="logos-inner">
-          <p className="logos-label">Schools that run on EduPortal</p>
+          <p className="logos-label">Schools that run on Goreb</p>
           <div className="logos-row">
             {schools.map((s, index) => (
               <div key={`school-${index}`} className="school-name-pill">
@@ -576,7 +576,7 @@ export default function LandingPage() {
                     <path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/>
                   </svg>
                 </div>
-                <span className="logo-name">EduPortal</span>
+                <span className="logo-name">Goreb</span>
               </Link>
               <p className="footer-tagline">{c.footerTagline}</p>
               {socialLinks.length > 0 && (
@@ -657,7 +657,7 @@ export default function LandingPage() {
                 <div className="h-8 w-8 bg-indigo-600 rounded-lg flex items-center justify-center">
                   <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.2" className="h-4 w-4"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>
                 </div>
-                <span className="font-bold text-gray-900">Install EduPortal</span>
+                <span className="font-bold text-gray-900">Install Goreb</span>
               </div>
               <button onClick={() => setShowIosInstructions(false)} className="text-gray-400 hover:text-gray-600">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-5 w-5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
