@@ -479,7 +479,7 @@ export default function Analytics() {
                       {student.class ? `${student.class.level} ${student.class.section}` : '—'}
                     </td>
                     <td className="px-4 py-3 text-sm font-semibold text-indigo-600">
-                      {student.average || student.aggregate || '—'}
+                      {student.average !== null && student.average !== undefined ? `${student.average}%` : '—'}
                     </td>
                   </tr>
                 ))}

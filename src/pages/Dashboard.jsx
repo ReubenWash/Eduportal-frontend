@@ -40,8 +40,11 @@ function SchoolAdminDashboard({ stats, loading, loadError }) {
   const [submissionStatus, setSubmissionStatus] = useState([]);
   const [loadingSubmissions, setLoadingSubmissions] = useState(false);
   
+  // termNumber is a raw enum value like "TERM1" — .replace() already turns
+  // it into "Term 1", so it must not also be prefixed with a literal "Term "
+  // here too (that was producing "Term Term 1").
   const termLabel = stats.activeTerm
-    ? `${stats.activeTerm.academicYear} · Term ${stats.activeTerm.termNumber?.replace('TERM', 'Term ')}`
+    ? `${stats.activeTerm.academicYear} · ${stats.activeTerm.termNumber?.replace('TERM', 'Term ')}`
     : 'No Active Term';
   const termEndDate = stats.activeTerm?.endDate
     ? new Date(stats.activeTerm.endDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
