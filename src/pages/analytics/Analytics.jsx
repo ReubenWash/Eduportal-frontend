@@ -465,7 +465,7 @@ export default function Analytics() {
                   <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Rank</th>
                   <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Student</th>
                   <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Class</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Aggregate</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Average</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
@@ -479,7 +479,7 @@ export default function Analytics() {
                       {student.class ? `${student.class.level} ${student.class.section}` : '—'}
                     </td>
                     <td className="px-4 py-3 text-sm font-semibold text-indigo-600">
-                      {student.aggregate || '—'}
+                      {student.average || student.aggregate || '—'}
                     </td>
                   </tr>
                 ))}
