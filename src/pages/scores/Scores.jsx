@@ -47,16 +47,12 @@ function computeGrade(total, boundaries) {
   return { grade: 'F9', color: 'danger' };
 }
 
-const getGradingConfig = () => {
-  try {
-    const stored = JSON.parse(localStorage.getItem('schoolGradingConfig'));
-    if (stored) {
-      return { ...defaultGradingConfig, ...stored, boundaries: { ...defaultGradingConfig.boundaries, ...(stored.boundaries || {}) } };
-    }
-    return defaultGradingConfig;
-  } catch {
-    return defaultGradingConfig;
-  }
+// Merges a fetched School.gradingConfig over the defaults above. Used
+// instead of a localStorage read so every tab shares the one real value
+// that was actually loaded from the backend this session.
+const mergeGradingConfig = (fetched) => {
+  if (!fetched) return defaultGradingConfig;
+  return { ...defaultGradingConfig, ...fetched, boundaries: { ...defaultGradingConfig.boundaries, ...(fetched.boundaries || {}) } };
 };
 
 function ScoreEntry({ selectedClass, selectedSubject, selectedTerm, gradingConfig, scoreLabels, onRefresh }) {
@@ -138,10 +134,17 @@ function ScoreEntry({ selectedClass, selectedSubject, selectedTerm, gradingConfi
       return Number(value);
     }).filter((value) => value !== null && value !== undefined);
 
+    // CA weight is whatever isn't allocated to the exam (e.g. examMaxScore
+    // 70 → CA weight 30), and the exam is always entered as a raw score
+    // out of 100 then scaled to its weight — both match the backend's
+    // gradeEngine.js exactly. This used to hardcode a 30/70 split and treat
+    // the exam input as being "out of examMaxScore", which silently
+    // under-scored every exam entry once a school configured a non-default split.
+    const caWeight = 100 - gradingConfig.examMaxScore;
     const caAverage = caScores.length > 0 ? caScores.reduce((sum, value) => sum + value, 0) / caScores.length : 0;
-    const caTotal = (caAverage / gradingConfig.caMaxScore) * 30;
+    const caTotal = (caAverage / gradingConfig.caMaxScore) * caWeight;
     const exam = row.exam === '' || row.exam === null || row.exam === undefined ? 0 : Number(row.exam);
-    const examContribution = (exam / gradingConfig.examMaxScore) * 70;
+    const examContribution = (exam / 100) * gradingConfig.examMaxScore;
     return caTotal + examContribution;
   };
 
@@ -345,7 +348,7 @@ function ScoreEntry({ selectedClass, selectedSubject, selectedTerm, gradingConfi
         <div>
           <p className="text-sm font-medium text-gray-700">Enter scores per student</p>
           <p className="text-xs text-gray-500 mt-0.5">
-            {gradingConfig.caCount} CAs (max {gradingConfig.caMaxScore} each) + Exam (max {gradingConfig.examMaxScore})
+            {gradingConfig.caCount} CAs (max {gradingConfig.caMaxScore} each, {100 - gradingConfig.examMaxScore}% of total) + Exam (out of 100, {gradingConfig.examMaxScore}% of total)
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -375,7 +378,7 @@ function ScoreEntry({ selectedClass, selectedSubject, selectedTerm, gradingConfi
                     {scoreLabels?.[`ca${i+1}`] || `CA ${i+1}`} /{gradingConfig.caMaxScore}
                   </th>
                 ))}
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider whitespace-nowrap">{scoreLabels?.examScore || 'Exam'} /{gradingConfig.examMaxScore}</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider whitespace-nowrap">{scoreLabels?.examScore || 'Exam'} /100</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider whitespace-nowrap">Total</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider whitespace-nowrap">Grade</th>
                 <th className="px-4 py-3"></th>
@@ -403,7 +406,7 @@ function ScoreEntry({ selectedClass, selectedSubject, selectedTerm, gradingConfi
                       <InputCell 
                         value={row.exam} 
                         onChange={(v) => updateScore(row.id, 'exam', v)} 
-                        max={gradingConfig.examMaxScore} 
+                        max={100} 
                         placeholder="—" 
                       />
                     </td>
@@ -435,10 +438,9 @@ function ScoreEntry({ selectedClass, selectedSubject, selectedTerm, gradingConfi
   );
 }
 
-function ClassSummary({ selectedClass, selectedTerm }) {
+function ClassSummary({ selectedClass, selectedTerm, gradingConfig = defaultGradingConfig }) {
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(false);
-  const gradingConfig = getGradingConfig();
 
   useEffect(() => {
     const loadSummary = async () => {
@@ -600,6 +602,7 @@ export default function Scores() {
   const [selectedTerm, setSelectedTerm] = useState('');
   const [selectedSubject, setSelectedSubject] = useState('');
   const [scoreLabels, setScoreLabels] = useState(null);
+  const [gradingConfig, setGradingConfig] = useState(defaultGradingConfig);
   const [computing, setComputing] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
   const [dataLoading, setDataLoading] = useState(true);
@@ -632,14 +635,10 @@ export default function Scores() {
         setScoreLabels(school.scoreLabels);
       }
 
-      if (school?.gradingConfig) {
-        const nextGradingConfig = {
-          ...defaultGradingConfig,
-          ...school.gradingConfig,
-          boundaries: { ...defaultGradingConfig.boundaries, ...(school.gradingConfig.boundaries || {}) }
-        };
-        localStorage.setItem('schoolGradingConfig', JSON.stringify(nextGradingConfig));
-      }
+      // Same config Settings > Grading saves to the backend — this used to
+      // only be cached to localStorage and read back independently by each
+      // tab; now it's one piece of state, passed down to every consumer.
+      setGradingConfig(mergeGradingConfig(school?.gradingConfig));
 
       const defaultClass = safeClasses.some(c => c.id === selectedClass)
         ? selectedClass
@@ -719,8 +718,6 @@ export default function Scores() {
     }
   };
 
-  const gradingConfig = getGradingConfig();
-
   // ✅ Filter tabs based on user role
   const allTabs = [
     { 
@@ -742,6 +739,7 @@ export default function Scores() {
         key={refreshKey}
         selectedClass={selectedClass} 
         selectedTerm={selectedTerm} 
+        gradingConfig={gradingConfig}
       />, 
       roles: ['SCHOOL_ADMIN', 'CLASS_TEACHER', 'SUBJECT_TEACHER'] 
     },

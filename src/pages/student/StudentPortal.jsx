@@ -34,6 +34,11 @@ const termLabel = (value) => {
 
 function ScoreTermRow({ term, expanded, onToggle }) {
   const subjects = term.subjects || term.scores || [];
+  // The backend attaches this school's real CA/exam structure to each term
+  // group — these used to be hardcoded (/10, /30, /70) regardless of what
+  // the school admin actually configured in Settings > Grading.
+  const caMax = term.gradingConfig?.caMaxScore ?? 10;
+  const caWeight = term.gradingConfig?.caWeight ?? (100 - (term.gradingConfig?.examMaxScore ?? 70));
   return (
     <div className="border border-gray-200 rounded-xl overflow-hidden">
       <button
@@ -54,7 +59,7 @@ function ScoreTermRow({ term, expanded, onToggle }) {
           <table className="min-w-full">
             <thead>
               <tr className="bg-white border-b border-gray-100">
-                {['Subject', 'CA1/10', 'CA2/10', 'CA3/10', 'CA Total', 'Exam/70', 'Total', 'Grade'].map(h => (
+                {['Subject', `CA1/${caMax}`, `CA2/${caMax}`, `CA3/${caMax}`, 'CA Total', 'Exam/100', 'Total', 'Grade'].map(h => (
                   <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider whitespace-nowrap">{h}</th>
                 ))}
               </tr>
@@ -66,7 +71,7 @@ function ScoreTermRow({ term, expanded, onToggle }) {
                   <td className="px-4 py-3 text-sm text-gray-700">{s.ca1 ?? '—'}</td>
                   <td className="px-4 py-3 text-sm text-gray-700">{s.ca2 ?? '—'}</td>
                   <td className="px-4 py-3 text-sm text-gray-700">{s.ca3 ?? '—'}</td>
-                  <td className="px-4 py-3 text-sm font-semibold text-gray-800">{s.caTotal ?? '—'}/30</td>
+                  <td className="px-4 py-3 text-sm font-semibold text-gray-800">{s.caTotal ?? '—'}/{caWeight}</td>
                   <td className="px-4 py-3 text-sm text-gray-700">{s.exam ?? s.examScore ?? '—'}</td>
                   <td className="px-4 py-3 text-sm font-bold text-gray-900">{s.total ?? '—'}</td>
                   <td className="px-4 py-3"><Badge variant={gradeColor(s.grade)}>{s.grade || '—'}</Badge></td>
