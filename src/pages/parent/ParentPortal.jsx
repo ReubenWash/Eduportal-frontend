@@ -104,7 +104,7 @@ function DashboardTab({ child, scores, attendance, reports }) {
       {/* Child Summary Card */}
       <div className="bg-gradient-to-br from-indigo-600 to-indigo-700 rounded-2xl p-6 text-white">
         <div className="flex items-center gap-4">
-          <Avatar name={child?.name} size="xl" className="ring-4 ring-white/20" />
+          <Avatar src={child?.photoUrl} name={child?.name} size="xl" className="ring-4 ring-white/20" />
           <div className="flex-1 min-w-0">
             <h2 className="text-xl font-bold truncate">{child?.name}</h2>
             <p className="text-indigo-200 text-sm">{child?.studentNo} · {child?.className}</p>
@@ -421,7 +421,7 @@ export default function ParentPortal() {
                     : 'bg-white border-gray-200 text-gray-600 hover:border-indigo-200 hover:text-indigo-600'
                 }`}
               >
-                <Avatar name={c.name} size="xs" />
+                <Avatar src={c?.photoUrl} name={c.name} size="xs" />
                 <div className="text-left">
                   <p className="leading-none">{c.name}</p>
                   <p className={`text-[10px] mt-0.5 leading-none ${selectedChild === c.id ? 'text-indigo-200' : 'text-gray-400'}`}>{c.className}</p>
