@@ -27,7 +27,7 @@ const DEFAULT_CONTENT = {
     { id: 'stat-3', number: "1.2M", label: "Reports generated" },
     { id: 'stat-4', number: "99.9%", label: "Platform uptime" },
   ],
-  schools: ["Accra Academy", "Presec Legon", "Wesley Girls", "Achimota School", "Aburi Girls", "Holy Child"],
+  schools: ["Divine International", "Buokrom MA", "St. Anthony Prep ", "St. Stephen's International School"],
   testimonials: [
     { id: 'testimonial-1', quote: "We used to spend three weeks compiling report cards. With EduPortal, the whole process takes two days. Teachers submit scores, I approve, and parents get a PDF. That's it.", author: "Abena Owusu", role: "Headmistress, Holy Child School", initials: "AO", color: "#4F46E5" },
     { id: 'testimonial-2', quote: "The attendance analytics alone are worth it. I can see which classes have the worst absenteeism and act on it before the term ends — not after.", author: "Kwame Darko", role: "Deputy Head, Presec Legon", initials: "KD", color: "#10B981" },
@@ -47,7 +47,7 @@ const DEFAULT_CONTENT = {
     { label: 'Team', url: '/team' },
   ],
   socialLinks: [],
-  footerCopyright: '© 2025 EduPortal. All rights reserved.',
+  footerCopyright: '© 2026 EduPortal. All rights reserved.',
   theme: DEFAULT_THEME,
   // Legal documents will be fetched dynamically
   legalLinks: [
@@ -214,7 +214,7 @@ export default function LandingPage() {
   ];
   const footerLinks = c.footerLinks || DEFAULT_CONTENT.footerLinks;
   const socialLinks = c.socialLinks || [];
-  const footerCopyright = c.footerCopyright || '© 2025 EduPortal. All rights reserved.';
+  const footerCopyright = c.footerCopyright || '© 2026 EduPortal. All rights reserved.';
 
   return (
     <div className="landing-page min-h-screen bg-white">
@@ -227,7 +227,7 @@ export default function LandingPage() {
                 <path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/>
               </svg>
             </div>
-            <span className="logo-name">EduPortal</span>
+            <span className="logo-name">Goreb</span>
           </Link>
           <ul className="nav-links">
             <li><a href="#features">Features</a></li>
@@ -282,7 +282,7 @@ export default function LandingPage() {
                   <div className="dash-dot" style={{background:'#EF4444'}}></div>
                   <div className="dash-dot" style={{background:'#F59E0B'}}></div>
                   <div className="dash-dot" style={{background:'#10B981'}}></div>
-                  <span>Term 2 · 2024/2025</span>
+                  <span>Term 2 · 2025/2026</span>
                 </div>
                 <div className="dash-body">
                   <div className="dash-stats">
