@@ -18,7 +18,7 @@ const DEFAULT_THEME = {
 const DEFAULT_CONTENT = {
   heroHeadline: "Run your school.",
   heroHeadlineHighlight: "Not paperwork.",
-  heroSubtitle: "EduPortal gives school administrators, teachers, and parents one place to manage students, scores, attendance, and term reports — without the spreadsheets.",
+  heroSubtitle: "Goreb gives school administrators, teachers, and parents one place to manage students, scores, attendance, and term reports — without the spreadsheets.",
   heroPrimaryBtn: "Register your school",
   heroTrustText: "Trusted by 200+ schools across Ghana, Nigeria & Kenya",
   stats: [
