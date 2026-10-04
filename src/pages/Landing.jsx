@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { getLandingPageContent } from '../api/cmsApi';
+import { MessageCircle, Calendar, Phone, Mail } from 'lucide-react';
 
 // ── Default landing page content ─────────────────────────────────────────
 const DEFAULT_THEME = {
@@ -149,6 +150,7 @@ export default function LandingPage() {
   const [deferredPrompt, setDeferredPrompt] = useState(null);
   const [isInstalled, setIsInstalled] = useState(false);
   const [showIosInstructions, setShowIosInstructions] = useState(false);
+  const [showTalkToTeam, setShowTalkToTeam] = useState(false);
   const theme = c.theme || DEFAULT_THEME;
 
   useEffect(() => {
@@ -557,10 +559,10 @@ export default function LandingPage() {
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 12l2 2 4-4"/></svg>
               {c.heroPrimaryBtn || "Register your school"}
             </Link>
-            <a href="#features" className="btn-hero-secondary">
+            <button type="button" onClick={() => setShowTalkToTeam(true)} className="btn-hero-secondary">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
               Talk to the team
-            </a>
+            </button>
           </div>
         </div>
       </section>
@@ -704,6 +706,93 @@ export default function LandingPage() {
           </div>
         </div>
       )}
+
+      {/* Talk to the Team Modal */}
+      {showTalkToTeam && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm px-4"
+          onClick={() => setShowTalkToTeam(false)}
+        >
+          <div
+            className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 sm:p-7 relative"
+            onClick={e => e.stopPropagation()}
+          >
+            <button
+              onClick={() => setShowTalkToTeam(false)}
+              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"
+              aria-label="Close"
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-5 w-5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+
+            <h3 className="text-lg font-bold text-gray-900 pr-6">Talk to the EduPortal Team</h3>
+            <p className="text-sm text-gray-600 mt-1.5 leading-relaxed">
+              Have questions, want a demo, or want to see how EduPortal can work for your school? Our team is ready to help.
+            </p>
+
+            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mt-5 mb-3">How would you like to reach us?</p>
+
+            <div className="space-y-3">
+              <ContactOption
+                icon={MessageCircle}
+                title="Chat on WhatsApp"
+                desc="Get a quick response from our team."
+                cta="Chat with us on WhatsApp"
+                href="https://wa.me/233540473791?text=Hi%2C%20I%27d%20like%20to%20know%20more%20about%20EduPortal"
+              />
+              <ContactOption
+                icon={Calendar}
+                title="Book a Demo"
+                desc="Schedule a walkthrough of EduPortal with our team."
+                cta="Book a Demo"
+                href="mailto:support@eduportal.com?subject=Demo%20Request&body=Hi%20EduPortal%20team%2C%0A%0AI'd%20like%20to%20book%20a%20demo.%20Here's%20a%20bit%20about%20my%20school%20and%20a%20few%20times%20that%20work%20for%20me%3A%0A%0ASchool%20name%3A%20%0APreferred%20date%2Ftime%3A%20"
+              />
+              <ContactOption
+                icon={Phone}
+                title="Call the Team"
+                desc="Speak directly with someone from EduPortal."
+                cta="Call Us"
+                href="tel:+233598401983"
+              />
+              <ContactOption
+                icon={Mail}
+                title="Send us an Email"
+                desc="Send us your questions or requirements."
+                cta="Email Us"
+                href="mailto:support@eduportal.com?subject=Inquiry%20about%20EduPortal"
+              />
+            </div>
+
+            <p className="text-xs text-gray-500 text-center mt-5">
+              We'll be happy to answer your questions and help you get started.
+            </p>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ContactOption({ icon: Icon, title, desc, cta, href }) {
+  return (
+    <div className="border border-gray-200 rounded-xl p-4 flex flex-col sm:flex-row sm:items-center gap-3">
+      <div className="flex-1 flex items-start gap-3">
+        <div className="h-9 w-9 rounded-lg bg-indigo-50 flex items-center justify-center flex-shrink-0">
+          <Icon className="h-5 w-5 text-indigo-600" strokeWidth={2} />
+        </div>
+        <div>
+          <p className="text-sm font-semibold text-gray-900">{title}</p>
+          <p className="text-xs text-gray-500 mt-0.5">{desc}</p>
+        </div>
+      </div>
+      <a
+        href={href}
+        target={href.startsWith('http') ? '_blank' : undefined}
+        rel={href.startsWith('http') ? 'noreferrer' : undefined}
+        className="flex-shrink-0 text-center text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-lg transition-colors whitespace-nowrap"
+      >
+        {cta}
+      </a>
     </div>
   );
 }
