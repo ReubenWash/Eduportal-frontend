@@ -34,11 +34,24 @@ const DEFAULT_CONTENT = {
     { id: 'testimonial-2', quote: "The attendance analytics alone are worth it. I can see which classes have the worst absenteeism and act on it before the term ends — not after.", author: "Kwame Darko", role: "Deputy Head, Presec Legon", initials: "KD", color: "#10B981" },
     { id: 'testimonial-3', quote: "As a parent, I used to wait weeks to find out how my daughter was doing. Now I get her report on my phone the same day results are released. Genuinely impressive.", author: "Efua Boateng", role: "Parent, Achimota School", initials: "EB", color: "#F59E0B" },
   ],
-  plans: [
-    { id: 'plan-basic', name: "Basic", price: "Free", period: "/ term", desc: "For small schools getting started. Up to 150 students.", popular: false, features: ["Up to 150 students", "Scores & grading", "Attendance tracking", "PDF report cards"], disabled: ["Analytics dashboard", "Email reports to parents"] },
-    { id: 'plan-standard', name: "Standard", price: "GHS 299", period: "/ term", desc: "For growing schools. Up to 800 students, full feature set.", popular: true, features: ["Up to 800 students", "Scores & grading", "Attendance tracking", "PDF report cards", "Analytics dashboard", "Email reports to parents"], disabled: [] },
-    { id: 'plan-premium', name: "Premium", price: "GHS 599", period: "/ term", desc: "For large institutions. Unlimited students, priority support.", popular: false, features: ["Unlimited students", "Everything in Standard", "Bulk import & export", "Priority email support", "Custom report branding", "Dedicated account manager"], disabled: [] },
-  ],
+  pricing: {
+    ratePerStudentPerMonth: 4,
+    currency: "GHS",
+    headline: "GHS 4 per student, per month.",
+    subheadline: "Every feature. Every school. One simple rate. Pay by MoMo or bank transfer once your school is approved.",
+    bullets: [
+      "No setup fees, no hidden charges",
+      "Every feature unlocked from day one",
+      "Pay by MoMo or bank transfer",
+      "Cancel any time — no contract",
+    ],
+    examples: [
+      { students: 50,  bill: "GHS 200 / month" },
+      { students: 100, bill: "GHS 400 / month" },
+      { students: 250, bill: "GHS 1,000 / month" },
+      { students: 500, bill: "GHS 2,000 / month" },
+    ],
+  },
   footerTagline: "A school management platform built specifically for schools in Ghana and across West Africa.",
   footerLinks: [
     { label: 'Features', url: '#features' },
@@ -75,20 +88,17 @@ function useLandingContent() {
             mergedContent.footerLinks = DEFAULT_CONTENT.footerLinks;
           }
 
-          if (mergedContent.plans && Array.isArray(mergedContent.plans)) {
-            // Remove duplicates by name
-            const seenNames = new Set();
-            mergedContent.plans = mergedContent.plans
-              .filter(plan => {
-                if (!plan.name) return false;
-                const isDuplicate = seenNames.has(plan.name);
-                seenNames.add(plan.name);
-                return !isDuplicate;
-              })
-              .map((plan, index) => ({
-                ...plan,
-                id: plan.id || `plan-${plan.name?.toLowerCase().replace(/\s+/g, '-') || index}`
-              }));
+          // Ensure pricing object exists and merges cleanly with defaults
+          if (!mergedContent.pricing || typeof mergedContent.pricing !== 'object') {
+            mergedContent.pricing = DEFAULT_CONTENT.pricing;
+          } else {
+            mergedContent.pricing = { ...DEFAULT_CONTENT.pricing, ...mergedContent.pricing };
+            if (!Array.isArray(mergedContent.pricing.bullets)) {
+              mergedContent.pricing.bullets = DEFAULT_CONTENT.pricing.bullets;
+            }
+            if (!Array.isArray(mergedContent.pricing.examples)) {
+              mergedContent.pricing.examples = DEFAULT_CONTENT.pricing.examples;
+            }
           }
           
           if (mergedContent.stats && Array.isArray(mergedContent.stats)) {
@@ -201,7 +211,6 @@ export default function LandingPage() {
   }
 
   // Ensure we have arrays with unique keys
-  const plans = c.plans || [];
   const stats = c.stats || [];
   const testimonials = c.testimonials || [];
   const schools = c.schools || [];
@@ -214,6 +223,7 @@ export default function LandingPage() {
   const footerLinks = c.footerLinks || DEFAULT_CONTENT.footerLinks;
   const socialLinks = c.socialLinks || [];
   const footerCopyright =  '© 2026 EduPortal. All rights reserved.';
+  const pricing = c.pricing || DEFAULT_CONTENT.pricing;
 
   return (
     <div className="landing-page min-h-screen bg-white">
@@ -236,7 +246,7 @@ export default function LandingPage() {
           </ul>
           <div className="nav-actions">
             <Link to="/login"><button className="btn-ghost">Sign in</button></Link>
-            <Link to="/login" className="btn-primary">
+            <Link to="/register" className="btn-primary">
               Get started
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="14" height="14"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
             </Link>
@@ -255,7 +265,7 @@ export default function LandingPage() {
             <h1 className="hero-h1">{c.heroHeadline}<br /><span>{c.heroHeadlineHighlight}</span></h1>
             <p className="hero-sub">{c.heroSubtitle}</p>
             <div className="hero-cta">
-              <Link to="/login" className="btn-hero-primary">
+              <Link to="/register" className="btn-hero-primary">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 12l2 2 4-4"/></svg>
                 {c.heroPrimaryBtn || "Register your school"}
               </Link>
@@ -509,40 +519,88 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* PLANS */}
+      {/* PRICING */}
       <section className="plans-section" id="plans">
         <div style={{textAlign:'center', marginBottom:'56px'}}>
           <div className="section-label" style={{textAlign:'center'}}>Pricing</div>
-          <h2 className="section-h2" style={{maxWidth:'480px', margin:'0 auto'}}>Simple pricing. No hidden fees.</h2>
-          <p className="section-sub" style={{maxWidth:'400px', margin:'16px auto 0'}}>Pay per term or annually. Cancel any time.</p>
+          <h2 className="section-h2" style={{maxWidth:'520px', margin:'0 auto'}}>
+            {pricing.headline}
+          </h2>
+          <p className="section-sub" style={{maxWidth:'440px', margin:'16px auto 0'}}>
+            {pricing.subheadline}
+          </p>
         </div>
-        <div className="plans-grid">
-          {plans.map((plan, index) => (
-            <div key={`plan-${index}`} className={`plan-card ${plan.popular ? 'featured' : ''}`}>
-              {plan.popular && <div className="plan-badge">Most popular</div>}
-              <div className="plan-name">{plan.name}</div>
-              <div className="plan-price">{plan.price} <span>{plan.period}</span></div>
-              <div className="plan-desc">{plan.desc}</div>
-              <ul className="plan-features">
-                {plan.features && plan.features.map((f, idx) => (
-                  <li key={`${plan.name}-feature-${idx}`}>
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
-                    {f}
-                  </li>
-                ))}
-                {plan.disabled && plan.disabled.map((f, idx) => (
-                  <li key={`${plan.name}-disabled-${idx}`} className="dim">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-                    {f}
-                  </li>
-                ))}
-              </ul>
-              <Link to="/login" className={`btn-plan ${plan.popular ? 'btn-plan-solid' : 'btn-plan-outline'}`} style={{textDecoration:'none', display:'block', textAlign:'center'}}>
-                {plan.name === 'Basic' ? 'Get started free' : plan.name === 'Standard' ? 'Start free trial' : 'Contact sales'}
-              </Link>
+
+        <div className="plans-grid" style={{gridTemplateColumns: '1fr', maxWidth: '640px', margin: '0 auto'}}>
+          <div className="plan-card featured" style={{textAlign: 'center'}}>
+            <div className="plan-badge">Simple pricing</div>
+            <div className="plan-price" style={{fontSize:'56px', lineHeight:1}}>
+              {pricing.currency} {pricing.ratePerStudentPerMonth}
+              <span style={{fontSize:'18px', opacity:0.7}}> / student / month</span>
             </div>
-          ))}
+            <div className="plan-desc" style={{marginTop:'12px'}}>
+              Every feature included. No tiers. No upsells.
+            </div>
+
+            <ul className="plan-features" style={{textAlign:'left', marginTop:'24px'}}>
+              {pricing.bullets.map((b, i) => (
+                <li key={`pricing-bullet-${i}`}>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                    <polyline points="20 6 9 17 4 12"/>
+                  </svg>
+                  {b}
+                </li>
+              ))}
+            </ul>
+
+            <Link
+              to="/register"
+              className="btn-plan btn-plan-solid"
+              style={{textDecoration:'none', display:'block', textAlign:'center', marginTop:'20px'}}
+            >
+              Register your school
+            </Link>
+          </div>
         </div>
+
+        {/* Example bills */}
+        {pricing.examples && pricing.examples.length > 0 && (
+          <div style={{maxWidth:'640px', margin:'40px auto 0', textAlign:'center'}}>
+            <p style={{
+              fontSize: '12px',
+              textTransform: 'uppercase',
+              letterSpacing: '0.08em',
+              color: '#94A3B8',
+              marginBottom: '16px'
+            }}>
+              What that looks like
+            </p>
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
+              gap: '12px'
+            }}>
+              {pricing.examples.map((ex, i) => (
+                <div
+                  key={`pricing-example-${i}`}
+                  style={{
+                    border: '1px solid #E2E8F0',
+                    borderRadius: '12px',
+                    padding: '16px 12px',
+                    background: '#F8FAFC'
+                  }}
+                >
+                  <div style={{fontSize: '12px', color: '#64748B'}}>{ex.students} students</div>
+                  <div style={{fontSize: '14px', fontWeight: 600, color: '#0F172A', marginTop: '4px'}}>{ex.bill}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <p className="text-center text-sm text-slate-500" style={{marginTop: '32px', maxWidth: '520px', marginLeft: 'auto', marginRight: 'auto'}}>
+          Register free. Add your students. Pay by MoMo or bank transfer — we verify your payment within 24 hours.
+        </p>
       </section>
 
       {/* CTA STRIP */}
@@ -550,9 +608,9 @@ export default function LandingPage() {
         <div className="cta-strip">
           <div className="section-label" style={{textAlign:'center'}}>Get started today</div>
           <h2 className="section-h2">Your school deserves better than spreadsheets.</h2>
-          <p className="section-sub">Register in five minutes. No credit card required for the Basic plan.</p>
+          <p className="section-sub">Register in five minutes. No card required — pay by MoMo or bank transfer when you're ready.</p>
           <div className="cta-buttons">
-            <Link to="/login" className="btn-hero-primary">
+            <Link to="/register" className="btn-hero-primary">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 12l2 2 4-4"/></svg>
               {c.heroPrimaryBtn || "Register your school"}
             </Link>
