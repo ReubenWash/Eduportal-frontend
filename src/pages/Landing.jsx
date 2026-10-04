@@ -745,7 +745,7 @@ export default function LandingPage() {
                 title="Chat on WhatsApp"
                 desc="Get a quick response from our team."
                 cta="Chat with us on WhatsApp"
-                href="https://wa.me/233240000000?text=Hi%2C%20I%27d%20like%20to%20know%20more%20about%20EduPortal"
+                href="https://wa.me/233540473791?text=Hi%2C%20I%27d%20like%20to%20know%20more%20about%20EduPortal"
               />
               <ContactOption
                 icon={Calendar}
@@ -759,7 +759,7 @@ export default function LandingPage() {
                 title="Call the Team"
                 desc="Speak directly with someone from EduPortal."
                 cta="Call Us"
-                href="tel:+233240000000"
+                href="tel:+233598401983"
               />
               <ContactOption
                 icon={Mail}
