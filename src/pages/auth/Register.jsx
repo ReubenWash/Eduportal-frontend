@@ -3,7 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
 import AuthLayout from '../../layouts/AuthLayout';
-import { Eye, EyeOff, AlertCircle, CheckCircle, MapPin, Building, CreditCard, Clock } from 'lucide-react';
+import { Eye, EyeOff, AlertCircle, CheckCircle, MapPin, Building, Clock } from 'lucide-react';
 
 const REGIONS = [
   "Greater Accra", "Ashanti", "Western", "Eastern", "Central", 
@@ -33,10 +33,6 @@ export default function RegisterPage() {
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
-  };
-
-  const handlePlanSelect = (plan) => {
-    setFormData({ ...formData, plan });
   };
 
   const handleSubmit = async (e) => {
@@ -215,7 +211,7 @@ export default function RegisterPage() {
                   value={formData.schoolName}
                   onChange={handleChange}
                   required
-                  placeholder="Greenfield Academy"
+                  placeholder=" "
                   className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
                 />
               </div>
@@ -227,7 +223,7 @@ export default function RegisterPage() {
                   value={formData.name}
                   onChange={handleChange}
                   required
-                  placeholder="John Doe"
+                  placeholder=""
                   className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
                 />
               </div>
@@ -276,48 +272,6 @@ export default function RegisterPage() {
                 placeholder="Street address, landmark, P.O. Box..."
                 className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
               />
-            </div>
-          </div>
-
-          {/* Section: Subscription Plan */}
-          <div className="space-y-3">
-            <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-2">
-              <CreditCard className="h-3.5 w-3.5" /> Subscription Plan
-            </h3>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {/* Free Plan */}
-              <button
-                type="button"
-                onClick={() => handlePlanSelect('BASIC')}
-                className={`flex flex-col text-left p-4 rounded-xl border transition-all ${
-                  formData.plan === 'BASIC' 
-                    ? 'bg-indigo-500/10 border-indigo-500 ring-1 ring-indigo-500 shadow-lg shadow-indigo-500/10' 
-                    : 'bg-white/5 border-white/10 hover:bg-white/10 hover:border-white/20'
-                }`}
-              >
-                <div className="flex justify-between items-center w-full mb-1">
-                  <span className="font-semibold text-white text-sm">Free Starter</span>
-                  {formData.plan === 'BASIC' && <CheckCircle className="h-4 w-4 text-indigo-400" />}
-                </div>
-                <span className="text-xs text-slate-400">Essential features for small schools. Upgrade later.</span>
-              </button>
-
-              {/* Premium Plan */}
-              <button
-                type="button"
-                onClick={() => handlePlanSelect('PREMIUM')}
-                className={`flex flex-col text-left p-4 rounded-xl border transition-all ${
-                  formData.plan === 'PREMIUM' 
-                    ? 'bg-emerald-500/10 border-emerald-500 ring-1 ring-emerald-500 shadow-lg shadow-emerald-500/10' 
-                    : 'bg-white/5 border-white/10 hover:bg-white/10 hover:border-white/20'
-                }`}
-              >
-                <div className="flex justify-between items-center w-full mb-1">
-                  <span className="font-semibold text-white text-sm">Premium Pro</span>
-                  {formData.plan === 'PREMIUM' && <CheckCircle className="h-4 w-4 text-emerald-400" />}
-                </div>
-                <span className="text-xs text-slate-400">Full access, analytics, & advanced reports.</span>
-              </button>
             </div>
           </div>
 
