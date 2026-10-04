@@ -43,9 +43,6 @@ const DEFAULT_CONTENT = {
   footerLinks: [
     { label: 'Features', url: '#features' },
     { label: 'Pricing', url: '#plans' },
-    { label: 'Changelog', url: '/changelog' },
-    { label: 'Roadmap', url: '/roadmap' },
-    { label: 'Team', url: '/team' },
   ],
   socialLinks: [],
   footerCopyright: '© 2026 EduPortal. All rights reserved.',
@@ -627,9 +624,18 @@ export default function LandingPage() {
               <div className="footer-col-title">Support</div>
               <ul className="footer-links">
                 <li><Link to="/docs">Documentation</Link></li>
-                <li><Link to="/contact">Contact us</Link></li>
-                <li><Link to="/status">Status</Link></li>
-                <li><Link to="/community">Community</Link></li>
+                <li>
+                  <button
+                    type="button"
+                    onClick={() => setShowTalkToTeam(true)}
+                    className="bg-transparent border-none p-0 cursor-pointer text-left"
+                    style={{ fontSize: '13px', color: '#475569', transition: 'color 0.15s' }}
+                    onMouseEnter={e => e.currentTarget.style.color = '#94A3B8'}
+                    onMouseLeave={e => e.currentTarget.style.color = '#475569'}
+                  >
+                    Contact us
+                  </button>
+                </li>
               </ul>
             </div>
             <div>
@@ -707,19 +713,20 @@ export default function LandingPage() {
         </div>
       )}
 
-      {/* Talk to the Team Modal */}
+           {/* Talk to the Team Modal */}
       {showTalkToTeam && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm px-4"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
           onClick={() => setShowTalkToTeam(false)}
         >
           <div
-            className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 sm:p-7 relative"
+            className="bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[85vh] overflow-y-auto overscroll-contain p-5 sm:p-7 relative"
+            style={{ maxHeight: '85dvh' }}
             onClick={e => e.stopPropagation()}
           >
             <button
               onClick={() => setShowTalkToTeam(false)}
-              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"
+              className="absolute top-3 right-3 sm:top-4 sm:right-4 z-10 bg-white/90 backdrop-blur rounded-full p-1 text-gray-400 hover:text-gray-600"
               aria-label="Close"
             >
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-5 w-5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
@@ -738,7 +745,7 @@ export default function LandingPage() {
                 title="Chat on WhatsApp"
                 desc="Get a quick response from our team."
                 cta="Chat with us on WhatsApp"
-                href="https://wa.me/233540473791?text=Hi%2C%20I%27d%20like%20to%20know%20more%20about%20EduPortal"
+                href="https://wa.me/233240000000?text=Hi%2C%20I%27d%20like%20to%20know%20more%20about%20EduPortal"
               />
               <ContactOption
                 icon={Calendar}
@@ -752,7 +759,7 @@ export default function LandingPage() {
                 title="Call the Team"
                 desc="Speak directly with someone from EduPortal."
                 cta="Call Us"
-                href="tel:+233598401983"
+                href="tel:+233240000000"
               />
               <ContactOption
                 icon={Mail}
