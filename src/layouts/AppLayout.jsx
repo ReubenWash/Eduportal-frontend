@@ -13,7 +13,7 @@ import {
   CheckSquare,
   FileText,
   MessageSquareText,
-  TrendingUp,
+  
   Bell,
   Settings,
   Menu,
@@ -39,6 +39,7 @@ import {
   Code,
   Scale,
   Paperclip,
+  TrendingUp,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useSocket } from '../context/SocketContext';
@@ -56,7 +57,7 @@ const superAdminNav = [
     items: [
       { path: '/admin/schools',      icon: Building2,  label: 'Schools',             roles: ['SUPER_ADMIN'] },
       { path: '/admin/applications', icon: FileText,   label: 'Applications',        roles: ['SUPER_ADMIN'] },
-      { path: '/admin/subscriptions',icon: CreditCard, label: 'Subscriptions',       roles: ['SUPER_ADMIN'] },
+      { path: '/admin/billing',      icon: CreditCard, label: 'Payments',            roles: ['SUPER_ADMIN'] },
     ],
   },
   {
@@ -76,7 +77,6 @@ const superAdminNav = [
     label: 'Analytics',
     items: [
       { path: '/admin/analytics',    icon: BarChart2,  label: 'Platform Analytics', roles: ['SUPER_ADMIN'] },
-      { path: '/admin/subscriptions',icon: TrendingUp, label: 'Revenue',            roles: ['SUPER_ADMIN'] },
     ],
   },
   {
@@ -154,6 +154,7 @@ const navGroups = [
     label: 'System',
     items: [
       { path: '/analytics', icon: TrendingUp, label: 'Analytics', roles: ['SCHOOL_ADMIN'] },
+      { path: '/billing', icon: CreditCard, label: 'Billing', roles: ['SCHOOL_ADMIN'] },
       { path: '/activity-logs', icon: FileText, label: 'Activity Log', roles: ['SCHOOL_ADMIN'] },
       { path: '/notifications', icon: Bell, label: 'Notifications', roles: ['SCHOOL_ADMIN', 'CLASS_TEACHER', 'SUBJECT_TEACHER'] },
       { path: '/settings', icon: Settings, label: 'School Settings', roles: ['SCHOOL_ADMIN'] },
@@ -260,11 +261,17 @@ export default function AppLayout() {
       >
         {/* Logo */}
         <div className="flex items-center gap-2.5 h-16 px-5 border-b border-white/5 flex-shrink-0">
-          <div className={`h-8 w-8 rounded-lg flex items-center justify-center shadow-lg ${userRole === 'SUPER_ADMIN' ? 'bg-indigo-500 shadow-indigo-500/40' : 'bg-indigo-600 shadow-indigo-500/30'}`}>
-            {userRole === 'SUPER_ADMIN' ? <ShieldCheck className="h-4 w-4 text-white" /> : <GraduationCap className="h-4 w-4 text-white" />}
-          </div>
+          {userRole !== 'SUPER_ADMIN' && user?.schoolLogoUrl ? (
+            <img src={user.schoolLogoUrl} alt="" className="h-8 w-8 rounded-lg object-cover bg-white flex-shrink-0" />
+          ) : (
+            <div className={`h-8 w-8 rounded-lg flex items-center justify-center shadow-lg flex-shrink-0 ${userRole === 'SUPER_ADMIN' ? 'bg-indigo-500 shadow-indigo-500/40' : 'bg-indigo-600 shadow-indigo-500/30'}`}>
+              {userRole === 'SUPER_ADMIN' ? <ShieldCheck className="h-4 w-4 text-white" /> : <GraduationCap className="h-4 w-4 text-white" />}
+            </div>
+          )}
           <div className="flex-1 min-w-0">
-            <span className="text-white font-bold text-[15px] tracking-tight">EduPortal</span>
+            <span className="block truncate text-white font-bold text-[15px] tracking-tight" title={user?.schoolName || 'EduPortal'}>
+              {userRole !== 'SUPER_ADMIN' && user?.schoolName ? user.schoolName : 'EduPortal'}
+            </span>
             {userRole === 'SUPER_ADMIN' && (
               <p className="text-[10px] text-indigo-400 font-semibold tracking-widest uppercase leading-none mt-0.5">Admin Panel</p>
             )}

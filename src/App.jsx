@@ -44,6 +44,8 @@ const AdminUsers = lazy(() => import('./pages/superadmin/AdminUsers'));
 const AdminApplications = lazy(() => import('./pages/superadmin/AdminApplications'));
 const AdminIntegrations = lazy(() => import('./pages/superadmin/AdminIntegrations'));
 const AdminSubscriptions = lazy(() => import('./pages/superadmin/AdminSubscriptions'));
+const AdminBilling = lazy(() => import('./pages/superadmin/AdminBilling'));
+const Billing = lazy(() => import('./pages/billing/Billing'));
 const AdminRoles = lazy(() => import('./pages/superadmin/AdminRoles'));
 const AdminAnalytics = lazy(() => import('./pages/superadmin/AdminAnalytics'));
 const AdminSecurity = lazy(() => import('./pages/superadmin/AdminSecurity'));
@@ -194,6 +196,8 @@ function AppRoutes() {
           <Route path="/admin" element={<ProtectedRoute allowedRoles={['SUPER_ADMIN']}><SuperAdminDashboard /></ProtectedRoute>} />
           <Route path="/admin/schools" element={<ProtectedRoute allowedRoles={['SUPER_ADMIN']}><AdminSchools /></ProtectedRoute>} />
           <Route path="/admin/applications" element={<ProtectedRoute allowedRoles={['SUPER_ADMIN']}><AdminApplications /></ProtectedRoute>} />
+          <Route path="/admin/billing" element={<ProtectedRoute allowedRoles={['SUPER_ADMIN']}><AdminBilling /></ProtectedRoute>} />
+          <Route path="/billing" element={<ProtectedRoute allowedRoles={['SCHOOL_ADMIN']}><Billing /></ProtectedRoute>} />
           <Route path="/admin/subscriptions" element={<ProtectedRoute allowedRoles={['SUPER_ADMIN']}><AdminSubscriptions /></ProtectedRoute>} />
           <Route path="/admin/users" element={<ProtectedRoute allowedRoles={['SUPER_ADMIN']}><AdminUsers /></ProtectedRoute>} />
           <Route path="/admin/roles" element={<ProtectedRoute allowedRoles={['SUPER_ADMIN']}><AdminRoles /></ProtectedRoute>} />
