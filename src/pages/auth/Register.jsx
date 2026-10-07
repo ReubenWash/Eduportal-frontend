@@ -24,6 +24,7 @@ export default function RegisterPage() {
     region: '',
     district: '',
     address: '',
+    phone: '',
     plan: 'BASIC'
   });
   const [showPassword, setShowPassword] = useState(false);
@@ -99,6 +100,7 @@ export default function RegisterPage() {
         region: formData.region,
         district: formData.district,
         address: formData.address,
+        phone: formData.phone || undefined,
         plan: formData.plan
       };
 
@@ -272,6 +274,18 @@ export default function RegisterPage() {
                 placeholder="Street address, landmark, P.O. Box..."
                 className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
               />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-300 mb-1.5">Phone number</label>
+              <input
+                type="tel"
+                name="phone"
+                value={formData.phone}
+                onChange={handleChange}
+                placeholder="+233240000000"
+                className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+              />
+              <p className="text-xs text-slate-500 mt-1">Include the country code, e.g. +233 for Ghana.</p>
             </div>
           </div>
 
