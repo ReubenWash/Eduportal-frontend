@@ -153,7 +153,10 @@ function useLandingContent() {
 }
 
 export default function LandingPage() {
-  const { content: c, loading, error } = useLandingContent();
+  // `content` already starts as DEFAULT_CONTENT (below) and the real CMS
+  // content silently replaces it once the fetch resolves — the page never
+  // needs to block on `loading` at all, it just re-renders in place.
+  const { content: c, error } = useLandingContent();
   const [deferredPrompt, setDeferredPrompt] = useState(null);
   const [isInstalled, setIsInstalled] = useState(false);
   const [showIosInstructions, setShowIosInstructions] = useState(false);
@@ -192,18 +195,6 @@ export default function LandingPage() {
       if (outcome === 'accepted') setDeferredPrompt(null);
     } else { setShowIosInstructions(true); }
   };
-
-  // Show loading state while fetching CMS content
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-white flex items-center justify-center">
-        <div className="text-center">
-          <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-indigo-600 border-t-transparent"></div>
-          <p className="mt-4 text-gray-600">Loading...</p>
-        </div>
-      </div>
-    );
-  }
 
   // Show error state but still render with defaults
   if (error) {
