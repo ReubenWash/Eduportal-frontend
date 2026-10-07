@@ -14,10 +14,15 @@
     font-family: 'Inter', ui-sans-serif, system-ui, sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    /* Backs up the viewport meta tag's user-scalable=no — some mobile
+       browsers still honor double-tap-to-zoom unless touch-action is
+       also set explicitly, especially in PWA standalone mode. */
+    touch-action: manipulation;
   }
   body {
     background-color: #F8F9FB;
     color: #111827;
+    touch-action: manipulation;
     /* PWA safe area padding for notch/status bars on the whole document */
     padding-left: env(safe-area-inset-left);
     padding-right: env(safe-area-inset-right);
