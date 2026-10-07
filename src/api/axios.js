@@ -84,8 +84,21 @@ api.interceptors.response.use(
   async (error) => {
     const originalRequest = error.config;
 
+    // Endpoints where a 403 is an expected part of the request/response
+    // itself (e.g. logging in to an unverified account) rather than an
+    // existing session going bad — defined here so both the 403 and 401
+    // handlers below can use it.
+    const authEndpoints = ['/auth/login', '/auth/refresh', '/auth/register', '/auth/forgot-password', '/auth/reset-password'];
+    const isAuthEndpoint = authEndpoints.some((path) => originalRequest?.url?.includes(path));
+
     // ── Handle 403 (Forbidden) - School status issues ──────────
-    if (error.response && error.response.status === 403) {
+    // This is for an ALREADY-LOGGED-IN session going bad (school got
+    // suspended mid-use, etc.) — it must not also catch the login request's
+    // OWN 403 (wrong/pending account), or the real error message never
+    // reaches the login form: it gets rewrapped into a plain Error without
+    // a `.response` shape, which Login.jsx's `err.response?.data?.message`
+    // read can't see, so it silently falls back to "Invalid email or password."
+    if (error.response && error.response.status === 403 && !isAuthEndpoint) {
       const message = error.response?.data?.message || '';
       
       // Check if it's a school status issue
@@ -119,8 +132,7 @@ api.interceptors.response.use(
     // A 401 from /auth/login means bad credentials, not an expired
     // session — retrying via /auth/refresh here is pointless and just
     // produces a confusing second error in the console.
-    const authEndpoints = ['/auth/login', '/auth/refresh', '/auth/register', '/auth/forgot-password', '/auth/reset-password'];
-    const isAuthEndpoint = authEndpoints.some((path) => originalRequest?.url?.includes(path));
+    // (authEndpoints / isAuthEndpoint computed once, above.)
 
     // ── Handle 401 (Unauthorized) - Token refresh ──────────────
     if (error.response && error.response.status === 401 && !originalRequest._retry && !isAuthEndpoint) {
