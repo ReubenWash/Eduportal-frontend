@@ -34,7 +34,7 @@ export default function LoginPage() {
         }
       });
     } catch (err) {
-      const errorMsg = err.response?.data?.message || 'Invalid email or password.';
+      const errorMsg = err.response?.data?.message || err.message || 'Invalid email or password.';
       setError(errorMsg);
       
       // Show specific error messages
