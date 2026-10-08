@@ -37,6 +37,12 @@ export default function AdminCMS() {
     { number: '99.9%', label: 'Platform uptime' },
   ]);
 
+  // "Schools that run on Goreb" trust-badge list on the public landing
+  // page — stored in the same STATS section as the numbers above.
+  const [schoolsForm, setSchoolsForm] = useState([
+    'Divine International', 'Buokrom MA', 'St. Anthony Prep', "St. Stephen's International School"
+  ]);
+
   const [testimonials, setTestimonials] = useState([
     {
       quote: "We used to spend three weeks compiling report cards. With EduPortal, the whole process takes two days.",
@@ -138,6 +144,7 @@ export default function AdminCMS() {
         const data = landingRes.data.data;
         if (data.heroHeadline) setHeroForm(prev => ({ ...prev, ...data }));
         if (data.stats) setStatsForm(data.stats);
+        if (data.schools) setSchoolsForm(data.schools);
         if (data.testimonials) setTestimonials(data.testimonials);
         if (data.faqs) setFaqs(data.faqs);
         if (data.footerTagline) setFooterData(prev => ({ ...prev, tagline: data.footerTagline }));
@@ -230,7 +237,7 @@ export default function AdminCMS() {
       if (!sectionId) { setSaving(false); return; }
       
       await api.patch(`/admin/cms/sections/${sectionId}/content`, { 
-        content: { stats: statsForm }
+        content: { stats: statsForm, schools: schoolsForm }
       });
       addToast('Stats updated successfully', 'success');
       setActiveSection(null);
@@ -346,7 +353,7 @@ export default function AdminCMS() {
       // Create sections if they don't exist
       const sectionsToCreate = [
         { type: 'HERO', title: 'Hero Section', content: { heading: 'Run your school.', highlight: 'Not paperwork.' }, order: 1 },
-        { type: 'STATS', title: 'Statistics', content: { stats: statsForm }, order: 2 },
+        { type: 'STATS', title: 'Statistics', content: { stats: statsForm, schools: schoolsForm }, order: 2 },
         { type: 'TESTIMONIALS', title: 'Testimonials', content: { testimonials }, order: 3 },
         { type: 'PRICING', title: 'Pricing Plans', content: { plans }, order: 4 },
         { type: 'FOOTER', title: 'Footer', content: { tagline: footerData.tagline }, order: 5 }
@@ -426,9 +433,36 @@ export default function AdminCMS() {
           <Input label="Label" value={stat.label} onChange={e => setStatsForm(s => s.map((x, j) => j === i ? {...x, label: e.target.value} : x))} />
         </div>
       ))}
+
+      <div className="pt-4 border-t">
+        <p className="text-sm font-medium text-gray-900">Schools that run on Goreb</p>
+        <p className="text-sm text-gray-500 mb-3">The school names shown as logos/trust badges on the landing page. Add the real schools using the platform — this no longer needs to be mock data.</p>
+        {schoolsForm.map((name, i) => (
+          <div key={i} className="flex items-center gap-2 mb-2">
+            <Input
+              value={name}
+              onChange={e => setSchoolsForm(s => s.map((x, j) => j === i ? e.target.value : x))}
+              placeholder="School name"
+              className="flex-1"
+            />
+            <button
+              type="button"
+              onClick={() => setSchoolsForm(s => s.filter((_, j) => j !== i))}
+              className="text-gray-400 hover:text-red-600 p-2"
+              aria-label="Remove"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+        ))}
+        <Button variant="outline" size="sm" onClick={() => setSchoolsForm(s => [...s, ''])} icon={PlusCircle}>
+          Add School
+        </Button>
+      </div>
+
       <div className="flex justify-end gap-2 pt-4 border-t">
         <Button variant="outline" onClick={() => setActiveSection(null)}>Cancel</Button>
-        <Button onClick={saveStats} loading={saving}>Save Stats</Button>
+        <Button onClick={saveStats} loading={saving}>Save Changes</Button>
       </div>
     </div>
   );
@@ -690,7 +724,7 @@ export default function AdminCMS() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {[
             { id: 'Hero Section', desc: 'Edit main heading, subtitle, and the trust badge text.', icon: Layout },
-            { id: 'Stats / Numbers', desc: 'Update the 4 statistics shown in the indigo band.', icon: Monitor },
+            { id: 'Stats / Numbers', desc: 'Update the 4 statistics shown in the indigo band, and the "Schools that run on Goreb" list.', icon: Monitor },
             { id: 'Testimonials & FAQ', desc: 'Add or remove testimonials and frequently asked questions.', icon: Quote },
             { id: 'Pricing Section', desc: 'Edit pricing cards, add new plans, and manage feature lists.', icon: CreditCard },
             { id: 'Footer & Theme', desc: 'Manage footer links, social links, brand colors, and fonts.', icon: Palette },
