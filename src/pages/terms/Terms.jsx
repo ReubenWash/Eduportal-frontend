@@ -260,7 +260,11 @@ export default function Terms() {
               required
             />
 
-            <div className="grid grid-cols-2 gap-4">
+            {/* Stacked on mobile — a native date input squeezed to half-width
+                on a phone screen clips/misaligns against the full-width
+                fields above and below it. Side-by-side only once there's
+                room (sm breakpoint and up). */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <Input 
                 label="Start Date" 
                 type="date" 
