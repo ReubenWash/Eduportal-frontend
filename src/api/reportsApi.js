@@ -126,6 +126,19 @@ export const exportReports = async (params) => {
 
 // ─── UTILITY ───────────────────────────────────────────────────
 export const openReportPreview = async (id) => {
+  // Open the window SYNCHRONOUSLY, before any await. Once this function
+  // hits an `await`, the browser no longer considers what follows part of
+  // the original tap/click — iOS Safari (especially in PWA/standalone
+  // mode, which this app runs in) silently blocks a window.open() called
+  // after that gap, leaving behind the blank white window this was
+  // causing. Opening immediately with a loading placeholder, then filling
+  // it in once the PDF is ready, keeps it inside the trusted gesture.
+  const newWindow = window.open('', '_blank', 'noopener,noreferrer');
+  if (newWindow) {
+    newWindow.document.write(`<!doctype html><html><head><title>Report Preview</title></head><body style="margin:0;display:flex;align-items:center;justify-content:center;height:100vh;font-family:sans-serif;color:#64748b">Loading report…</body></html>`);
+    newWindow.document.close();
+  }
+
   try {
     const res = await api.get(`/reports/${id}/preview`, { responseType: 'blob' });
     const contentType = res.headers['content-type'] || 'application/pdf';
@@ -133,9 +146,9 @@ export const openReportPreview = async (id) => {
       type: contentType,
     });
     const objectUrl = URL.createObjectURL(blob);
-    const newWindow = window.open('', '_blank', 'noopener,noreferrer');
 
-    if (newWindow) {
+    if (newWindow && !newWindow.closed) {
+      newWindow.document.open();
       newWindow.document.write(`<!doctype html><html><head><title>Report Preview</title></head><body style="margin:0"><iframe src="${objectUrl}" style="width:100vw;height:100vh;border:0" /></body></html>`);
       newWindow.document.close();
     }
@@ -143,6 +156,11 @@ export const openReportPreview = async (id) => {
     return objectUrl;
   } catch (error) {
     console.error('Failed to open report preview:', error);
+    if (newWindow && !newWindow.closed) {
+      newWindow.document.open();
+      newWindow.document.write(`<!doctype html><html><body style="margin:0;display:flex;align-items:center;justify-content:center;height:100vh;font-family:sans-serif;color:#dc2626">Couldn't load this report. Please try again.</body></html>`);
+      newWindow.document.close();
+    }
     throw error;
   }
 };
