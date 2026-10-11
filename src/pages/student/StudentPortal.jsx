@@ -106,7 +106,7 @@ function DashboardTab({ profile, scores, attendance, reports }) {
     <div className="space-y-5">
       <div className="bg-gradient-to-br from-indigo-600 to-indigo-700 rounded-2xl p-6 text-white">
         <div className="flex items-center gap-4">
-          <Avatar name={profile?.name || 'Student'} size="xl" className="ring-4 ring-white/20" />
+          <Avatar src={profile?.photo} name={profile?.name || 'Student'} size="xl" className="ring-4 ring-white/20" />
           <div className="flex-1 min-w-0">
             <h2 className="text-xl font-bold truncate">{profile?.name}</h2>
             <p className="text-indigo-200 text-sm">{profile?.studentNo} · {profile?.className}</p>
@@ -346,7 +346,7 @@ function MyProfileTab({ profile }) {
     <div className="max-w-xl">
       <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
         <div className="bg-gradient-to-br from-indigo-600 to-indigo-700 px-6 py-8 flex items-center gap-4">
-          <Avatar name={profile?.name || 'Student'} size="xl" className="ring-4 ring-white/20" />
+          <Avatar src={profile?.photo} name={profile?.name || 'Student'} size="xl" className="ring-4 ring-white/20" />
           <div>
             <h2 className="text-lg font-bold text-white">{profile?.name}</h2>
             <p className="text-indigo-200 text-sm">{profile?.studentNo}</p>
