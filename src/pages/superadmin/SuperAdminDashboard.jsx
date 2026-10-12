@@ -163,8 +163,8 @@ export default function SuperAdminDashboard() {
         {[
           { label: 'Manage Schools',  to: '/admin/schools',  icon: School,      color: 'bg-indigo-600',  description: 'Approve or reject school registrations' },
           { label: 'Manage Users',    to: '/admin/users',    icon: Users,       color: 'bg-violet-600',  description: 'View and control all platform users' },
-          { label: 'Platform Logs',   to: '/admin/logs',     icon: Activity,    color: 'bg-slate-700',   description: 'Review system and audit logs' },
-          { label: 'System Settings', to: '/settings',       icon: Globe,       color: 'bg-emerald-600', description: 'Global configuration and branding' },
+          { label: 'Platform Logs',   to: '/admin/audit-logs', icon: Activity,  color: 'bg-slate-700',   description: 'Review system and audit logs' },
+          { label: 'System Settings', to: '/admin/settings',   icon: Globe,     color: 'bg-emerald-600', description: 'Global configuration and branding' },
         ].map((a) => {
           const Icon = a.icon;
           return (
