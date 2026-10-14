@@ -6,7 +6,7 @@ import Button from '../../components/ui/Button';
 import { useToast } from '../../context/ToastContext';
 import { isValidE164Phone, normalizePhoneForApi } from '../../utils/phone';
 import { getSchool, updateSchool, updateSchoolWithLogo } from '../../api/schoolApi';
-import { Building2, Mail, Phone, MapPin, Upload, CheckCircle, ExternalLink, GraduationCap } from 'lucide-react';
+import { Building2, Mail, Phone, MapPin, Upload, CheckCircle, ExternalLink, GraduationCap, Hash } from 'lucide-react';
 
 const defaultGradingConfig = {
   caCount: 3,
@@ -53,6 +53,7 @@ export default function Settings() {
 
   const [form, setForm] = useState({ 
     name: '', email: '', phone: '', address: '', logo: null, plan: '',
+    studentIdPrefix: '',
     scoreLabels: { ca1: 'C/A 1', ca2: 'C/A 2', ca3: 'C/A 3', examScore: 'Exam Score' },
     reportConfig: defaultReportConfig
   });
@@ -80,6 +81,7 @@ export default function Settings() {
         address: data?.address || '', 
         logo: null, 
         plan: data?.plan || '',
+        studentIdPrefix: data?.studentIdPrefix || '',
         scoreLabels: data?.scoreLabels || { ca1: 'C/A 1', ca2: 'C/A 2', ca3: 'C/A 3', examScore: 'Exam Score' },
         reportConfig: data?.reportConfig || defaultReportConfig
       });
@@ -165,6 +167,9 @@ export default function Settings() {
       }
       if (form.address && form.address.trim()) {
         updateData.address = form.address.trim();
+      }
+      if (form.studentIdPrefix && form.studentIdPrefix.trim()) {
+        updateData.studentIdPrefix = form.studentIdPrefix.trim().toUpperCase();
       }
       
       // Handle scoreLabels - only if it's an object with values
@@ -404,6 +409,18 @@ export default function Settings() {
                     onChange={handleChange}
                     icon={MapPin}
                   />
+                  <Input
+                    label="Student ID Prefix"
+                    name="studentIdPrefix"
+                    value={form.studentIdPrefix}
+                    onChange={e => setForm({ ...form, studentIdPrefix: e.target.value.toUpperCase().slice(0, 3) })}
+                    icon={Hash}
+                    placeholder="e.g. DIS"
+                    maxLength={3}
+                  />
+                  <p className="text-xs text-gray-500 -mt-3 col-span-full">
+                    3 letters used for new student IDs, e.g. "DIS" → DIS-{new Date().getFullYear()}-0001. Only affects students admitted after you set this — existing student numbers don't change.
+                  </p>
                 </div>
                 <div className="flex items-center justify-end pt-2">
                   <Button type="submit" loading={saving} icon={saving ? undefined : CheckCircle}>
