@@ -10,6 +10,9 @@ export function roleHome(role) {
     case 'SUPER_ADMIN': return '/admin';
     case 'PARENT': return '/parent';
     case 'STUDENT': return '/student';
+    // An accountant's whole job lives on /finance — the generic /dashboard
+    // has no role branch for them and would just show an empty header.
+    case 'ACCOUNTANT': return '/finance';
     default: return '/dashboard';
   }
 }
