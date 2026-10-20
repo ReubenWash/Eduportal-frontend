@@ -223,8 +223,8 @@ export default function Staff() {
     }
   };
 
-  const roleVariant = { SCHOOL_ADMIN: 'primary', CLASS_TEACHER: 'info', SUBJECT_TEACHER: 'default' };
-  const roleLabels = { SCHOOL_ADMIN: 'School Admin', CLASS_TEACHER: 'Class Teacher', SUBJECT_TEACHER: 'Subject Teacher' };
+  const roleVariant = { SCHOOL_ADMIN: 'primary', CLASS_TEACHER: 'info', SUBJECT_TEACHER: 'default', ACCOUNTANT: 'success' };
+  const roleLabels = { SCHOOL_ADMIN: 'School Admin', CLASS_TEACHER: 'Class Teacher', SUBJECT_TEACHER: 'Subject Teacher', ACCOUNTANT: 'Accountant' };
 
   return (
     <div>
@@ -259,7 +259,8 @@ export default function Staff() {
             options={[
               { value: 'SCHOOL_ADMIN', label: 'School Admin' },
               { value: 'CLASS_TEACHER', label: 'Class Teacher' },
-              { value: 'SUBJECT_TEACHER', label: 'Subject Teacher' }
+              { value: 'SUBJECT_TEACHER', label: 'Subject Teacher' },
+              { value: 'ACCOUNTANT', label: 'Accountant' }
             ]}
             value={roleFilter}
             onChange={e => setRoleFilter(e.target.value)}
@@ -352,6 +353,7 @@ export default function Staff() {
             options={[
               {value: 'SUBJECT_TEACHER', label: 'Subject Teacher'},
               {value: 'CLASS_TEACHER', label: 'Class Teacher'},
+              {value: 'ACCOUNTANT', label: 'Accountant'},
               {value: 'SCHOOL_ADMIN', label: 'School Admin'}
             ]}
           />
