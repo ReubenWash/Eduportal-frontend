@@ -3,11 +3,12 @@ import PageHeader from '../../components/common/PageHeader';
 import Badge from '../../components/ui/Badge';
 import Avatar from '../../components/ui/Avatar';
 import { getMyChildren, getChildReportCards, getChildGrades, getChildAttendance } from '../../api/parentApi';
+import { getChildFinance } from '../../api/financeApi';
 import { openReportPreview, downloadReportPDF } from '../../api/reportsApi';
 import {
   LayoutDashboard, BarChart2, CheckSquare, FileText, User, Bell,
   Mail, Download, Eye, CheckCircle2, XCircle, Clock,
-  ChevronDown, ChevronUp, CalendarDays,
+  ChevronDown, ChevronUp, CalendarDays, Wallet,
 } from 'lucide-react';
 
 
@@ -295,6 +296,63 @@ function ReportsTab({ reports }) {
   );
 }
 
+function FinanceTab({ finance }) {
+  if (!finance || !finance.categories || finance.categories.length === 0) {
+    return (
+      <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-12 text-center">
+        <Wallet className="h-10 w-10 text-gray-200 mx-auto mb-3" />
+        <p className="text-sm text-gray-500">No payment records yet.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-5">
+      <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
+        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Total Paid</p>
+        <p className="text-2xl font-bold text-gray-900">GHS {Number(finance.totalPaid || 0).toFixed(2)}</p>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        {finance.categories.map(cat => (
+          <div key={cat.categoryId} className="bg-white rounded-xl border border-gray-200 shadow-sm p-4">
+            <p className="text-sm font-semibold text-gray-900">{cat.categoryName}</p>
+            <div className="mt-2 flex items-baseline gap-2">
+              <span className="text-lg font-bold text-gray-900">GHS {cat.paid.toFixed(2)}</span>
+              {cat.expected !== null && (
+                <span className="text-xs text-gray-500">of GHS {cat.expected.toFixed(2)}</span>
+              )}
+            </div>
+            {cat.outstanding !== null && cat.outstanding > 0 && (
+              <p className="text-xs text-amber-600 mt-1">GHS {cat.outstanding.toFixed(2)} outstanding</p>
+            )}
+            {cat.outstanding === 0 && cat.expected !== null && (
+              <p className="text-xs text-emerald-600 mt-1">Fully paid</p>
+            )}
+          </div>
+        ))}
+      </div>
+
+      {finance.recentTransactions && finance.recentTransactions.length > 0 && (
+        <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider p-4 pb-2">Recent Payments</p>
+          <div className="divide-y divide-gray-100">
+            {finance.recentTransactions.map(t => (
+              <div key={t.id} className="flex items-center justify-between px-4 py-3">
+                <div>
+                  <p className="text-sm text-gray-900">{t.categoryName}</p>
+                  <p className="text-[11px] text-gray-500">{t.receiptNumber} · {t.createdAt ? new Date(t.createdAt).toLocaleDateString() : ''}</p>
+                </div>
+                <span className="text-sm font-semibold text-gray-900">GHS {Number(t.amount).toFixed(2)}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function MyProfileTab({ guardian }) {
   const fields = [
     { label: 'Full Name', value: guardian?.name },
@@ -335,6 +393,7 @@ const TABS = [
   { id: 'scores', label: 'Scores', icon: BarChart2 },
   { id: 'attendance', label: 'Attendance', icon: CheckSquare },
   { id: 'reports', label: 'Report Cards', icon: FileText },
+  { id: 'finance', label: 'Payments', icon: Wallet },
   { id: 'profile', label: 'My Profile', icon: User },
 ];
 
@@ -360,7 +419,7 @@ export default function ParentPortal() {
   const activeChild = children.find(c => c.id === selectedChild);
 
   // Per-child data state
-  const [childData, setChildData] = useState({ scores: [], attendance: null, reports: [] });
+  const [childData, setChildData] = useState({ scores: [], attendance: null, reports: [], finance: null });
   const [childLoading, setChildLoading] = useState(false);
 
   // Fetch data whenever selected child changes
@@ -371,16 +430,18 @@ export default function ParentPortal() {
       getChildGrades(selectedChild),
       getChildAttendance(selectedChild),
       getChildReportCards(selectedChild),
-    ]).then(([gradesRes, attendanceRes, reportsRes]) => {
+      getChildFinance(selectedChild),
+    ]).then(([gradesRes, attendanceRes, reportsRes, financeRes]) => {
       setChildData({
         scores: gradesRes.status === 'fulfilled' && Array.isArray(gradesRes.value) ? gradesRes.value : [],
         attendance: attendanceRes.status === 'fulfilled' ? attendanceRes.value : null,
         reports: reportsRes.status === 'fulfilled' && Array.isArray(reportsRes.value) ? reportsRes.value : [],
+        finance: financeRes.status === 'fulfilled' ? financeRes.value : null,
       });
     }).finally(() => setChildLoading(false));
   }, [selectedChild]);
 
-  const { scores, attendance, reports } = childData;
+  const { scores, attendance, reports, finance } = childData;
 
   if (loading) {
     return (
@@ -465,6 +526,7 @@ export default function ParentPortal() {
           {activeTab === 'scores'     && <ScoresTab scores={scores} />}
           {activeTab === 'attendance' && <AttendanceTab attendance={attendance} />}
           {activeTab === 'reports'    && <ReportsTab reports={reports} />}
+          {activeTab === 'finance'    && <FinanceTab finance={finance} />}
           {activeTab === 'profile'    && <MyProfileTab guardian={activeChild} />}
         </>
       )}
