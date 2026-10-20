@@ -4,10 +4,11 @@ import Badge from '../../components/ui/Badge';
 import Avatar from '../../components/ui/Avatar';
 import { getMyProfile, getMyReportCards, getMyGrades, getMyAttendance } from '../../api/studentselfApi';
 import { openReportPreview, downloadReportPDF } from '../../api/reportsApi';
+import { getMyFinance } from '../../api/financeApi';
 import {
   LayoutDashboard, BarChart2, CheckSquare, FileText, User,
   GraduationCap, CalendarDays, TrendingUp, Download, Eye, Bell,
-  CheckCircle2, XCircle, Clock, ChevronDown, ChevronUp, AlertCircle,
+  CheckCircle2, XCircle, Clock, ChevronDown, ChevronUp, AlertCircle, Wallet,
 } from 'lucide-react';
 
 /* ─── Helper components ─── */
@@ -331,6 +332,63 @@ function MyReportsTab({ reports }) {
   );
 }
 
+function MyFinanceTab({ finance }) {
+  if (!finance || !finance.categories || finance.categories.length === 0) {
+    return (
+      <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-12 text-center">
+        <Wallet className="h-10 w-10 text-gray-200 mx-auto mb-3" />
+        <p className="text-sm text-gray-500">No payment records yet.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-5">
+      <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
+        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Total Paid</p>
+        <p className="text-2xl font-bold text-gray-900">GHS {Number(finance.totalPaid || 0).toFixed(2)}</p>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        {finance.categories.map(cat => (
+          <div key={cat.categoryId} className="bg-white rounded-xl border border-gray-200 shadow-sm p-4">
+            <p className="text-sm font-semibold text-gray-900">{cat.categoryName}</p>
+            <div className="mt-2 flex items-baseline gap-2">
+              <span className="text-lg font-bold text-gray-900">GHS {cat.paid.toFixed(2)}</span>
+              {cat.expected !== null && (
+                <span className="text-xs text-gray-500">of GHS {cat.expected.toFixed(2)}</span>
+              )}
+            </div>
+            {cat.outstanding !== null && cat.outstanding > 0 && (
+              <p className="text-xs text-amber-600 mt-1">GHS {cat.outstanding.toFixed(2)} outstanding</p>
+            )}
+            {cat.outstanding === 0 && cat.expected !== null && (
+              <p className="text-xs text-emerald-600 mt-1">Fully paid</p>
+            )}
+          </div>
+        ))}
+      </div>
+
+      {finance.recentTransactions && finance.recentTransactions.length > 0 && (
+        <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider p-4 pb-2">Recent Payments</p>
+          <div className="divide-y divide-gray-100">
+            {finance.recentTransactions.map(t => (
+              <div key={t.id} className="flex items-center justify-between px-4 py-3">
+                <div>
+                  <p className="text-sm text-gray-900">{t.categoryName}</p>
+                  <p className="text-[11px] text-gray-500">{t.receiptNumber} · {t.createdAt ? new Date(t.createdAt).toLocaleDateString() : ''}</p>
+                </div>
+                <span className="text-sm font-semibold text-gray-900">GHS {Number(t.amount).toFixed(2)}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function MyProfileTab({ profile }) {
   const fields = [
     { label: 'Full Name',        value: profile?.name },
@@ -374,6 +432,7 @@ const TABS = [
   { id: 'scores',     label: 'My Scores',     icon: BarChart2 },
   { id: 'attendance', label: 'My Attendance', icon: CheckSquare },
   { id: 'reports',    label: 'My Reports',    icon: FileText },
+  { id: 'finance',    label: 'Payments',      icon: Wallet },
   { id: 'profile',    label: 'My Profile',    icon: User },
 ];
 
@@ -383,6 +442,7 @@ export default function StudentPortal() {
   const [scores, setScores] = useState([]);
   const [attendance, setAttendance] = useState(null);
   const [reports, setReports] = useState([]);
+  const [finance, setFinance] = useState(null);
   const [loadErrors, setLoadErrors] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -392,7 +452,8 @@ export default function StudentPortal() {
       getMyGrades(),
       getMyReportCards(),
       getMyAttendance(),
-    ]).then(([profileRes, gradesRes, reportsRes, attendanceRes]) => {
+      getMyFinance(),
+    ]).then(([profileRes, gradesRes, reportsRes, attendanceRes, financeRes]) => {
       const failedSections = [];
       if (profileRes.status === 'fulfilled') setProfile(profileRes.value);
       else failedSections.push('profile');
@@ -402,6 +463,8 @@ export default function StudentPortal() {
       else failedSections.push('report cards');
       if (attendanceRes.status === 'fulfilled') setAttendance(attendanceRes.value);
       else failedSections.push('attendance');
+      if (financeRes.status === 'fulfilled') setFinance(financeRes.value);
+      else failedSections.push('payments');
       setLoadErrors(failedSections);
     }).finally(() => setLoading(false));
   }, []);
@@ -452,6 +515,7 @@ export default function StudentPortal() {
         {activeTab === 'scores'     && <MyScoresTab scores={scores} />}
         {activeTab === 'attendance' && <MyAttendanceTab attendance={attendance} />}
         {activeTab === 'reports'    && <MyReportsTab reports={reports} />}
+        {activeTab === 'finance'    && <MyFinanceTab finance={finance} />}
         {activeTab === 'profile'    && <MyProfileTab profile={profile} />}
       </div>
     </div>
