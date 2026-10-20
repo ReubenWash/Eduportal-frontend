@@ -39,6 +39,7 @@ import {
   Code,
   Scale,
   Paperclip,
+  Wallet,
   TrendingUp,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
@@ -139,6 +140,7 @@ const navGroups = [
       { path: '/students', icon: GraduationCap, label: 'Students', roles: ['SCHOOL_ADMIN', 'CLASS_TEACHER'] },
       { path: '/guardians', icon: UserCheck, label: 'Guardians', roles: ['SCHOOL_ADMIN'] },
       { path: '/documents', icon: Paperclip, label: 'Documents', roles: ['SCHOOL_ADMIN'] },
+      { path: '/finance', icon: Wallet, label: 'Finance', roles: ['SCHOOL_ADMIN', 'ACCOUNTANT'] },
     ],
   },
   {
