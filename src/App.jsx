@@ -26,6 +26,7 @@ const Students = lazy(() => import('./pages/students/Students'));
 const StudentDetail = lazy(() => import('./pages/students/StudentDetail'));
 const Guardians = lazy(() => import('./pages/guardians/Guardians'));
 const Documents = lazy(() => import('./pages/document/Documents'));
+const Finance = lazy(() => import('./pages/finance/Finance'));
 const Classes = lazy(() => import('./pages/classes/Classes'));
 const Subjects = lazy(() => import('./pages/subjects/Subjects'));
 const Enrollments = lazy(() => import('./pages/enrollments/Enrollments'));
@@ -90,6 +91,7 @@ const AppLoadingScreen = () => (
 
 // Role groups, matching EduTrack JHS Project Documentation section 5
 const ADMIN_ROLES = ['SUPER_ADMIN', 'SCHOOL_ADMIN'];
+const FINANCE_ROLES = ['SUPER_ADMIN', 'SCHOOL_ADMIN', 'ACCOUNTANT'];
 const STAFF_ROLES = ['SUPER_ADMIN', 'SCHOOL_ADMIN', 'CLASS_TEACHER', 'SUBJECT_TEACHER'];
 const CLASS_TEACHER_ROLES = ['SUPER_ADMIN', 'SCHOOL_ADMIN', 'CLASS_TEACHER'];
 
@@ -170,6 +172,7 @@ function AppRoutes() {
 
           {/* Student/staff/guardian file attachments — admin-only, same as Guardians above */}
           <Route path="/documents" element={<ProtectedRoute allowedRoles={ADMIN_ROLES}><Documents /></ProtectedRoute>} />
+          <Route path="/finance" element={<ProtectedRoute allowedRoles={FINANCE_ROLES}><Finance /></ProtectedRoute>} />
 
           <Route path="/classes" element={<ProtectedRoute allowedRoles={CLASS_TEACHER_ROLES}><Classes /></ProtectedRoute>} />
           <Route path="/subjects" element={<ProtectedRoute allowedRoles={STAFF_ROLES}><Subjects /></ProtectedRoute>} />
