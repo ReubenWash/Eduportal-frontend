@@ -13,7 +13,6 @@ import {
   CheckSquare,
   FileText,
   MessageSquareText,
-  
   Bell,
   Settings,
   Menu,
@@ -41,6 +40,8 @@ import {
   Paperclip,
   Wallet,
   TrendingUp,
+  Receipt,      // ← Phase 1
+  ScrollText,   // ← Phase 1
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useSocket } from '../context/SocketContext';
@@ -116,7 +117,7 @@ const superAdminNav = [
   },
 ];
 
-// Staff/admin nav — School Admin, Class Teacher, Subject Teacher.
+// Staff/admin nav — School Admin, Class Teacher, Subject Teacher, Accountant.
 const navGroups = [
   {
     label: 'Overview',
@@ -140,7 +141,15 @@ const navGroups = [
       { path: '/students', icon: GraduationCap, label: 'Students', roles: ['SCHOOL_ADMIN', 'CLASS_TEACHER'] },
       { path: '/guardians', icon: UserCheck, label: 'Guardians', roles: ['SCHOOL_ADMIN'] },
       { path: '/documents', icon: Paperclip, label: 'Documents', roles: ['SCHOOL_ADMIN'] },
-      { path: '/finance', icon: Wallet, label: 'Finance', roles: ['SCHOOL_ADMIN', 'ACCOUNTANT'] },
+    ],
+  },
+  {
+    // ── Phase 1: Finance split into its own group with Expenses + Daybook ──
+    label: 'Finance',
+    items: [
+      { path: '/finance',            icon: Wallet,     label: 'Finance',   roles: ['SCHOOL_ADMIN', 'ACCOUNTANT'] },
+      { path: '/finance/expenses',   icon: Receipt,    label: 'Expenses',  roles: ['SCHOOL_ADMIN', 'ACCOUNTANT'] },
+      { path: '/finance/daybook',    icon: ScrollText, label: 'Daybook',   roles: ['SCHOOL_ADMIN', 'ACCOUNTANT'] },
     ],
   },
   {
@@ -209,6 +218,7 @@ const roleLabels = {
   SCHOOL_ADMIN: 'School Admin',
   CLASS_TEACHER: 'Class Teacher',
   SUBJECT_TEACHER: 'Subject Teacher',
+  ACCOUNTANT: 'Accountant',   // ← added: was missing, accountants saw raw 'ACCOUNTANT'
   PARENT: 'Parent',
   STUDENT: 'Student',
 };
@@ -298,6 +308,7 @@ export default function AppLayout() {
                   <NavLink
                     key={item.path}
                     to={item.path}
+                    end={item.path === '/finance'}   // ← Phase 1: prevents /finance from being "active" on /finance/expenses
                     onClick={() => setSidebarOpen(false)}
                     className={({ isActive }) =>
                       `flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-150 ${

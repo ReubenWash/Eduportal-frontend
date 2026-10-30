@@ -27,6 +27,8 @@ const StudentDetail = lazy(() => import('./pages/students/StudentDetail'));
 const Guardians = lazy(() => import('./pages/guardians/Guardians'));
 const Documents = lazy(() => import('./pages/document/Documents'));
 const Finance = lazy(() => import('./pages/finance/Finance'));
+const Expenses = lazy(() => import('./pages/finance/Expenses'));   // ← Phase 1
+const Daybook  = lazy(() => import('./pages/finance/Daybook'));    // ← Phase 1
 const Classes = lazy(() => import('./pages/classes/Classes'));
 const Subjects = lazy(() => import('./pages/subjects/Subjects'));
 const Enrollments = lazy(() => import('./pages/enrollments/Enrollments'));
@@ -122,10 +124,10 @@ function AppRoutes() {
         <Route path="/register" element={<RegisterPage />} />
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
         <Route path="/reset-password/:token" element={<ResetPasswordPage />} />
-        
+
         {/* ─── NEW: Student self-service password reset ─── */}
         <Route path="/student-reset-password" element={<StudentResetPassword />} />
-        
+
         <Route path="/change-password" element={<ChangePasswordPage />} />
         <Route path="/verify-email" element={<VerifyEmailPage />} />
 
@@ -144,7 +146,7 @@ function AppRoutes() {
         <Route path="/cookie" element={<LegalPage />} />
         <Route path="/gdpr" element={<LegalPage />} />
         <Route path="/data" element={<GenericPage />} />
-        
+
         {/* Legal page with type parameter */}
         <Route path="/legal/:type" element={<LegalPage />} />
         <Route path="/legal" element={<LegalPage />} />
@@ -172,7 +174,12 @@ function AppRoutes() {
 
           {/* Student/staff/guardian file attachments — admin-only, same as Guardians above */}
           <Route path="/documents" element={<ProtectedRoute allowedRoles={ADMIN_ROLES}><Documents /></ProtectedRoute>} />
+
+          {/* ── Finance ── */}
           <Route path="/finance" element={<ProtectedRoute allowedRoles={FINANCE_ROLES}><Finance /></ProtectedRoute>} />
+          {/* Phase 1: Expenses + Daybook — same FINANCE_ROLES so accountants get access */}
+          <Route path="/finance/expenses" element={<ProtectedRoute allowedRoles={FINANCE_ROLES}><Expenses /></ProtectedRoute>} />
+          <Route path="/finance/daybook"  element={<ProtectedRoute allowedRoles={FINANCE_ROLES}><Daybook /></ProtectedRoute>} />
 
           <Route path="/classes" element={<ProtectedRoute allowedRoles={CLASS_TEACHER_ROLES}><Classes /></ProtectedRoute>} />
           <Route path="/subjects" element={<ProtectedRoute allowedRoles={STAFF_ROLES}><Subjects /></ProtectedRoute>} />
