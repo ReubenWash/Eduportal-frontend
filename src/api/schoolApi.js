@@ -26,7 +26,7 @@ export const updateSchool = async (data) => {
   // Remove undefined/null/empty values
   const cleanData = {};
   Object.keys(data).forEach(key => {
-    if (data[key] !== undefined && data[key] !== null && data[key] !== '') {
+    if (key === 'motto' || (data[key] !== undefined && data[key] !== null && data[key] !== '')) {
       cleanData[key] = data[key];
     }
   });

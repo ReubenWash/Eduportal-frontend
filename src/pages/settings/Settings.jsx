@@ -15,6 +15,18 @@ const defaultGradingConfig = {
   boundaries: { A1: 90, B2: 80, B3: 75, C4: 70, C5: 65, C6: 60, D7: 55, E8: 50 }
 };
 
+const defaultReportConfig = {
+  primaryColor: '#1E2A78',
+  title: "LEARNER'S TERMINAL REPORT",
+  footerText: 'This is a computer-generated report card. No signature is required.',
+  motto: '',
+  showLogo: true,
+  showSchoolName: true,
+  showStudentPhoto: true,
+  showPrincipalSignature: true,
+  showClassTeacherSignature: true
+};
+
 const getStoredGradingConfig = () => {
   try {
     const stored = JSON.parse(localStorage.getItem('schoolGradingConfig'));
@@ -35,22 +47,6 @@ export default function Settings() {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
   const [saving, setSaving] = useState(false);
-  const defaultReportConfig = {
-    primaryColor: '#4F46E5',
-    secondaryColor: '#0F172A',
-    accentColor: '#E2E8F0',
-    title: 'End of Term Report Card',
-    footerText: 'This is a computer-generated report card. No signature is required.',
-    motto: 'Excellence in Learning',
-    principalName: 'Head Teacher',
-    classTeacherName: 'Class Teacher',
-    showLogo: true,
-    showSchoolName: true,
-    showStudentPhoto: true,
-    showPrincipalSignature: true,
-    showClassTeacherSignature: true
-  };
-
   const [form, setForm] = useState({ 
     name: '', email: '', phone: '', address: '', logo: null, plan: '',
     studentIdPrefix: '',
@@ -58,7 +54,6 @@ export default function Settings() {
     reportConfig: defaultReportConfig
   });
   const [preview, setPreview] = useState('');
-  const [signatureFiles, setSignatureFiles] = useState({ principal: null, classTeacher: null });
   
   // Grading config state
   const [gradingConfig, setGradingConfig] = useState(() => getStoredGradingConfig());
@@ -83,7 +78,16 @@ export default function Settings() {
         plan: data?.plan || '',
         studentIdPrefix: data?.studentIdPrefix || '',
         scoreLabels: data?.scoreLabels || { ca1: 'C/A 1', ca2: 'C/A 2', ca3: 'C/A 3', examScore: 'Exam Score' },
-        reportConfig: data?.reportConfig || defaultReportConfig
+        motto: data?.motto || '',
+        reportConfig: {
+          ...defaultReportConfig,
+          ...(data?.reportConfig || {}),
+          showLogo: true,
+          showSchoolName: true,
+          showStudentPhoto: true,
+          showPrincipalSignature: true,
+          showClassTeacherSignature: true,
+        }
       });
 
       const nextGradingConfig = data?.gradingConfig
@@ -125,21 +129,6 @@ export default function Settings() {
     if (!file) return;
     setForm({ ...form, logo: file });
     setPreview(URL.createObjectURL(file));
-  };
-
-  const handleSignatureFile = (field, e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    setSignatureFiles((prev) => ({ ...prev, [field]: file }));
-
-    const objectUrl = URL.createObjectURL(file);
-    setForm((current) => ({
-      ...current,
-      reportConfig: {
-        ...current.reportConfig,
-        [field === 'principal' ? 'principalSignatureUrl' : 'classTeacherSignatureUrl']: objectUrl,
-      }
-    }));
   };
 
   // ✅ Main submit handler - properly handles both with and without logo
@@ -288,21 +277,15 @@ export default function Settings() {
   const handleSaveReportTheme = async () => {
     setSaving(true);
     try {
-      const hasSignatureUploads = !!signatureFiles.principal || !!signatureFiles.classTeacher;
+      await updateSchool({
+        motto: form.motto.trim() || null,
+        reportConfig: {
+          ...form.reportConfig,
+          motto: form.motto.trim(),
+        },
+      });
 
-      if (hasSignatureUploads) {
-        const formData = new FormData();
-        formData.append('reportConfig', JSON.stringify(form.reportConfig));
-        if (signatureFiles.principal) formData.append('principalSignature', signatureFiles.principal);
-        if (signatureFiles.classTeacher) formData.append('classTeacherSignature', signatureFiles.classTeacher);
-        await updateSchoolWithLogo(formData);
-      } else {
-        const updateData = { reportConfig: form.reportConfig };
-        await updateSchool(updateData);
-      }
-
-      addToast('Report card branding updated successfully', 'success');
-      setSignatureFiles({ principal: null, classTeacher: null });
+      addToast('Report template saved successfully', 'success');
       await loadSchoolData();
     } catch (err) {
       console.error('❌ Error saving report branding:', err);
@@ -500,233 +483,88 @@ export default function Settings() {
 
           {/* Report Card Branding */}
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-            <h2 className="text-sm font-semibold text-gray-900 mb-2">Report Card Branding</h2>
-            <p className="text-xs text-gray-500 mb-5">Customize how each school report card looks for this institution.</p>
+            <h2 className="text-sm font-semibold text-gray-900">Terminal Report Template</h2>
+            <p className="mt-1 text-xs text-gray-500">
+              School identity, learner details, scores, and signature lines use the existing report layout.
+            </p>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+            <div className="mt-5 grid gap-4 sm:grid-cols-2">
               <div>
-                <label className="block text-xs font-semibold text-gray-600 mb-1">Primary Color</label>
-                <div className="flex items-center gap-2">
-                  <input
-                    type="color"
-                    value={form.reportConfig.primaryColor}
-                    onChange={(e) => handleReportConfigChange('primaryColor', e.target.value)}
-                    className="h-10 w-12 rounded border border-gray-200 bg-transparent"
-                  />
-                  <span className="text-xs text-gray-500">{form.reportConfig.primaryColor}</span>
-                </div>
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-gray-600 mb-1">Secondary Color</label>
-                <div className="flex items-center gap-2">
-                  <input
-                    type="color"
-                    value={form.reportConfig.secondaryColor}
-                    onChange={(e) => handleReportConfigChange('secondaryColor', e.target.value)}
-                    className="h-10 w-12 rounded border border-gray-200 bg-transparent"
-                  />
-                  <span className="text-xs text-gray-500">{form.reportConfig.secondaryColor}</span>
-                </div>
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-gray-600 mb-1">Accent Color</label>
-                <div className="flex items-center gap-2">
-                  <input
-                    type="color"
-                    value={form.reportConfig.accentColor}
-                    onChange={(e) => handleReportConfigChange('accentColor', e.target.value)}
-                    className="h-10 w-12 rounded border border-gray-200 bg-transparent"
-                  />
-                  <span className="text-xs text-gray-500">{form.reportConfig.accentColor}</span>
-                </div>
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-gray-600 mb-1">Report Title</label>
+                <label className="block text-xs font-semibold text-gray-600 mb-1" htmlFor="report-title">
+                  Report title
+                </label>
                 <input
+                  id="report-title"
                   type="text"
-                  value={form.reportConfig.title}
+                  value={form.reportConfig.title || ''}
                   onChange={(e) => handleReportConfigChange('title', e.target.value)}
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/30"
-                />
-              </div>
-              <div className="sm:col-span-2">
-                <label className="block text-xs font-semibold text-gray-600 mb-1">School Motto</label>
-                <input
-                  type="text"
-                  value={form.reportConfig.motto}
-                  onChange={(e) => handleReportConfigChange('motto', e.target.value)}
+                  placeholder="Learner's Terminal Report"
                   className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/30"
                 />
               </div>
               <div>
-                <label className="block text-xs font-semibold text-gray-600 mb-1">Head Teacher Name</label>
+                <label className="block text-xs font-semibold text-gray-600 mb-1" htmlFor="school-motto">
+                  School motto
+                </label>
                 <input
+                  id="school-motto"
                   type="text"
-                  value={form.reportConfig.principalName}
-                  onChange={(e) => handleReportConfigChange('principalName', e.target.value)}
+                  value={form.motto}
+                  onChange={(e) => setForm({ ...form, motto: e.target.value })}
+                  placeholder="Optional"
                   className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/30"
                 />
               </div>
               <div>
-                <label className="block text-xs font-semibold text-gray-600 mb-1">Class Teacher Name</label>
+                <label className="block text-xs font-semibold text-gray-600 mb-1" htmlFor="report-color">
+                  Heading color
+                </label>
                 <input
-                  type="text"
-                  value={form.reportConfig.classTeacherName}
-                  onChange={(e) => handleReportConfigChange('classTeacherName', e.target.value)}
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/30"
+                  id="report-color"
+                  type="color"
+                  value={form.reportConfig.primaryColor || '#1E2A78'}
+                  onChange={(e) => handleReportConfigChange('primaryColor', e.target.value)}
+                  className="h-10 w-16 rounded border border-gray-200 bg-white p-1"
+                  aria-label="Report heading color"
                 />
               </div>
               <div className="sm:col-span-2">
-                <label className="block text-xs font-semibold text-gray-600 mb-1">Head Teacher Signature</label>
-                <div className="flex items-center gap-3 rounded-lg border border-dashed border-gray-200 bg-gray-50 px-3 py-2">
-                  <input type="file" accept="image/*" onChange={(e) => handleSignatureFile('principal', e)} className="text-xs text-gray-600 file:mr-3 file:rounded file:border-0 file:bg-indigo-50 file:px-2 file:py-1 file:text-xs file:font-medium file:text-indigo-700" />
-                  {form.reportConfig.principalSignatureUrl ? (
-                    <img src={form.reportConfig.principalSignatureUrl} alt="Principal signature preview" className="h-10 w-24 object-contain rounded bg-white" />
-                  ) : null}
-                </div>
-              </div>
-              <div className="sm:col-span-2">
-                <label className="block text-xs font-semibold text-gray-600 mb-1">Class Teacher Signature</label>
-                <div className="flex items-center gap-3 rounded-lg border border-dashed border-gray-200 bg-gray-50 px-3 py-2">
-                  <input type="file" accept="image/*" onChange={(e) => handleSignatureFile('classTeacher', e)} className="text-xs text-gray-600 file:mr-3 file:rounded file:border-0 file:bg-indigo-50 file:px-2 file:py-1 file:text-xs file:font-medium file:text-indigo-700" />
-                  {form.reportConfig.classTeacherSignatureUrl ? (
-                    <img src={form.reportConfig.classTeacherSignatureUrl} alt="Class teacher signature preview" className="h-10 w-24 object-contain rounded bg-white" />
-                  ) : null}
-                </div>
-              </div>
-              <div className="sm:col-span-2">
-                <label className="block text-xs font-semibold text-gray-600 mb-1">Footer Text</label>
-                <textarea
-                  rows={3}
-                  value={form.reportConfig.footerText}
+                <label className="block text-xs font-semibold text-gray-600 mb-1" htmlFor="report-footer">
+                  Footer note
+                </label>
+                <input
+                  id="report-footer"
+                  type="text"
+                  value={form.reportConfig.footerText || ''}
                   onChange={(e) => handleReportConfigChange('footerText', e.target.value)}
+                  placeholder="Optional note printed at the bottom of reports"
                   className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/30"
                 />
               </div>
             </div>
 
-            <div className="mt-5 grid grid-cols-2 gap-3 text-xs text-gray-600">
-              <label className="flex items-center gap-2">
-                <input type="checkbox" checked={!!form.reportConfig.showLogo} onChange={(e) => handleReportConfigChange('showLogo', e.target.checked)} className="h-4 w-4" />
-                Show School Logo
-              </label>
-              <label className="flex items-center gap-2">
-                <input type="checkbox" checked={!!form.reportConfig.showSchoolName} onChange={(e) => handleReportConfigChange('showSchoolName', e.target.checked)} className="h-4 w-4" />
-                Show School Name
-              </label>
-              <label className="flex items-center gap-2">
-                <input type="checkbox" checked={!!form.reportConfig.showStudentPhoto} onChange={(e) => handleReportConfigChange('showStudentPhoto', e.target.checked)} className="h-4 w-4" />
-                Show Student Photo
-              </label>
-              <label className="flex items-center gap-2">
-                <input type="checkbox" checked={!!form.reportConfig.showPrincipalSignature} onChange={(e) => handleReportConfigChange('showPrincipalSignature', e.target.checked)} className="h-4 w-4" />
-                Show Head Teacher Sign-off
-              </label>
-              <label className="flex items-center gap-2 sm:col-span-2">
-                <input type="checkbox" checked={!!form.reportConfig.showClassTeacherSignature} onChange={(e) => handleReportConfigChange('showClassTeacherSignature', e.target.checked)} className="h-4 w-4" />
-                Show Class Teacher Sign-off
-              </label>
-            </div>
-
-            <div className="mt-5 rounded-xl border border-gray-200 p-4" style={{ background: `linear-gradient(135deg, ${form.reportConfig.primaryColor}, ${form.reportConfig.secondaryColor})` }}>
-              <div className="text-white">
-                <div className="flex items-center justify-between gap-3">
-                  <div>
-                    <div className="text-xs uppercase tracking-[0.2em] opacity-80">School Report</div>
-                    <div className="text-lg font-bold">{form.name || 'School Name'}</div>
-                  </div>
-                  <div className="rounded-full bg-white/20 px-3 py-1 text-xs font-semibold">{form.reportConfig.title}</div>
-                </div>
-                <div className="mt-4 text-xs opacity-80">{form.reportConfig.motto || 'Excellence in Learning'}</div>
+            <div className="mt-5 flex items-center gap-3 rounded-lg border border-gray-200 bg-gray-50 p-4">
+              {preview && (
+                <img src={preview} alt="" className="h-12 w-12 rounded-lg bg-white object-contain p-1" />
+              )}
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-semibold text-gray-900">{form.name || 'Your school name'}</p>
+                {form.motto && <p className="mt-1 truncate text-xs italic text-gray-500">{form.motto}</p>}
+                <p className="mt-1 text-xs font-medium uppercase tracking-wide" style={{ color: form.reportConfig.primaryColor || '#1E2A78' }}>
+                  {form.reportConfig.title || "LEARNER'S TERMINAL REPORT"}
+                </p>
+                <p className="mt-1 text-xs text-gray-500">Standard terminal report layout</p>
               </div>
             </div>
 
-            <div className="mt-6 rounded-xl border border-gray-200 bg-gray-50 p-4">
-              <div className="flex items-center justify-between mb-3">
-                <h3 className="text-sm font-semibold text-gray-900">Live Report Preview</h3>
-                <span className="text-[10px] uppercase tracking-[0.2em] text-gray-500">Preview</span>
-              </div>
-
-              <div className="rounded-2xl overflow-hidden border border-gray-200 bg-white shadow-sm">
-                <div className="px-4 py-3" style={{ background: `linear-gradient(135deg, ${form.reportConfig.primaryColor}, ${form.reportConfig.secondaryColor})` }}>
-                  <div className="flex items-center justify-between gap-3 text-white">
-                    <div className="flex items-center gap-3 min-w-0">
-                      {form.reportConfig.showLogo && preview ? (
-                        <img src={preview} alt="School logo" className="h-10 w-10 rounded-full border border-white/60 object-cover bg-white/10" />
-                      ) : null}
-                      <div className="min-w-0">
-                        {form.reportConfig.showSchoolName ? (
-                          <div className="text-sm font-bold truncate">{form.name || 'School Name'}</div>
-                        ) : null}
-                        <div className="text-[10px] opacity-80 uppercase tracking-[0.2em]">{form.reportConfig.title || 'End of Term Report Card'}</div>
-                      </div>
-                    </div>
-                    <div className="rounded-full bg-white/15 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.2em]">
-                      TERM 1
-                    </div>
-                  </div>
-                </div>
-
-                <div className="p-4">
-                  <div className="flex items-center gap-4 rounded-xl border border-gray-200 bg-gray-50 p-3">
-                    {form.reportConfig.showStudentPhoto ? (
-                      <div className="h-16 w-16 rounded-xl bg-gradient-to-br from-gray-200 to-gray-300 flex items-center justify-center text-xs font-semibold text-gray-600">
-                        Photo
-                      </div>
-                    ) : null}
-                    <div className="flex-1 space-y-1">
-                      <div className="text-base font-bold text-gray-900">Student Name</div>
-                      <div className="text-xs text-gray-500">Class: Grade 5 • Student ID: ST-1021</div>
-                      <div className="text-xs text-gray-500">Attendance: 90% • Average: 84%</div>
-                    </div>
-                  </div>
-
-                  <div className="mt-4 space-y-2">
-                    {['Mathematics', 'English', 'Science', 'Creative Arts'].map((subject, index) => (
-                      <div key={subject} className="grid grid-cols-[1.6fr_repeat(4,minmax(0,0.8fr))] gap-2 text-[11px] text-gray-700">
-                        <div className="px-2 py-1.5 rounded bg-gray-100 font-medium">{subject}</div>
-                        <div className="px-2 py-1.5 rounded bg-gray-50 text-center">{index + 1}0</div>
-                        <div className="px-2 py-1.5 rounded bg-gray-50 text-center">{index + 2}0</div>
-                        <div className="px-2 py-1.5 rounded bg-gray-50 text-center">{index + 3}0</div>
-                        <div className="px-2 py-1.5 rounded bg-gray-50 text-center font-semibold text-gray-900">{80 + index}</div>
-                      </div>
-                    ))}
-                  </div>
-
-                  <div className="mt-4 grid grid-cols-2 gap-3">
-                    {form.reportConfig.showClassTeacherSignature ? (
-                      <div className="rounded-xl border border-dashed border-gray-300 bg-gray-50 p-3 text-xs text-gray-600">
-                        <div className="font-semibold text-gray-800">{form.reportConfig.classTeacherName || 'Class Teacher'}</div>
-                        {form.reportConfig.classTeacherSignatureUrl ? (
-                          <img src={form.reportConfig.classTeacherSignatureUrl} alt="Class teacher signature" className="mt-3 h-10 w-24 object-contain bg-white rounded border border-gray-200" />
-                        ) : (
-                          <div className="mt-6 border-t border-gray-300 pt-2">Signature</div>
-                        )}
-                      </div>
-                    ) : null}
-                    {form.reportConfig.showPrincipalSignature ? (
-                      <div className="rounded-xl border border-dashed border-gray-300 bg-gray-50 p-3 text-xs text-gray-600">
-                        <div className="font-semibold text-gray-800">{form.reportConfig.principalName || 'Head Teacher'}</div>
-                        {form.reportConfig.principalSignatureUrl ? (
-                          <img src={form.reportConfig.principalSignatureUrl} alt="Principal signature" className="mt-3 h-10 w-24 object-contain bg-white rounded border border-gray-200" />
-                        ) : (
-                          <div className="mt-6 border-t border-gray-300 pt-2">Signature</div>
-                        )}
-                      </div>
-                    ) : null}
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="mt-5 flex items-center justify-end">
+            <div className="mt-5 flex justify-end">
               <Button
                 type="button"
                 onClick={handleSaveReportTheme}
                 loading={saving}
                 icon={saving ? undefined : CheckCircle}
               >
-                Save Report Branding
+                Save template
               </Button>
             </div>
           </div>
