@@ -424,10 +424,18 @@ export default function AdminEmailTemplates() {
                   onChange={(e) => setContent(e.target.value)}
                 />
               ) : (
-                <div 
-                  className="w-full h-full min-h-[300px] p-6 bg-white border border-gray-200 rounded-lg shadow-sm"
-                  dangerouslySetInnerHTML={{ __html: content || '<p class="text-gray-400">No content to preview</p>' }}
-                />
+                <div className="w-full min-h-[300px] rounded-lg bg-slate-100 p-6">
+                  <div className="mx-auto max-w-[640px] overflow-hidden rounded-xl border border-slate-200 border-t-4 border-t-[#1e3a5f] bg-white shadow-sm">
+                    <div
+                      className="email-template-preview"
+                      style={{ fontFamily: 'Arial, Helvetica, sans-serif', color: '#243247' }}
+                      dangerouslySetInnerHTML={{ __html: content || '<p class="text-gray-400">No content to preview</p>' }}
+                    />
+                    <div className="border-t border-slate-200 px-6 py-5 text-center text-xs leading-5 text-slate-500">
+                      EduTrack JHS &nbsp;|&nbsp; School management portal
+                    </div>
+                  </div>
+                </div>
               )}
             </div>
             
