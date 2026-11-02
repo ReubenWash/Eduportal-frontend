@@ -149,7 +149,7 @@ export default function LoginPage() {
   const doLogin = async (creds) => {
     setError('');
     try {
-      await login(creds, (user) => {
+      await login({ ...creds, portal: activePortal.key }, (user) => {
         addToast(`Signed in as ${user.name}`, 'success');
         const home = roleHome(user.role);
         const destination = from && from !== '/login' ? from : home;
