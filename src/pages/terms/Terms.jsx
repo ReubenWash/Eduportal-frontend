@@ -38,6 +38,7 @@ export default function Terms() {
     termNumber: 'TERM1', 
     startDate: '', 
     endDate: '', 
+    nextTermDate: '',
     status: 'UPCOMING' 
   });
   const { addToast } = useToast();
@@ -72,6 +73,7 @@ export default function Terms() {
       termNumber: 'TERM1', 
       startDate: '', 
       endDate: '', 
+      nextTermDate: '',
       status: 'UPCOMING' 
     });
     setModalOpen(true);
@@ -84,6 +86,7 @@ export default function Terms() {
       termNumber: t.termNumber || 'TERM1',
       startDate: t.startDate ? new Date(t.startDate).toISOString().split('T')[0] : '',
       endDate: t.endDate ? new Date(t.endDate).toISOString().split('T')[0] : '',
+      nextTermDate: t.nextTermDate ? new Date(t.nextTermDate).toISOString().split('T')[0] : '',
       status: t.status || 'UPCOMING'
     });
     setModalOpen(true);
@@ -114,6 +117,7 @@ export default function Terms() {
         termNumber: form.termNumber,
         startDate: startDate.toISOString(),
         endDate: endDate.toISOString(),
+        nextTermDate: form.nextTermDate ? new Date(form.nextTermDate).toISOString() : null,
         status: form.status
       };
 
@@ -280,6 +284,13 @@ export default function Terms() {
                 required 
               />
             </div>
+
+            <Input
+              label="Next Term Begins"
+              type="date"
+              value={form.nextTermDate}
+              onChange={e => setForm({...form, nextTermDate: e.target.value})}
+            />
 
             {editing && (
               <Select

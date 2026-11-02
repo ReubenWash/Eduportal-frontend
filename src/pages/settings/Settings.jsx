@@ -475,7 +475,7 @@ export default function Settings() {
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
             <h2 className="text-sm font-semibold text-gray-900">Terminal Report Template</h2>
             <p className="mt-1 text-xs text-gray-500">
-              School identity, learner details, scores, and signature lines use the existing report layout.
+              School identity, learner details, scores, and remarks use the existing report layout.
             </p>
 
             <div className="mt-5 grid gap-4 sm:grid-cols-2">
