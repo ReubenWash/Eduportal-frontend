@@ -745,8 +745,8 @@ export const sendWelcomeEmail = async (schoolId) => {
 };
 
 // ─── BROADCAST NOTIFICATIONS ────────────────────────────────────
-export const sendBroadcast = async ({ title, message, audience, channels }) => {
-  const res = await api.post('/notifications/mass-broadcast', { title, message, audience, channels });
+export const sendBroadcast = async (data) => {
+  const res = await api.post('/notifications/mass-broadcast', data);
   return unwrapItem(res.data);
 };
 

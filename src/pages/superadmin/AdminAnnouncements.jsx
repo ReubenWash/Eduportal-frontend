@@ -13,7 +13,7 @@ export default function AdminAnnouncements() {
   const [selectedSchools, setSelectedSchools] = useState([]);
   const [schoolOptions, setSchoolOptions] = useState([]);
   const [template, setTemplate] = useState('none');
-  const [channels, setChannels] = useState({ inApp: true, email: true, push: false, sms: false });
+  const [channels, setChannels] = useState({ inApp: false, email: true, push: false, sms: false });
   const [isSending, setIsSending] = useState(false);
 
   useEffect(() => {

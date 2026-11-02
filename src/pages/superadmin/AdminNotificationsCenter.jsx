@@ -5,7 +5,7 @@ import { useSocket } from '../../context/SocketContext';
 import { broadcastNotification } from '../../api/superAdminApi';
 
 const CHANNELS = [
-  { id: 'push',  label: 'Push Notification', icon: Bell,          color: 'text-indigo-600', bg: 'bg-indigo-50', enabled: true  },
+  { id: 'push',  label: 'Push Notification', icon: Bell,          color: 'text-indigo-600', bg: 'bg-indigo-50', enabled: false },
   { id: 'email', label: 'Email',              icon: Mail,          color: 'text-violet-600', bg: 'bg-violet-50', enabled: true  },
   { id: 'sms',   label: 'SMS',                icon: MessageSquare, color: 'text-emerald-600',bg: 'bg-emerald-50',enabled: false },
 ];
