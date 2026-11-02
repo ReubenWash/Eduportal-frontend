@@ -1,7 +1,11 @@
 import { Link } from 'react-router-dom';
 import { GraduationCap, ArrowLeft } from 'lucide-react';
+import { useTenantBranding } from '../context/TenantBrandingContext';
 
 export default function AuthLayout({ children }) {
+  const { school } = useTenantBranding();
+  const brandName = school?.name || 'EduPortal';
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 flex">
       {/* Left branding panel */}
@@ -15,10 +19,12 @@ export default function AuthLayout({ children }) {
         {/* Logo + back to home */}
         <div className="relative flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="h-10 w-10 bg-indigo-600 rounded-xl flex items-center justify-center shadow-lg shadow-indigo-500/30">
-              <GraduationCap className="h-5 w-5 text-white" />
+            <div className="h-10 w-10 bg-indigo-600 rounded-xl flex items-center justify-center shadow-lg shadow-indigo-500/30 overflow-hidden">
+              {school?.logoUrl
+                ? <img src={school.logoUrl} alt="" className="h-full w-full object-contain bg-white" />
+                : <GraduationCap className="h-5 w-5 text-white" />}
             </div>
-            <span className="text-white font-bold text-xl tracking-tight">EduPortal</span>
+            <span className="text-white font-bold text-xl tracking-tight">{brandName}</span>
           </div>
           <Link
             to="/"
@@ -33,11 +39,20 @@ export default function AuthLayout({ children }) {
         <div className="relative space-y-8">
           <div>
             <h1 className="text-4xl font-bold text-white leading-tight tracking-tight">
-              Your school,<br />
-              <span className="text-indigo-400">brilliantly managed.</span>
+              {school ? (
+                <>
+                  Welcome to<br />
+                  <span className="text-indigo-400">{school.name}.</span>
+                </>
+              ) : (
+                <>
+                  Your school,<br />
+                  <span className="text-indigo-400">brilliantly managed.</span>
+                </>
+              )}
             </h1>
             <p className="mt-4 text-slate-400 text-base leading-relaxed">
-              EduPortal brings together everything your school needs — students, staff, grades, attendance, and reports — in one elegant platform.
+              {school?.motto || 'A secure school portal for students, staff, families, and administrators.'}
             </p>
           </div>
 
@@ -78,10 +93,12 @@ export default function AuthLayout({ children }) {
         {/* Mobile: logo + back button in a row */}
         <div className="lg:hidden w-full max-w-[420px] flex items-center justify-between mb-8">
           <div className="flex items-center gap-2">
-            <div className="h-9 w-9 bg-indigo-600 rounded-xl flex items-center justify-center">
-              <GraduationCap className="h-5 w-5 text-white" />
+            <div className="h-9 w-9 bg-indigo-600 rounded-xl flex items-center justify-center overflow-hidden">
+              {school?.logoUrl
+                ? <img src={school.logoUrl} alt="" className="h-full w-full object-contain bg-white" />
+                : <GraduationCap className="h-5 w-5 text-white" />}
             </div>
-            <span className="text-white font-bold text-lg">EduPortal</span>
+            <span className="text-white font-bold text-lg">{brandName}</span>
           </div>
           <Link
             to="/"

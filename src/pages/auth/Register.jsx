@@ -31,6 +31,7 @@ export default function RegisterPage() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const [portalUrl, setPortalUrl] = useState('');
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -111,6 +112,7 @@ export default function RegisterPage() {
       console.log('✅ Registration successful:', result);
 
       // Show success state
+      setPortalUrl(result?.portalUrl || '');
       setIsSubmitted(true);
       addToast('Registration submitted successfully!', 'success');
       
@@ -150,6 +152,20 @@ export default function RegisterPage() {
               Thank you for registering <strong>{formData.schoolName}</strong>. Your application has been successfully submitted and is currently pending review by our administration team.
             </p>
           </div>
+          {portalUrl && (
+            <div className="rounded-xl border border-indigo-400/20 bg-indigo-500/10 p-4 text-left">
+              <p className="text-xs font-semibold uppercase tracking-wide text-indigo-200">Your school portal</p>
+              <a
+                href={portalUrl}
+                className="mt-1 block break-all text-sm font-medium text-white underline decoration-indigo-400 underline-offset-4"
+              >
+                {portalUrl}
+              </a>
+              <p className="mt-2 text-xs leading-5 text-slate-400">
+                The portal will be available after your school is approved and the wildcard domain is configured.
+              </p>
+            </div>
+          )}
           <div className="bg-white/5 border border-white/10 rounded-xl p-5 text-left max-w-md mx-auto">
             <h3 className="text-sm font-semibold text-white flex items-center gap-2 mb-2">
               <CheckCircle className="h-4 w-4 text-emerald-400" /> What happens next?

@@ -1,6 +1,17 @@
 // src/api/schoolApi.js
+import axios from 'axios';
 import api, { unwrapList, unwrapItem } from './axios';
 import { cachedRequest } from '../utils/offlineStore';
+
+const publicApi = axios.create({
+  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:5000/api/v1',
+  headers: { 'Content-Type': 'application/json' },
+});
+
+export const getPublicSchoolPortal = async (slug) => {
+  const res = await publicApi.get(`/schools/portal/${encodeURIComponent(slug)}`);
+  return unwrapItem(res.data);
+};
 
 // ─── SCHOOL PROFILE ─────────────────────────────────────────────
 export const getSchool = async () => {

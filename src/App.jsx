@@ -6,6 +6,7 @@ import { SocketProvider } from './context/SocketContext';
 import ProtectedRoute, { roleHome } from './routes/ProtectedRoute';
 import { useAuth } from './context/AuthContext';
 import ToastContainer from './components/ui/Toast';
+import { TenantBrandingProvider, useTenantBranding } from './context/TenantBrandingContext';
 
 const LandingPage = lazy(() => import('./pages/Landing'));
 const LoginPage = lazy(() => import('./pages/auth/Login'));
@@ -103,7 +104,9 @@ export default function App() {
       <SocketProvider>
         <ToastProvider>
           <ToastContainer />
-          <AppRoutes />
+          <TenantBrandingProvider>
+            <AppRoutes />
+          </TenantBrandingProvider>
         </ToastProvider>
       </SocketProvider>
     </AuthProvider>
@@ -112,13 +115,38 @@ export default function App() {
 
 function AppRoutes() {
   const { initializing } = useAuth();
+  const { school, slug, status } = useTenantBranding();
 
-  if (initializing) return <AppLoadingScreen />;
+  if (initializing || status === 'loading') return <AppLoadingScreen />;
+
+  if (status === 'not-found' || status === 'error') {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-slate-950 px-6 text-center text-white">
+        <div className="max-w-md">
+          <h1 className="text-2xl font-bold">
+            {status === 'not-found' ? 'School portal not found' : 'Unable to load school portal'}
+          </h1>
+          <p className="mt-3 text-sm leading-6 text-slate-400">
+            {status === 'not-found'
+              ? `We could not find a school portal for "${slug}". Check the address and try again.`
+              : 'The school portal could not be reached. Check your connection and try again.'}
+          </p>
+          <button
+            type="button"
+            onClick={() => window.location.reload()}
+            className="mt-6 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-500"
+          >
+            Try again
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <Suspense fallback={<LoadingFallback />}>
       <Routes>
-        <Route path="/" element={<LandingPage />} />
+        <Route path="/" element={school ? <Navigate to="/login" replace /> : <LandingPage />} />
         <Route path="/landing" element={<Navigate to="/" replace />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/login/:portal" element={<LoginPage />} />
