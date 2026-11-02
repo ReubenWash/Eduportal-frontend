@@ -6,7 +6,7 @@ import Button from '../../components/ui/Button';
 import { useToast } from '../../context/ToastContext';
 import { isValidE164Phone, normalizePhoneForApi } from '../../utils/phone';
 import { getSchool, updateSchool, updateSchoolWithLogo } from '../../api/schoolApi';
-import { Building2, Mail, Phone, MapPin, Upload, CheckCircle, ExternalLink, GraduationCap, Hash } from 'lucide-react';
+import { Building2, Mail, Phone, MapPin, Upload, CheckCircle, GraduationCap, Hash } from 'lucide-react';
 
 const defaultGradingConfig = {
   caCount: 3,
@@ -338,16 +338,6 @@ export default function Settings() {
                     <CheckCircle className="h-3.5 w-3.5" /> Logo uploaded
                   </p>
                 )}
-              </div>
-              {/* Plan badge */}
-              <div className="text-right flex-shrink-0">
-                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200">
-                  <span className="h-1.5 w-1.5 rounded-full bg-indigo-600" />
-                  {form.plan || 'Plan'}
-                </span>
-                <a href="#" className="flex items-center gap-1 text-xs text-gray-400 hover:text-indigo-600 mt-1.5 transition-colors justify-end">
-                  Upgrade <ExternalLink className="h-3 w-3" />
-                </a>
               </div>
             </div>
           </div>
