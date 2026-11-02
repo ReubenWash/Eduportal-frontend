@@ -59,7 +59,13 @@ export default function AdminNotifications() {
         title: subject,
         message: body,
         audience: audience, // Now using correct enum values
-        type: 'info'
+        type: 'info',
+        channels: {
+          inApp: channels.some(c => c.id === 'in-app' && c.enabled),
+          email: channels.some(c => c.id === 'email' && c.enabled),
+          push: channels.some(c => c.id === 'push' && c.enabled),
+          sms: channels.some(c => c.id === 'sms' && c.enabled),
+        },
       });
 
       // Emit via Socket.IO for real-time delivery
@@ -78,12 +84,27 @@ export default function AdminNotifications() {
       }
 
       const audienceLabel = AUDIENCE.find(a => a.value === audience)?.label || audience;
-      addToast(
-        scheduled 
-          ? `Notification scheduled for ${scheduleTime}` 
-          : `Notification sent to ${audienceLabel}!`,
-        'success'
-      );
+      if (channels.some(c => c.id === 'email' && c.enabled)) {
+        const email = result?.email;
+        if (email?.noRecipients || email?.attempted === 0) {
+          addToast(`No email recipients were found for ${audienceLabel}.`, 'warning');
+        } else if (email?.failed > 0) {
+          const firstFailure = email.recipients?.find(recipient => !recipient.success)?.error;
+          addToast(
+            `Email delivery: ${email.sent || 0} sent, ${email.failed} failed.${firstFailure ? ` ${firstFailure}` : ''}`,
+            'warning'
+          );
+        } else {
+          addToast(`Email sent to ${email?.sent || 0} recipient(s).`, 'success');
+        }
+      } else {
+        addToast(
+          scheduled
+            ? `Notification scheduled for ${scheduleTime}`
+            : `Notification sent to ${audienceLabel}!`,
+          'success'
+        );
+      }
       
       setSubject('');
       setBody('');

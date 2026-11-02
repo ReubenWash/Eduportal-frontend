@@ -74,18 +74,35 @@ export default function AdminAnnouncements() {
         channels,
         ...(audience === 'SELECTED_SCHOOLS' ? { selectedSchools } : {}),
       };
-      await sendBroadcast(payload);
+      const result = await sendBroadcast(payload);
       if (channels.push) {
         await sendPushNotification({ title, body: message, audience });
       }
-      addToast('Broadcast successfully queued for delivery.', 'success');
+
+      if (channels.email) {
+        const email = result?.email;
+        if (email?.noRecipients || email?.attempted === 0) {
+          addToast('The broadcast was saved, but no email recipients were found for this audience.', 'warning');
+        } else if (email?.failed > 0) {
+          const firstFailure = email.recipients?.find((recipient) => !recipient.success)?.error;
+          addToast(
+            `Email delivery: ${email.sent || 0} sent, ${email.failed} failed.${firstFailure ? ` ${firstFailure}` : ''}`,
+            'warning'
+          );
+        } else {
+          addToast(`Email sent to ${email?.sent || 0} recipient(s).`, 'success');
+        }
+      } else {
+        addToast('Broadcast successfully sent.', 'success');
+      }
+
       setTitle('');
       setMessage('');
       setTemplate('none');
       setSelectedSchools([]);
     } catch (err) {
-      const message = err?.response?.data?.message || 'Broadcast queued locally. Connect SMTP to enable real delivery.';
-      addToast(message, 'warning');
+      const errorMessage = err?.response?.data?.message || err.message || 'Failed to send broadcast.';
+      addToast(errorMessage, 'error');
     } finally {
       setIsSending(false);
     }
