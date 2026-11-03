@@ -144,10 +144,11 @@ const navGroups = [
     ],
   },
   {
-    // ── Phase 1: Finance split into its own group with Expenses + Daybook ──
+    // Finance, fee invoices, expenses, and the ledger daybook.
     label: 'Finance',
     items: [
       { path: '/finance',            icon: Wallet,     label: 'Finance',   roles: ['SCHOOL_ADMIN', 'ACCOUNTANT'] },
+      { path: '/finance/fees',       icon: FileText,   label: 'Fees & Invoices', roles: ['SCHOOL_ADMIN', 'ACCOUNTANT'] },
       { path: '/finance/expenses',   icon: Receipt,    label: 'Expenses',  roles: ['SCHOOL_ADMIN', 'ACCOUNTANT'] },
       { path: '/finance/daybook',    icon: ScrollText, label: 'Daybook',   roles: ['SCHOOL_ADMIN', 'ACCOUNTANT'] },
     ],

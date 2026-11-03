@@ -30,6 +30,7 @@ const Documents = lazy(() => import('./pages/document/Documents'));
 const Finance = lazy(() => import('./pages/finance/Finance'));
 const Expenses = lazy(() => import('./pages/finance/Expenses'));   // ← Phase 1
 const Daybook  = lazy(() => import('./pages/finance/Daybook'));    // ← Phase 1
+const FeeManagement = lazy(() => import('./pages/finance/FeeManagement'));
 const Classes = lazy(() => import('./pages/classes/Classes'));
 const Subjects = lazy(() => import('./pages/subjects/Subjects'));
 const Enrollments = lazy(() => import('./pages/enrollments/Enrollments'));
@@ -206,6 +207,7 @@ function AppRoutes() {
 
           {/* ── Finance ── */}
           <Route path="/finance" element={<ProtectedRoute allowedRoles={FINANCE_ROLES}><Finance /></ProtectedRoute>} />
+          <Route path="/finance/fees" element={<ProtectedRoute allowedRoles={FINANCE_ROLES}><FeeManagement /></ProtectedRoute>} />
           {/* Phase 1: Expenses + Daybook — same FINANCE_ROLES so accountants get access */}
           <Route path="/finance/expenses" element={<ProtectedRoute allowedRoles={FINANCE_ROLES}><Expenses /></ProtectedRoute>} />
           <Route path="/finance/daybook"  element={<ProtectedRoute allowedRoles={FINANCE_ROLES}><Daybook /></ProtectedRoute>} />

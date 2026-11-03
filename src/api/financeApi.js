@@ -65,3 +65,44 @@ export const getChildFinance = async (studentId) => {
   const res = await api.get(`/guardians/me/children/${studentId}/finance`);
   return unwrapItem(res.data);
 };
+
+// ── Phase 2: fee structures, invoicing, concessions, and arrears ──
+export const getFeeOptions = async () => {
+  const res = await api.get('/finance/fee-options');
+  return unwrapItem(res.data);
+};
+
+export const getFeeStructures = async () => {
+  const res = await api.get('/finance/fee-structures');
+  return unwrapList(res.data);
+};
+
+export const saveFeeStructure = async (data) => {
+  const res = await api.put('/finance/fee-structures', data);
+  return unwrapItem(res.data);
+};
+
+export const generateFeeInvoices = async (data) => {
+  const res = await api.post('/finance/invoices/generate', data);
+  return unwrapItem(res.data);
+};
+
+export const getFeeInvoices = async (params) => {
+  const res = await api.get('/finance/invoices', { params });
+  return unwrapList(res.data);
+};
+
+export const getFeeArrears = async (params) => {
+  const res = await api.get('/finance/arrears', { params });
+  return unwrapList(res.data);
+};
+
+export const addFeeConcession = async (invoiceId, data) => {
+  const res = await api.post(`/finance/invoices/${invoiceId}/concessions`, data);
+  return unwrapItem(res.data);
+};
+
+export const sendFeeReminders = async (invoiceIds) => {
+  const res = await api.post('/finance/arrears/reminders', { invoiceIds });
+  return unwrapItem(res.data);
+};

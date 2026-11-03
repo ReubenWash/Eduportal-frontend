@@ -333,7 +333,7 @@ function MyReportsTab({ reports }) {
 }
 
 function MyFinanceTab({ finance }) {
-  if (!finance || !finance.categories || finance.categories.length === 0) {
+  if (!finance || ((!finance.categories || finance.categories.length === 0) && (!finance.feeInvoices || finance.feeInvoices.length === 0))) {
     return (
       <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-12 text-center">
         <Wallet className="h-10 w-10 text-gray-200 mx-auto mb-3" />
@@ -349,7 +349,27 @@ function MyFinanceTab({ finance }) {
         <p className="text-2xl font-bold text-gray-900">GHS {Number(finance.totalPaid || 0).toFixed(2)}</p>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      {finance.feeInvoices?.length > 0 && (
+        <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider p-4 pb-2">Fee invoices</p>
+          <div className="divide-y divide-gray-100">
+            {finance.feeInvoices.map((invoice) => (
+              <div key={invoice.id} className="flex flex-col gap-2 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-900">{invoice.invoiceNumber}</p>
+                  <p className="text-xs text-gray-500">{invoice.term.termNumber.replace('TERM', 'Term ')} · {invoice.term.academicYear} · Due {new Date(invoice.dueDate).toLocaleDateString()}</p>
+                </div>
+                <div className="text-sm sm:text-right">
+                  <p className="font-semibold text-gray-900">Balance: GHS {invoice.balance.toFixed(2)}</p>
+                  <p className={`text-xs ${invoice.status === 'PAID' ? 'text-emerald-600' : invoice.status === 'OVERDUE' ? 'text-red-600' : 'text-gray-500'}`}>{invoice.status.replace('_', ' ')}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {finance.categories?.length > 0 && <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         {finance.categories.map(cat => (
           <div key={cat.categoryId} className="bg-white rounded-xl border border-gray-200 shadow-sm p-4">
             <p className="text-sm font-semibold text-gray-900">{cat.categoryName}</p>
@@ -367,7 +387,7 @@ function MyFinanceTab({ finance }) {
             )}
           </div>
         ))}
-      </div>
+      </div>}
 
       {finance.recentTransactions && finance.recentTransactions.length > 0 && (
         <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
