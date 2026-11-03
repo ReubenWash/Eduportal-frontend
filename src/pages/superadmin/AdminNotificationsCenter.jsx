@@ -20,9 +20,9 @@ const AUDIENCE = [
 ];
 
 const TEMPLATES = [
-  { id: '1', name: 'Welcome New School', type: 'email', subject: 'Welcome to EduPortal!', preview: 'Your school account has been approved...' },
+  { id: '1', name: 'Welcome New School', type: 'email', subject: 'Welcome to Goreb!', preview: 'Your school account has been approved...' },
   { id: '2', name: 'Subscription Reminder', type: 'email', subject: 'Your subscription is due', preview: 'This is a reminder that your subscription...' },
-  { id: '3', name: 'System Maintenance', type: 'push', subject: 'Scheduled Maintenance', preview: 'EduPortal will be offline for maintenance...' },
+  { id: '3', name: 'System Maintenance', type: 'push', subject: 'Scheduled Maintenance', preview: 'Goreb will be offline for maintenance...' },
   { id: '4', name: 'New Feature Alert', type: 'push', subject: 'New feature available!', preview: 'Check out our new reporting module...' },
 ];
 

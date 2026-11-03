@@ -30,9 +30,9 @@ export default function AdminAnnouncements() {
 
   const templates = {
     none: { name: 'Custom Message', content: '' },
-    maintenance: { name: 'Scheduled Maintenance', content: 'Dear [School Name],\n\nWe will be performing scheduled maintenance on [Date] at [Time]. During this window, the platform will be unavailable.\n\nThank you,\nThe EduPortal Team' },
-    update: { name: 'Product Update', content: 'Hello [Name],\n\nWe are excited to announce a new feature: [Feature Name]! Log in now to explore how it can help you.\n\nBest,\nThe EduPortal Team' },
-    billing: { name: 'Billing Reminder', content: 'Dear Admin,\n\nThis is a friendly reminder that your subscription for [School Name] is due for renewal on [Date].\n\nThank you for choosing EduPortal.' }
+    maintenance: { name: 'Scheduled Maintenance', content: 'Dear [School Name],\n\nWe will be performing scheduled maintenance on [Date] at [Time]. During this window, the platform will be unavailable.\n\nThank you,\nThe Goreb Team' },
+    update: { name: 'Product Update', content: 'Hello [Name],\n\nWe are excited to announce a new feature: [Feature Name]! Log in now to explore how it can help you.\n\nBest,\nThe Goreb Team' },
+    billing: { name: 'Billing Reminder', content: 'Dear Admin,\n\nThis is a friendly reminder that your subscription for [School Name] is due for renewal on [Date].\n\nThank you for choosing Goreb.' }
   };
 
   const handleTemplateChange = (e) => {

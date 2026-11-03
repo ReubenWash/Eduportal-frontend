@@ -26,7 +26,7 @@ export default function AdminCMS() {
   const [heroForm, setHeroForm] = useState({
     heroHeadline: 'Run your school.',
     heroHeadlineHighlight: 'Not paperwork.',
-    heroSubtitle: 'EduPortal gives school administrators, teachers, and parents one place to manage students, scores, attendance, and term reports — without the spreadsheets.',
+    heroSubtitle: 'Goreb gives school administrators, teachers, and parents one place to manage students, scores, attendance, and term reports — without the spreadsheets.',
     heroTrustText: 'Trusted by 200+ schools across Ghana, Nigeria & Kenya',
   });
 
@@ -45,7 +45,7 @@ export default function AdminCMS() {
 
   const [testimonials, setTestimonials] = useState([
     {
-      quote: "We used to spend three weeks compiling report cards. With EduPortal, the whole process takes two days.",
+      quote: "We used to spend three weeks compiling report cards. With Goreb, the whole process takes two days.",
       author: "Abena Owusu",
       role: "Headmistress, Holy Child School",
       initials: "AO",
@@ -119,7 +119,7 @@ export default function AdminCMS() {
       { platform: "YouTube", url: "https://youtube.com/eduportal" },
       { platform: "GitHub", url: "https://github.com/eduportal" }
     ],
-    copyright: `© ${new Date().getFullYear()} EduPortal. All rights reserved.`
+    copyright: `© ${new Date().getFullYear()} Goreb. All rights reserved.`
   });
 
   const [theme, setTheme] = useState({

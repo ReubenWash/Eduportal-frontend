@@ -68,7 +68,7 @@ export default function AdminBackup() {
       const url = URL.createObjectURL(blob);
       const anchor = document.createElement('a');
       anchor.href = url;
-      anchor.download = `eduportal-${backup.id}.dump`;
+      anchor.download = `goreb-${backup.id}.dump`;
       anchor.click();
       URL.revokeObjectURL(url);
     } catch (downloadError) {

@@ -201,7 +201,7 @@ export default function RegisterPage() {
         {/* Header */}
         <div>
           <h2 className="text-2xl font-bold text-white tracking-tight">Register your school</h2>
-          <p className="mt-2 text-sm text-slate-400">Join EduPortal and manage your school with ease.</p>
+          <p className="mt-2 text-sm text-slate-400">Join Goreb and manage your school with ease.</p>
         </div>
 
         {/* Error banner */}

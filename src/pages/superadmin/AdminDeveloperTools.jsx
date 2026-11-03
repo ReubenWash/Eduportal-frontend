@@ -85,8 +85,8 @@ export default function AdminDeveloperTools() {
         return (
           <div className="space-y-4 pt-2">
             <div className="border-b border-gray-200 pb-3">
-              <h3 className="font-bold text-lg">EduPortal API v1.0</h3>
-              <p className="text-sm text-gray-500">Base URL: <code className="bg-gray-100 px-1 rounded">https://api.eduportal.com/v1</code></p>
+              <h3 className="font-bold text-lg">Goreb API v1.0</h3>
+              <p className="text-sm text-gray-500">Use the API URL configured for your Goreb deployment.</p>
             </div>
             <div className="space-y-3">
               <div className="border border-gray-200 rounded p-3">

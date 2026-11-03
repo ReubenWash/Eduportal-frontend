@@ -11,7 +11,7 @@ const PAGES = {
       { heading: 'v1.2.0 — July 2026', badge: 'Latest', badgeColor: 'emerald', items: [
         'Added Super Admin broadcast system with email, in-app, push, and SMS channels.',
         'New public pages (Team, Docs, Status, Community) now editable from the CMS dashboard.',
-        'PWA support added — install EduPortal on Android, iOS, and Desktop.',
+        'PWA support added — install Goreb on Android, iOS, and Desktop.',
         'Fixed React error #31 in Enrollments and Table components.',
         'Removed all console.log credential leaks from the auth flow.',
       ]},
@@ -23,7 +23,7 @@ const PAGES = {
         'School edit modal — update name, email, plan, and status directly from the admin.',
       ]},
       { heading: 'v1.0.0 — May 2026', badge: 'Initial Release', badgeColor: 'gray', items: [
-        'Initial launch of EduPortal SaaS platform.',
+        'Initial launch of the Goreb SaaS platform.',
         'Core modules: Students, Staff, Guardians, Classes, Subjects, Enrollments, Scores, Attendance.',
         'Parent Portal and Student Portal with read-only views.',
         'SMTP email integration and notification center.',
@@ -32,7 +32,7 @@ const PAGES = {
     ]
   },
   '/roadmap': {
-    title: 'Roadmap', subtitle: "What we're building next for EduPortal.",
+    title: 'Roadmap', subtitle: "What we're building next for Goreb.",
     icon: '🗺️', color: 'violet',
     sections: [
       { heading: 'Q3 2026 — In Progress', badge: 'Now', badgeColor: 'amber', items: [
@@ -56,13 +56,13 @@ const PAGES = {
     ]
   },
   '/team': {
-    title: 'Our Team', subtitle: 'The people behind EduPortal, building for African schools.',
+    title: 'Our Team', subtitle: 'The people behind Goreb, building for African schools.',
     icon: '👥', color: 'indigo',
     sections: [
       { heading: 'Leadership', items: [
         '🧑‍💼 Founder & CEO — Driving the vision of accessible school management across Africa.',
         '👩‍💻 CTO — Architecting the platform infrastructure and API backbone.',
-        '🎨 Head of Design — Crafting every pixel of the EduPortal experience.',
+        '🎨 Head of Design — Crafting every pixel of the Goreb experience.',
       ]},
       { heading: 'Engineering', items: [
         '⚙️ Backend Engineers — Building the secure, scalable Node.js/PostgreSQL API.',
@@ -86,7 +86,7 @@ const PAGES = {
     icon: '📖', color: 'indigo',
     sections: [
       { heading: '🚀 Getting Started', items: [
-        'Step 1: Register your school at eduportal.com/register.',
+        'Step 1: Register your school through the Goreb portal.',
         'Step 2: Wait for Super Admin approval (usually within 24 hours).',
         'Step 3: Once approved, log in with your headmaster credentials.',
         'Step 4: Add your staff and assign roles (Class Teacher, Subject Teacher).',
@@ -127,19 +127,19 @@ const PAGES = {
         'Available Monday–Friday, 8:00 AM – 6:00 PM (GMT)',
       ]},
       { heading: '🏢 Office', items: [
-        'EduPortal Ltd.',
+        'Goreb.',
         'Accra, Greater Accra Region, Ghana.',
         'Visits by appointment only.',
       ]},
       { heading: '🤝 Partnerships & Sales', items: [
-        'Interested in deploying EduPortal across your district or region?',
+        'Interested in deploying Goreb across your district or region?',
         'Email: partnerships@eduportal.com',
         'We offer special pricing for NGOs and government institutions.',
       ]},
     ]
   },
   '/status': {
-    title: 'System Status', subtitle: 'Live status of all EduPortal services.',
+    title: 'System Status', subtitle: 'Live status of all Goreb services.',
     icon: '🟢', color: 'emerald',
     sections: [
       { heading: '✅ All Systems Operational', badge: 'Live', badgeColor: 'emerald', items: [
@@ -170,15 +170,15 @@ const PAGES = {
         'Join on Slack: eduportal.slack.com',
       ]},
       { heading: '📚 Community Resources', items: [
-        'Monthly Webinars: Live training sessions with the EduPortal team.',
+        'Monthly Webinars: Live training sessions with the Goreb team.',
         'Template Library: Shared grading rubrics and report card templates.',
         'Video Tutorials: Step-by-step guides on YouTube.',
         'Knowledge Base: 200+ articles and FAQs.',
       ]},
       { heading: '🏆 Community Recognition', items: [
-        'EduPortal Star Awards — recognizing outstanding school administrators quarterly.',
+        'Goreb Star Awards — recognizing outstanding school administrators quarterly.',
         'Beta Tester Program — get early access to new features.',
-        'Ambassador Program — represent EduPortal in your region.',
+        'Ambassador Program — represent Goreb in your region.',
       ]},
     ]
   },
@@ -193,7 +193,7 @@ const PAGES = {
         'Usage data: browser type, IP address, pages visited, and session duration.',
       ]},
       { heading: '2. How We Use Your Data', items: [
-        'To provide and maintain the EduPortal platform.',
+        'To provide and maintain the Goreb platform.',
         'To send transactional emails (welcome, password reset, notifications).',
         'To analyze platform usage and improve our services.',
         'We never sell your data to third parties.',
@@ -217,7 +217,7 @@ const PAGES = {
     icon: '📜', color: 'indigo',
     sections: [
       { heading: '1. Acceptance of Terms', items: [
-        'By creating an account on EduPortal, you agree to these Terms of Service.',
+        'By creating an account on Goreb, you agree to these Terms of Service.',
         'These terms apply to all users: School Admins, Teachers, Parents, and Students.',
         'If you do not agree, please do not use the platform.',
       ]},
@@ -228,7 +228,7 @@ const PAGES = {
         'You must not share your account with another person.',
       ]},
       { heading: '3. Acceptable Use', items: [
-        'EduPortal is for legitimate educational administration purposes only.',
+        'Goreb is for legitimate educational administration purposes only.',
         'You must not use the platform to distribute spam, malware, or illegal content.',
         'You must not attempt to reverse-engineer or scrape the platform.',
         'Violation of these terms may result in immediate account suspension.',
@@ -246,7 +246,7 @@ const PAGES = {
     icon: '🛡️', color: 'indigo',
     sections: [
       { heading: 'Our Role as Data Processor', items: [
-        'EduPortal acts as a Data Processor on behalf of your school (the Data Controller).',
+        'Goreb acts as a Data Processor on behalf of your school (the Data Controller).',
         'We only process student and staff data according to your instructions as a school.',
         'We do not independently process student data for our own business purposes.',
       ]},
@@ -375,7 +375,7 @@ function PageShell({ title, subtitle, icon, color, children }) {
                 <path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/>
               </svg>
             </div>
-            <span className="font-bold text-lg text-gray-900">EduPortal</span>
+            <span className="font-bold text-lg text-gray-900">Goreb</span>
           </Link>
           <div className="flex items-center gap-4">
             <Link to="/" className="text-sm text-gray-500 hover:text-gray-900 transition-colors">Home</Link>
@@ -403,7 +403,7 @@ function PageShell({ title, subtitle, icon, color, children }) {
       {/* Footer */}
       <footer className="bg-white border-t border-gray-200 py-8">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <p className="text-sm text-gray-400">&copy; {new Date().getFullYear()} EduPortal. All rights reserved.</p>
+          <p className="text-sm text-gray-400">&copy; {new Date().getFullYear()} Goreb. All rights reserved.</p>
           <div className="flex gap-6 text-sm text-gray-500">
             <Link to="/privacy" className="hover:text-gray-900 transition-colors">Privacy</Link>
             <Link to="/terms-of-service" className="hover:text-gray-900 transition-colors">Terms</Link>

@@ -4,7 +4,7 @@ import { useTenantBranding } from '../context/TenantBrandingContext';
 
 export default function AuthLayout({ children }) {
   const { school } = useTenantBranding();
-  const brandName = school?.name || 'EduPortal';
+  const brandName = school?.name || 'Goreb';
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 flex">
@@ -84,7 +84,7 @@ export default function AuthLayout({ children }) {
         </div>
 
         <p className="relative text-xs text-slate-600">
-          © {new Date().getFullYear()} EduPortal. All rights reserved.
+          © {new Date().getFullYear()} Goreb. All rights reserved.
         </p>
       </div>
 

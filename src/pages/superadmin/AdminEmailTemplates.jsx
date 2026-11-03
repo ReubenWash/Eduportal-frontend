@@ -432,7 +432,7 @@ export default function AdminEmailTemplates() {
                       dangerouslySetInnerHTML={{ __html: content || '<p class="text-gray-400">No content to preview</p>' }}
                     />
                     <div className="border-t border-slate-200 px-6 py-5 text-center text-xs leading-5 text-slate-500">
-                      EduTrack JHS &nbsp;|&nbsp; School management portal
+                      Goreb &nbsp;|&nbsp; School management portal
                     </div>
                   </div>
                 </div>

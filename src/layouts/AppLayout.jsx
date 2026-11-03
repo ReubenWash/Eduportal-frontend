@@ -281,8 +281,8 @@ export default function AppLayout() {
             </div>
           )}
           <div className="flex-1 min-w-0">
-            <span className="block truncate text-white font-bold text-[15px] tracking-tight" title={user?.schoolName || 'EduPortal'}>
-              {userRole !== 'SUPER_ADMIN' && user?.schoolName ? user.schoolName : 'EduPortal'}
+            <span className="block truncate text-white font-bold text-[15px] tracking-tight" title={user?.schoolName || 'Goreb'}>
+              {userRole !== 'SUPER_ADMIN' && user?.schoolName ? user.schoolName : 'Goreb'}
             </span>
             {userRole === 'SUPER_ADMIN' && (
               <p className="text-[10px] text-indigo-400 font-semibold tracking-widest uppercase leading-none mt-0.5">Admin Panel</p>

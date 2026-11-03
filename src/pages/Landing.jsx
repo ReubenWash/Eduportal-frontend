@@ -30,7 +30,7 @@ const DEFAULT_CONTENT = {
   ],
   schools: ["Divine International", "Buokrom MA", "St. Anthony Prep ", "St. Stephen's International School"],
   testimonials: [
-    { id: 'testimonial-1', quote: "We used to spend three weeks compiling report cards. With EduPortal, the whole process takes two days. Teachers submit scores, I approve, and parents get a PDF. That's it.", author: "Abena Owusu", role: "Headmistress, Holy Child School", initials: "AO", color: "#4F46E5" },
+    { id: 'testimonial-1', quote: "We used to spend three weeks compiling report cards. With Goreb, the whole process takes two days. Teachers submit scores, I approve, and parents get a PDF. That's it.", author: "Abena Owusu", role: "Headmistress, Holy Child School", initials: "AO", color: "#4F46E5" },
     { id: 'testimonial-2', quote: "The attendance analytics alone are worth it. I can see which classes have the worst absenteeism and act on it before the term ends — not after.", author: "Kwame Darko", role: "Deputy Head, Presec Legon", initials: "KD", color: "#10B981" },
     { id: 'testimonial-3', quote: "As a parent, I used to wait weeks to find out how my daughter was doing. Now I get her report on my phone the same day results are released. Genuinely impressive.", author: "Efua Boateng", role: "Parent, Achimota School", initials: "EB", color: "#F59E0B" },
   ],
@@ -58,7 +58,7 @@ const DEFAULT_CONTENT = {
     { label: 'Pricing', url: '#plans' },
   ],
   socialLinks: [],
-  footerCopyright: '© 2026 EduPortal. All rights reserved.',
+  footerCopyright: '© 2026 Goreb. All rights reserved.',
   theme: DEFAULT_THEME,
   // Legal documents will be fetched dynamically
   legalLinks: [
@@ -213,7 +213,7 @@ export default function LandingPage() {
   ];
   const footerLinks = c.footerLinks || DEFAULT_CONTENT.footerLinks;
   const socialLinks = c.socialLinks || [];
-  const footerCopyright =  '© 2026 EduPortal. All rights reserved.';
+  const footerCopyright =  '© 2026 Goreb. All rights reserved.';
   const pricing = c.pricing || DEFAULT_CONTENT.pricing;
 
   return (
@@ -744,7 +744,7 @@ export default function LandingPage() {
                 <div className="space-y-2">
                   {[
                     { step: '1', text: 'Click the menu (⋮) in the top-right of Chrome' },
-                    { step: '2', text: 'Select "Install EduPortal" or "Add to Home Screen"' },
+                    { step: '2', text: 'Select "Install Goreb" or "Add to Home Screen"' },
                     { step: '3', text: 'Click "Install" to confirm' },
                   ].map(({ step, text }) => (
                     <div key={step} className="flex items-start gap-3">
@@ -781,9 +781,9 @@ export default function LandingPage() {
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-5 w-5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
             </button>
 
-            <h3 className="text-lg font-bold text-gray-900 pr-6">Talk to the EduPortal Team</h3>
+            <h3 className="text-lg font-bold text-gray-900 pr-6">Talk to the Goreb Team</h3>
             <p className="text-sm text-gray-600 mt-1.5 leading-relaxed">
-              Have questions, want a demo, or want to see how EduPortal can work for your school? Our team is ready to help.
+              Have questions, want a demo, or want to see how Goreb can work for your school? Our team is ready to help.
             </p>
 
             <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mt-5 mb-3">How would you like to reach us?</p>
@@ -794,19 +794,19 @@ export default function LandingPage() {
                 title="Chat on WhatsApp"
                 desc="Get a quick response from our team."
                 cta="Chat with us on WhatsApp"
-                href="https://wa.me/233540473791?text=Hi%2C%20I%27d%20like%20to%20know%20more%20about%20EduPortal"
+                href="https://wa.me/233540473791?text=Hi%2C%20I%27d%20like%20to%20know%20more%20about%20Goreb"
               />
               <ContactOption
                 icon={Calendar}
                 title="Book a Demo"
-                desc="Schedule a walkthrough of EduPortal with our team."
+                desc="Schedule a walkthrough of Goreb with our team."
                 cta="Book a Demo"
-                href="mailto:support@eduportal.com?subject=Demo%20Request&body=Hi%20EduPortal%20team%2C%0A%0AI'd%20like%20to%20book%20a%20demo.%20Here's%20a%20bit%20about%20my%20school%20and%20a%20few%20times%20that%20work%20for%20me%3A%0A%0ASchool%20name%3A%20%0APreferred%20date%2Ftime%3A%20"
+                href="mailto:support@eduportal.com?subject=Demo%20Request&body=Hi%20Goreb%20team%2C%0A%0AI'd%20like%20to%20book%20a%20demo.%20Here's%20a%20bit%20about%20my%20school%20and%20a%20few%20times%20that%20work%20for%20me%3A%0A%0ASchool%20name%3A%20%0APreferred%20date%2Ftime%3A%20"
               />
               <ContactOption
                 icon={Phone}
                 title="Call the Team"
-                desc="Speak directly with someone from EduPortal."
+                desc="Speak directly with someone from Goreb."
                 cta="Call Us"
                 href="tel:+233598401983"
               />
@@ -815,7 +815,7 @@ export default function LandingPage() {
                 title="Send us an Email"
                 desc="Send us your questions or requirements."
                 cta="Email Us"
-                href="mailto:support@eduportal.com?subject=Inquiry%20about%20EduPortal"
+                href="mailto:support@eduportal.com?subject=Inquiry%20about%20Goreb"
               />
             </div>
 

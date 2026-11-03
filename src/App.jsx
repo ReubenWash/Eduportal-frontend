@@ -87,12 +87,12 @@ const AppLoadingScreen = () => (
   <div className="fixed inset-0 flex items-center justify-center bg-white z-50">
     <div className="flex flex-col items-center gap-4">
       <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-indigo-600" />
-      <p className="text-sm text-gray-500">Loading EduPortal…</p>
+      <p className="text-sm text-gray-500">Loading Goreb…</p>
     </div>
   </div>
 );
 
-// Role groups, matching EduTrack JHS Project Documentation section 5
+// Role groups, matching the Goreb project documentation section 5
 const ADMIN_ROLES = ['SUPER_ADMIN', 'SCHOOL_ADMIN'];
 const FINANCE_ROLES = ['SUPER_ADMIN', 'SCHOOL_ADMIN', 'ACCOUNTANT'];
 const STAFF_ROLES = ['SUPER_ADMIN', 'SCHOOL_ADMIN', 'CLASS_TEACHER', 'SUBJECT_TEACHER'];

@@ -18,7 +18,7 @@ export default function AdminSettings() {
   const [saving, setSaving] = useState(false);
   
   // Platform Brand settings
-  const [platformName, setPlatformName] = useState('EduPortal');
+  const [platformName, setPlatformName] = useState('Goreb');
   const [theme, setTheme] = useState('indigo');
   const [maintenanceMode, setMaintenanceMode] = useState(false);
   
@@ -100,7 +100,10 @@ export default function AdminSettings() {
 
   const applySettings = (settings) => {
     // Platform settings
-    if (settings?.platformName) setPlatformName(settings.platformName);
+    if (settings?.platformName) {
+      const savedName = String(settings.platformName).trim();
+      setPlatformName(/^(EduPortal|EduTrack(?: JHS)?)$/i.test(savedName) ? 'Goreb' : savedName);
+    }
     if (settings?.theme) setTheme(settings.theme);
     if (settings?.language) setLanguage(settings.language);
     if (settings?.timeZone) setTimeZone(settings.timeZone);
@@ -186,8 +189,8 @@ export default function AdminSettings() {
       // Now send test email
       const response = await api.post('/test/test-email', {
         to: testEmail,
-        subject: 'SMTP Configuration Test - EduTrack JHS',
-        message: 'This is a test email from EduTrack JHS to verify your SMTP configuration. If you received this, your email settings are working correctly!'
+        subject: 'SMTP Configuration Test - Goreb',
+        message: 'This is a test email from Goreb to verify your SMTP configuration. If you received this, your email settings are working correctly!'
       });
 
       setTestStatus('success');

@@ -9,8 +9,8 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'masked-icon.svg'],
       manifest: {
-        name: 'EduPortal — School Management Platform',
-        short_name: 'EduPortal',
+        name: 'Goreb — School Management Platform',
+        short_name: 'Goreb',
         description: 'A complete school management SaaS platform for schools, teachers, students, and parents across Ghana and West Africa.',
         theme_color: '#4F46E5',
         background_color: '#ffffff',
