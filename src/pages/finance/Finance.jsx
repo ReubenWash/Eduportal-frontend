@@ -15,14 +15,16 @@ import {
   updateFinanceCategory,
   deactivateFinanceCategory,
   getFinanceTransactions,
+  getFeeInvoices,
   recordFinanceTransaction,
+  updateFinanceTransaction,
   deleteFinanceTransaction,
   PAYMENT_METHODS,
 } from '../../api/financeApi';
 import { getStudents } from '../../api/studentsApi';
 import { Plus, Tag, Trash2, Receipt, Search } from 'lucide-react';
 
-const EMPTY_TXN_FORM = { studentId: '', categoryId: '', amount: '', method: 'CASH', reference: '', notes: '' };
+const EMPTY_TXN_FORM = { studentId: '', categoryId: '', feeInvoiceId: '', amount: '', method: 'CASH', reference: '', notes: '' };
 const EMPTY_CATEGORY_FORM = { name: '', description: '', expectedAmount: '' };
 
 export default function Finance() {
@@ -35,6 +37,8 @@ export default function Finance() {
   const [categories, setCategories] = useState([]);
   const [transactions, setTransactions] = useState([]);
   const [students, setStudents] = useState([]);
+  const [studentInvoices, setStudentInvoices] = useState([]);
+  const [invoicesLoading, setInvoicesLoading] = useState(false);
   const [loading, setLoading] = useState(true);
   const [keyword, setKeyword] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('');
@@ -48,6 +52,11 @@ export default function Finance() {
   const [editingCategoryId, setEditingCategoryId] = useState(null);
 
   const [deleteTarget, setDeleteTarget] = useState(null);
+  const [reconcileTarget, setReconcileTarget] = useState(null);
+  const [reconcileInvoices, setReconcileInvoices] = useState([]);
+  const [reconcileInvoiceId, setReconcileInvoiceId] = useState('');
+  const [reconcileLoading, setReconcileLoading] = useState(false);
+  const [reconciling, setReconciling] = useState(false);
 
   const { addToast } = useToast();
 
@@ -69,8 +78,38 @@ export default function Finance() {
 
   useEffect(() => { load(); }, [categoryFilter]);
 
+  useEffect(() => {
+    if (!txnForm.studentId) {
+      setStudentInvoices([]);
+      return undefined;
+    }
+
+    let active = true;
+    setStudentInvoices([]);
+    setInvoicesLoading(true);
+    getFeeInvoices({ studentId: txnForm.studentId })
+      .then((result) => {
+        if (active) setStudentInvoices(result);
+      })
+      .catch(() => {
+        if (active) addToast('Failed to load this student’s fee invoices', 'error');
+      })
+      .finally(() => {
+        if (active) setInvoicesLoading(false);
+      });
+
+    return () => { active = false; };
+  }, [txnForm.studentId, addToast]);
+
+  const matchingInvoices = studentInvoices.filter((invoice) => (
+    invoice.balance > 0 && Number(invoice.categoryTotals?.[txnForm.categoryId]?.outstanding || 0) > 0
+  ));
+  const selectedInvoice = matchingInvoices.find((invoice) => invoice.id === txnForm.feeInvoiceId);
+  const selectedInvoiceCategoryBalance = Number(selectedInvoice?.categoryTotals?.[txnForm.categoryId]?.outstanding || 0);
+
   const openRecordPayment = async () => {
     setTxnForm(EMPTY_TXN_FORM);
+    setStudentInvoices([]);
     setTxnDrawerOpen(true);
     if (students.length === 0) {
       try {
@@ -84,6 +123,14 @@ export default function Finance() {
 
   const handleRecordPayment = async (e) => {
     e.preventDefault();
+    if (matchingInvoices.length > 0 && !txnForm.feeInvoiceId) {
+      addToast('Select the outstanding invoice this payment should reduce.', 'error');
+      return;
+    }
+    if (selectedInvoice && Number(txnForm.amount) > selectedInvoiceCategoryBalance) {
+      addToast('The payment amount exceeds the remaining balance for this invoice category.', 'error');
+      return;
+    }
     setSaving(true);
     try {
       await recordFinanceTransaction({
@@ -150,6 +197,46 @@ export default function Finance() {
     } catch (err) {
       addToast(err?.response?.data?.message || 'Failed to delete transaction', 'error');
       setDeleteTarget(null);
+    }
+  };
+
+  const openReconcileTransaction = async (transaction) => {
+    setReconcileTarget(transaction);
+    setReconcileInvoices([]);
+    setReconcileInvoiceId('');
+    setReconcileLoading(true);
+    try {
+      const invoices = await getFeeInvoices({ studentId: transaction.studentId });
+      const eligibleInvoices = invoices.filter((invoice) => (
+        invoice.balance >= Number(transaction.amount)
+        && Number(invoice.categoryTotals?.[transaction.category?.id]?.outstanding || 0) >= Number(transaction.amount)
+      ));
+      if (eligibleInvoices.length === 0) {
+        addToast('No matching invoice has enough outstanding balance for this payment.', 'error');
+        setReconcileTarget(null);
+        return;
+      }
+      setReconcileInvoices(eligibleInvoices);
+    } catch (err) {
+      addToast(err?.response?.data?.message || 'Failed to load eligible invoices', 'error');
+      setReconcileTarget(null);
+    } finally {
+      setReconcileLoading(false);
+    }
+  };
+
+  const confirmReconcileTransaction = async () => {
+    if (!reconcileTarget || !reconcileInvoiceId) return;
+    setReconciling(true);
+    try {
+      await updateFinanceTransaction(reconcileTarget.id, { feeInvoiceId: reconcileInvoiceId });
+      addToast('Payment applied to invoice', 'success');
+      setReconcileTarget(null);
+      load();
+    } catch (err) {
+      addToast(err?.response?.data?.message || 'Failed to apply payment to invoice', 'error');
+    } finally {
+      setReconciling(false);
     }
   };
 
@@ -230,6 +317,13 @@ export default function Finance() {
               render: (_, row) => <Badge variant="info">{row.category?.name}</Badge>,
             },
             {
+              header: 'Invoice',
+              key: 'feeInvoice',
+              render: (invoice) => invoice?.invoiceNumber
+                ? <span className="text-xs font-mono text-gray-700">{invoice.invoiceNumber}</span>
+                : <span className="text-xs text-amber-700">Unallocated</span>,
+            },
+            {
               header: 'Amount',
               key: 'amount',
               render: (v) => <span className="text-sm font-semibold text-gray-900">GHS {Number(v).toFixed(2)}</span>,
@@ -246,14 +340,24 @@ export default function Finance() {
             },
           ]}
           rowActions={(row) => (
-            isAdmin ? (
-              <button
-                onClick={() => setDeleteTarget(row)}
-                className="flex items-center gap-1.5 text-xs font-medium text-red-600 hover:text-red-700 hover:bg-red-50 px-2.5 py-1.5 rounded-md transition-colors"
-              >
-                <Trash2 className="h-3.5 w-3.5" /> Delete
-              </button>
-            ) : null
+            <div className="flex items-center gap-2">
+              {!row.feeInvoiceId && (
+                <button
+                  onClick={() => openReconcileTransaction(row)}
+                  className="text-xs font-medium text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50 px-2.5 py-1.5 rounded-md transition-colors"
+                >
+                  Apply to invoice
+                </button>
+              )}
+              {isAdmin && (
+                <button
+                  onClick={() => setDeleteTarget(row)}
+                  className="flex items-center gap-1.5 text-xs font-medium text-red-600 hover:text-red-700 hover:bg-red-50 px-2.5 py-1.5 rounded-md transition-colors"
+                >
+                  <Trash2 className="h-3.5 w-3.5" /> Delete
+                </button>
+              )}
+            </div>
           )}
         />
       </div>
@@ -269,7 +373,7 @@ export default function Finance() {
           <Select
             label="Student"
             value={txnForm.studentId}
-            onChange={e => setTxnForm({ ...txnForm, studentId: e.target.value })}
+            onChange={e => setTxnForm({ ...txnForm, studentId: e.target.value, categoryId: '', feeInvoiceId: '' })}
             options={students.map(s => ({ value: s.id, label: `${s.name} (${s.studentNo})` }))}
             placeholder="Select a student..."
             required
@@ -277,13 +381,37 @@ export default function Finance() {
           <Select
             label="Category"
             value={txnForm.categoryId}
-            onChange={e => setTxnForm({ ...txnForm, categoryId: e.target.value })}
+            onChange={e => setTxnForm({ ...txnForm, categoryId: e.target.value, feeInvoiceId: '' })}
             options={categories.map(c => ({ value: c.id, label: c.name }))}
             placeholder="Select a category..."
             required
           />
           {categories.length === 0 && (
             <p className="text-xs text-amber-600">No categories yet — {isAdmin ? 'use "Manage Categories" above to add one first.' : 'ask your school admin to set one up first.'}</p>
+          )}
+          {txnForm.studentId && txnForm.categoryId && invoicesLoading && (
+            <p className="text-xs text-gray-500">Checking outstanding invoices…</p>
+          )}
+          {txnForm.studentId && txnForm.categoryId && !invoicesLoading && matchingInvoices.length > 0 && (
+            <>
+              <Select
+                label="Apply payment to invoice"
+                value={txnForm.feeInvoiceId}
+                onChange={e => setTxnForm({ ...txnForm, feeInvoiceId: e.target.value })}
+                options={matchingInvoices.map((invoice) => ({
+                  value: invoice.id,
+                  label: `${invoice.invoiceNumber} · ${invoice.term.termNumber.replace('TERM', 'Term ')} ${invoice.term.academicYear} · Balance GHS ${Number(invoice.categoryTotals[txnForm.categoryId].outstanding).toFixed(2)}`,
+                }))}
+                placeholder="Select an invoice"
+              />
+              <p className="text-xs text-indigo-700">
+                This category has an outstanding invoice. Apply the payment to an invoice so its balance and the parent portal update together.
+                {selectedInvoice && ` Remaining for this category: GHS ${selectedInvoiceCategoryBalance.toFixed(2)}.`}
+              </p>
+            </>
+          )}
+          {txnForm.studentId && txnForm.categoryId && !invoicesLoading && matchingInvoices.length === 0 && (
+            <p className="text-xs text-gray-500">No outstanding invoice for this category. This payment will be recorded as an unallocated collection.</p>
           )}
           <Input
             label="Amount (GHS)"
@@ -313,7 +441,7 @@ export default function Finance() {
           />
           <div className="flex justify-end gap-3 pt-4 mt-2 border-t border-gray-100">
             <Button variant="secondary" onClick={() => setTxnDrawerOpen(false)}>Cancel</Button>
-            <Button type="submit" disabled={saving || categories.length === 0}>{saving ? 'Recording…' : 'Record Payment'}</Button>
+            <Button type="submit" disabled={saving || invoicesLoading || categories.length === 0 || (matchingInvoices.length > 0 && !txnForm.feeInvoiceId)}>{saving ? 'Recording…' : 'Record Payment'}</Button>
           </div>
         </form>
       </SlideOver>
@@ -384,6 +512,43 @@ export default function Finance() {
             <div className="flex justify-end gap-3 pt-4 mt-4 border-t border-gray-100">
               <Button variant="secondary" onClick={() => setDeleteTarget(null)}>Cancel</Button>
               <Button variant="danger" onClick={confirmDeleteTransaction}>Delete</Button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {reconcileTarget && (
+        <Modal
+          isOpen={!!reconcileTarget}
+          onClose={() => setReconcileTarget(null)}
+          title="Apply Payment to Invoice"
+        >
+          <div className="space-y-4 pt-2">
+            <p className="text-sm text-gray-600">
+              Apply receipt {reconcileTarget.receiptNumber} (GHS {Number(reconcileTarget.amount).toFixed(2)}) for {reconcileTarget.student?.firstName} {reconcileTarget.student?.lastName} to an outstanding invoice. The receipt amount and ledger entry will not change.
+            </p>
+            {reconcileLoading ? (
+              <p className="text-sm text-gray-500">Loading eligible invoices…</p>
+            ) : (
+              <Select
+                label="Invoice"
+                value={reconcileInvoiceId}
+                onChange={(event) => setReconcileInvoiceId(event.target.value)}
+                options={reconcileInvoices.map((invoice) => ({
+                  value: invoice.id,
+                  label: `${invoice.invoiceNumber} · ${invoice.term?.termNumber?.replace('TERM', 'Term ') || 'Term'} ${invoice.term?.academicYear || ''} · Category balance GHS ${Number(invoice.categoryTotals[reconcileTarget.category?.id]?.outstanding || 0).toFixed(2)}`,
+                }))}
+                placeholder="Select an invoice"
+              />
+            )}
+            <div className="flex justify-end gap-3 border-t border-gray-100 pt-4">
+              <Button variant="secondary" onClick={() => setReconcileTarget(null)}>Cancel</Button>
+              <Button
+                onClick={confirmReconcileTransaction}
+                disabled={reconcileLoading || reconciling || !reconcileInvoiceId}
+              >
+                {reconciling ? 'Applying…' : 'Apply Payment'}
+              </Button>
             </div>
           </div>
         </Modal>

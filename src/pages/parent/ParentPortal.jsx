@@ -297,7 +297,7 @@ function ReportsTab({ reports }) {
 }
 
 function FinanceTab({ finance }) {
-  if (!finance || ((!finance.categories || finance.categories.length === 0) && (!finance.feeInvoices || finance.feeInvoices.length === 0))) {
+  if (!finance || ((!finance.categories || finance.categories.length === 0) && (!finance.feeInvoices || finance.feeInvoices.length === 0) && !(finance.unallocatedTotal > 0))) {
     return (
       <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-12 text-center">
         <Wallet className="h-10 w-10 text-gray-200 mx-auto mb-3" />
@@ -312,6 +312,25 @@ function FinanceTab({ finance }) {
         <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Total Paid</p>
         <p className="text-2xl font-bold text-gray-900">GHS {Number(finance.totalPaid || 0).toFixed(2)}</p>
       </div>
+
+      {Number(finance.unallocatedTotal || 0) > 0 && (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 p-4">
+          <p className="text-sm font-semibold text-amber-900">Payments not applied to an invoice</p>
+          <p className="mt-1 text-sm text-amber-800">
+            GHS {Number(finance.unallocatedTotal).toFixed(2)} has been received but is not assigned to a fee invoice, so it does not reduce the invoice balances shown below. Contact the school office to have an eligible receipt applied.
+          </p>
+          {finance.unallocatedTransactions?.length > 0 && (
+            <div className="mt-3 divide-y divide-amber-200">
+              {finance.unallocatedTransactions.map((transaction) => (
+                <div key={transaction.id} className="flex items-center justify-between gap-3 py-2 text-xs text-amber-900">
+                  <span>{transaction.categoryName} · {transaction.receiptNumber} · {new Date(transaction.createdAt).toLocaleDateString()}</span>
+                  <span className="shrink-0 font-semibold">GHS {Number(transaction.amount).toFixed(2)}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {finance.feeInvoices?.length > 0 && (
         <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
@@ -337,6 +356,9 @@ function FinanceTab({ finance }) {
         {finance.categories.map(cat => (
           <div key={cat.categoryId} className="bg-white rounded-xl border border-gray-200 shadow-sm p-4">
             <p className="text-sm font-semibold text-gray-900">{cat.categoryName}</p>
+            <p className="mt-2 text-[11px] font-semibold uppercase tracking-wide text-gray-500">
+              {cat.hasInvoices ? 'Applied to invoices' : 'Paid'}
+            </p>
             <div className="mt-2 flex items-baseline gap-2">
               <span className="text-lg font-bold text-gray-900">GHS {cat.paid.toFixed(2)}</span>
               {cat.expected !== null && (
@@ -348,6 +370,11 @@ function FinanceTab({ finance }) {
             )}
             {cat.outstanding === 0 && cat.expected !== null && (
               <p className="text-xs text-emerald-600 mt-1">Fully paid</p>
+            )}
+            {cat.unallocatedPaid > 0 && (
+              <p className="text-xs text-amber-700 mt-1">
+                GHS {cat.unallocatedPaid.toFixed(2)} recorded outside invoices
+              </p>
             )}
           </div>
         ))}
@@ -361,7 +388,9 @@ function FinanceTab({ finance }) {
               <div key={t.id} className="flex items-center justify-between px-4 py-3">
                 <div>
                   <p className="text-sm text-gray-900">{t.categoryName}</p>
-                  <p className="text-[11px] text-gray-500">{t.receiptNumber} · {t.createdAt ? new Date(t.createdAt).toLocaleDateString() : ''}</p>
+                  <p className="text-[11px] text-gray-500">
+                    {t.receiptNumber} · {t.createdAt ? new Date(t.createdAt).toLocaleDateString() : ''} · {t.feeInvoiceId ? 'Applied to invoice' : 'Not applied to invoice'}
+                  </p>
                 </div>
                 <span className="text-sm font-semibold text-gray-900">GHS {Number(t.amount).toFixed(2)}</span>
               </div>
