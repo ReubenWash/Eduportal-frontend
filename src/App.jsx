@@ -3,6 +3,7 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import { ToastProvider } from './context/ToastContext';
 import { AuthProvider } from './context/AuthContext';
 import { SocketProvider } from './context/SocketContext';
+import FcmRuntime from './firebase/FcmRuntime';
 import ProtectedRoute, { roleHome } from './routes/ProtectedRoute';
 import { useAuth } from './context/AuthContext';
 import ToastContainer from './components/ui/Toast';
@@ -105,6 +106,7 @@ export default function App() {
       <SocketProvider>
         <ToastProvider>
           <ToastContainer />
+          <FcmRuntime />
           <TenantBrandingProvider>
             <AppRoutes />
           </TenantBrandingProvider>

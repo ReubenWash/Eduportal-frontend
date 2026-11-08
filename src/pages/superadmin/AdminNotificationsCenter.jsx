@@ -61,7 +61,7 @@ export default function AdminNotifications() {
         audience: audience, // Now using correct enum values
         type: 'info',
         channels: {
-          inApp: channels.some(c => c.id === 'in-app' && c.enabled),
+          inApp: channels.some(c => c.id === 'push' && c.enabled),
           email: channels.some(c => c.id === 'email' && c.enabled),
           push: channels.some(c => c.id === 'push' && c.enabled),
           sms: channels.some(c => c.id === 'sms' && c.enabled),
@@ -104,6 +104,14 @@ export default function AdminNotifications() {
             : `Notification sent to ${audienceLabel}!`,
           'success'
         );
+      }
+
+      if (channels.some(c => c.id === 'push' && c.enabled)) {
+        if (result?.push?.delivered) {
+          addToast(`Push notifications delivered to ${result.push.successCount} device(s).`, 'success');
+        } else {
+          addToast(result?.push?.note || 'No push notifications were delivered. Check Firebase setup and registered devices.', 'warning');
+        }
       }
       
       setSubject('');
@@ -157,7 +165,7 @@ export default function AdminNotifications() {
                 })}
               </div>
               <p className="text-xs text-gray-400 mt-1.5">
-                <span className="text-emerald-600">●</span> Push sends real-time notifications via Socket.IO
+                <span className="text-emerald-600">●</span> Push uses Firebase Cloud Messaging for registered devices; users can enable it from Notifications.
               </p>
             </div>
             

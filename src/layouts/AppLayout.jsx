@@ -45,6 +45,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useSocket } from '../context/SocketContext';
+import { disablePushNotifications } from '../firebase/messaging';
 import Avatar from '../components/ui/Avatar';
 
 const superAdminNav = [
@@ -73,6 +74,7 @@ const superAdminNav = [
     label: 'Notifications',
     items: [
       { path: '/admin/notifications-center', icon: Bell, label: 'Announcements',    roles: ['SUPER_ADMIN'] },
+      { path: '/notifications', icon: Bell, label: 'My Notifications', roles: ['SUPER_ADMIN'] },
     ],
   },
   {
@@ -246,9 +248,15 @@ export default function AppLayout() {
     }))
     .filter((group) => group.items.length > 0);
 
-  const handleLogout = () => {
-    logout();
-    navigate('/login');
+  const handleLogout = async () => {
+    try {
+      await disablePushNotifications(undefined, { forgetPreference: false });
+    } catch (error) {
+      console.warn('Unable to unregister this device from push notifications:', error.message);
+    } finally {
+      logout();
+      navigate('/login');
+    }
   };
 
   const roleLabel = roleLabels[userRole] || userRole?.replace(/_/g, ' ') || 'User';
