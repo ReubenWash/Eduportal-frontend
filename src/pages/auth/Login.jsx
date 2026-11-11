@@ -3,7 +3,7 @@ import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
 import { roleHome } from '../../routes/ProtectedRoute';
-import AuthLayout from '../../layouts/AuthLayout';
+import LandingAuthLayout from '../../layouts/LandingAuthLayout';
 import { Eye, EyeOff, AlertCircle } from 'lucide-react';
 
 export default function LoginPage() {
@@ -67,28 +67,28 @@ export default function LoginPage() {
   };
 
   return (
-    <AuthLayout>
-      <div className="space-y-6 w-full max-w-md">
+    <LandingAuthLayout page="login">
+      <div className="w-full space-y-6">
         {/* Heading */}
         <div>
-          <h2 className="text-3xl font-bold text-white tracking-tight">Sign in</h2>
-          <p className="mt-2 text-sm text-slate-400">
-            Enter your credentials to access your account.
+          <h2 className="text-3xl font-bold tracking-tight text-slate-900">Welcome back</h2>
+          <p className="mt-2 text-sm text-slate-600">
+            Sign in with your credentials to access your account.
           </p>
         </div>
 
         {/* Error Alert */}
         {error && (
-          <div className="flex items-center gap-2.5 rounded-xl bg-red-500/10 border border-red-500/20 px-4 py-3">
-            <AlertCircle className="h-4 w-4 text-red-400 flex-shrink-0" />
-            <p className="text-sm text-red-300">{error}</p>
+          <div className="flex items-center gap-2.5 rounded-xl border border-red-200 bg-red-50 px-4 py-3">
+            <AlertCircle className="h-4 w-4 flex-shrink-0 text-red-600" />
+            <p className="text-sm text-red-700">{error}</p>
           </div>
         )}
 
         {/* Login Form */}
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-slate-300 mb-1.5">
+            <label className="mb-1.5 block text-sm font-medium text-slate-700">
               Email or Student ID
             </label>
             <input
@@ -98,16 +98,16 @@ export default function LoginPage() {
               placeholder="e.g. admin@school.edu or JHS-2026-0001"
               autoComplete="username"
               required
-              className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+              className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-900 placeholder-slate-400 transition-all focus:border-transparent focus:outline-none focus:ring-2 focus:ring-indigo-500"
             />
           </div>
 
           <div>
             <div className="flex items-center justify-between mb-1.5">
-              <label className="block text-sm font-medium text-slate-300">Password</label>
+              <label className="block text-sm font-medium text-slate-700">Password</label>
               <Link
                 to="/forgot-password"
-                className="text-xs font-medium text-indigo-400 hover:text-indigo-300 transition-colors"
+                className="text-xs font-medium text-indigo-700 transition-colors hover:text-indigo-600"
               >
                 Forgot password?
               </Link>
@@ -120,12 +120,12 @@ export default function LoginPage() {
                 placeholder="Enter your password"
                 autoComplete="current-password"
                 required
-                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 pr-10 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+                className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 pr-10 text-sm text-slate-900 placeholder-slate-400 transition-all focus:border-transparent focus:outline-none focus:ring-2 focus:ring-indigo-500"
               />
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute inset-y-0 right-3 flex items-center text-slate-500 hover:text-slate-300 transition-colors"
+                className="absolute inset-y-0 right-3 flex items-center text-slate-500 transition-colors hover:text-slate-700"
                 aria-label={showPassword ? 'Hide password' : 'Show password'}
               >
                 {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -136,7 +136,7 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-indigo-600 hover:bg-indigo-500 disabled:opacity-60 disabled:cursor-not-allowed text-white font-semibold py-2.5 px-4 rounded-xl text-sm transition-all flex items-center justify-center gap-2 shadow-lg shadow-indigo-500/20"
+            className="flex w-full items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-indigo-500/20 transition-all hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-60"
           >
             {loading && (
               <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
@@ -149,27 +149,27 @@ export default function LoginPage() {
         </form>
 
         {/* Student Reset Link */}
-        <p className="text-center text-xs text-slate-500">
+        <p className="text-center text-xs text-slate-600">
           Student?{' '}
           <Link
             to="/student-reset-password"
-            className="font-medium text-indigo-400 hover:text-indigo-300 transition-colors"
+            className="font-medium text-indigo-700 transition-colors hover:text-indigo-600"
           >
             Reset your password here
           </Link>
         </p>
 
         {/* Book a Demo */}
-        <div className="border-t border-white/10 pt-5 text-center space-y-2">
-          <p className="text-sm text-slate-400">New school wanting to join?</p>
+        <div className="space-y-2 border-t border-slate-200 pt-5 text-center">
+          <p className="text-sm text-slate-600">New school wanting to join?</p>
           <Link
             to="/register"
-            className="inline-block text-sm font-semibold text-indigo-400 hover:text-indigo-300 transition-colors"
+            className="inline-block text-sm font-semibold text-indigo-700 transition-colors hover:text-indigo-600"
           >
             Book a Demo →
           </Link>
         </div>
       </div>
-    </AuthLayout>
+    </LandingAuthLayout>
   );
 }

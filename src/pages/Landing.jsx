@@ -42,7 +42,7 @@ const DEFAULT_CONTENT = {
   heroHeadlineHighlight: "Not paperwork.",
   heroSubtitle: "Goreb gives school administrators, teachers, and parents one place to manage students, scores, attendance, and term reports — without the spreadsheets.",
   heroPrimaryBtn: "Book a Demo",
-  heroTrustText: "Trusted by 200+ schools across Ghana, Nigeria & Kenya",
+  heroTrustText: "Trusted schools across Ghana",
   heroImageUrl: null,
   stats: [
     { id: 'stat-1', number: "200+", label: "Schools registered" },

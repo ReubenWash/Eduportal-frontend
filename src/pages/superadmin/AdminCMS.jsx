@@ -27,7 +27,7 @@ export default function AdminCMS() {
     heroHeadline: 'Run your school.',
     heroHeadlineHighlight: 'Not paperwork.',
     heroSubtitle: 'Goreb gives school administrators, teachers, and parents one place to manage students, scores, attendance, and term reports — without the spreadsheets.',
-    heroTrustText: 'Trusted by 200+ schools across Ghana, Nigeria & Kenya',
+    heroTrustText: 'Trusted by across Ghana',
   });
 
   const [statsForm, setStatsForm] = useState([
