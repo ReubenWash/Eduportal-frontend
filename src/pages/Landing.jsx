@@ -1,9 +1,30 @@
 import { Link } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { getLandingPageContent } from '../api/cmsApi';
-import { MessageCircle, Calendar, Phone, Mail } from 'lucide-react';
+import {
+  MessageCircle, Calendar, Phone, Mail, ArrowUpRight, ClipboardCheck,
+  CalendarCheck, FileText, GraduationCap, Play, Sparkle, Users,
+} from 'lucide-react';
 
 // ── Default landing page content ─────────────────────────────────────────
+const C = {
+  black: '#1A3C5E',
+  primary: '#4F46E5',
+  white: '#FFFFFF',
+  paper: '#F8FAFC',
+  beige: '#EEF2FF',
+  lime: '#F59E0B',
+  mute: '#64748B',
+};
+const glass = {
+  background: 'rgba(255,255,255,.55)',
+  backdropFilter: 'blur(14px)',
+  WebkitBackdropFilter: 'blur(14px)',
+  border: '1px solid rgba(255,255,255,.8)',
+  boxShadow: '0 24px 48px -16px rgba(0,0,0,.12)',
+};
+const heroButton = 'inline-flex items-center justify-center gap-2 rounded-full px-6 py-3.5 text-[15px] font-semibold transition-transform active:scale-[.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-black';
+
 const DEFAULT_THEME = {
   primaryColor: '#4F46E5',
   secondaryColor: '#1A3C5E',
@@ -22,6 +43,7 @@ const DEFAULT_CONTENT = {
   heroSubtitle: "Goreb gives school administrators, teachers, and parents one place to manage students, scores, attendance, and term reports — without the spreadsheets.",
   heroPrimaryBtn: "Book a Demo",
   heroTrustText: "Trusted by 200+ schools across Ghana, Nigeria & Kenya",
+  heroImageUrl: null,
   stats: [
     { id: 'stat-1', number: "200+", label: "Schools registered" },
     { id: 'stat-2', number: "84K", label: "Students managed" },
@@ -162,6 +184,7 @@ export default function LandingPage() {
   const [showIosInstructions, setShowIosInstructions] = useState(false);
   const [showTalkToTeam, setShowTalkToTeam] = useState(false);
   const theme = c.theme || DEFAULT_THEME;
+  const testimonials = c.testimonials || [];
 
   useEffect(() => {
     const root = document.documentElement;
@@ -186,6 +209,25 @@ export default function LandingPage() {
     return () => window.removeEventListener('beforeinstallprompt', handleBefore);
   }, []);
 
+  // Scroll-triggered reveal for below-fold elements
+  useEffect(() => {
+    const els = document.querySelectorAll('.lp-reveal');
+    if (!els.length) return;
+    const io = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add('is-visible');
+            io.unobserve(entry.target);
+          }
+        });
+      },
+      { threshold: 0.12, rootMargin: '0px 0px -40px 0px' }
+    );
+    els.forEach((el) => io.observe(el));
+    return () => io.disconnect();
+  }, [testimonials.length]);
+
   const handleInstallClick = async () => {
     if (isInstalled) return;
     if (isIos()) { setShowIosInstructions(true); return; }
@@ -203,7 +245,6 @@ export default function LandingPage() {
 
   // Ensure we have arrays with unique keys
   const stats = c.stats || [];
-  const testimonials = c.testimonials || [];
   const schools = c.schools || [];
   const legalLinks = c.legalLinks || [
     { label: 'Privacy Policy', path: '/legal/privacy' },
@@ -218,135 +259,118 @@ export default function LandingPage() {
 
   return (
     <div className="landing-page min-h-screen bg-white">
+      <div className="gl-top" style={{ fontFamily: "'DM Sans', system-ui, sans-serif", background: C.paper, color: C.black }}>
+        <style>{`
+          @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=Instrument+Serif:ital@0;1&display=swap');
+          .gl-top h1 { font-family: 'Instrument Serif', Georgia, serif; font-weight: 400; letter-spacing: -.025em; }
+          .gl-spin { animation: gl-rot 28s linear infinite; }
+          @keyframes gl-rot { to { transform: rotate(360deg); } }
+          @media (prefers-reduced-motion: reduce) { .gl-top *, .gl-spin { animation: none !important; transition: none !important; } }
+        `}</style>
+
       {/* NAV */}
-      <nav>
-        <div className="nav-inner">
-          <Link to="/" className="logo">
-            <div className="logo-mark">
-              <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/>
-              </svg>
-            </div>
-            <span className="logo-name">Goreb</span>
+      <header className="sticky top-0 z-40 px-5 pt-4">
+        <div className="mx-auto flex max-w-6xl items-center justify-between">
+          <Link to="/" className="flex items-center gap-2">
+            <GraduationCap size={22} strokeWidth={2} />
+            <span className="text-xl font-semibold tracking-tight">Goreb</span>
           </Link>
-          <ul className="nav-links">
-            <li><a href="#features">Features</a></li>
-            <li><a href="#how">How it works</a></li>
-            <li><a href="#plans">Pricing</a></li>
-            <li><a href="#testimonials">Reviews</a></li>
-          </ul>
-          <div className="nav-actions">
-            <Link to="/login"><button className="btn-ghost">Sign in</button></Link>
-            <Link to="/register" className="btn-primary">
-              Book a Demo
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="14" height="14"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+          <div className="hidden items-center gap-1 rounded-full p-1 md:flex" style={glass} role="navigation" aria-label="Main">
+            {[
+              ['Features', '#features'],
+              ['How it works', '#how'],
+              ['Pricing', '#plans'],
+              ['Reviews', '#testimonials'],
+            ].map(([label, href]) => (
+              <a key={href} href={href} className="rounded-full px-4 py-2 text-sm hover:bg-white/80">{label}</a>
+            ))}
+          </div>
+          <div className="flex items-center gap-3">
+            <Link to="/login" className="hidden text-sm sm:block">Sign in</Link>
+            <Link to="/register" className={`${heroButton} !py-2.5 !text-sm`} style={{ background: C.primary, color: C.white }}>
+              {c.heroPrimaryBtn || 'Book a Demo'} <ArrowUpRight size={14} />
             </Link>
           </div>
         </div>
-      </nav>
+      </header>
 
       {/* HERO */}
-      <section>
-        <div className="hero">
-          <div className="hero-content">
-            <div className="hero-eyebrow lp-fade-up">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
-              Built for African schools
+      <section className="relative mx-auto max-w-6xl overflow-hidden px-5 pb-16 pt-14 text-center md:pt-16">
+        <svg className="gl-spin absolute right-6 top-10 hidden h-28 w-28 md:block" viewBox="0 0 120 120" aria-hidden="true">
+          <defs><path id="gl-circ" d="M60,60 m-46,0 a46,46 0 1,1 92,0 a46,46 0 1,1 -92,0" /></defs>
+          <text fontSize="9.5" letterSpacing="3.2" fill={C.black}><textPath href="#gl-circ">A MORE ORGANISED SCHOOL · EVERY TERM ·</textPath></text>
+        </svg>
+        <Sparkle className="absolute right-[3.75rem] top-[4.75rem] hidden md:block" size={22} fill={C.black} aria-hidden="true" />
+
+        <h1 className="mx-auto max-w-4xl text-[56px] leading-[.95] sm:text-7xl md:text-[104px]">
+          {c.heroHeadline}<br /><em>{c.heroHeadlineHighlight}</em>
+        </h1>
+        <p className="mx-auto mt-6 max-w-md text-[17px] leading-relaxed" style={{ color: C.mute }}>{c.heroSubtitle}</p>
+        <div className="mt-7 flex flex-wrap justify-center gap-3">
+          <Link to="/register" className={heroButton} style={{ background: C.primary, color: C.white }}>
+            {c.heroPrimaryBtn || 'Book a Demo'} <ArrowUpRight size={16} />
+          </Link>
+          <a href="#features" className={`${heroButton} border border-black/10`} style={{ background: C.white }}>
+            <span className="grid h-6 w-6 place-items-center rounded-full" style={{ background: C.black }}>
+              <Play size={11} color="#fff" fill="#fff" />
+            </span>
+            See how it works
+          </a>
+        </div>
+
+        <div className="relative mx-auto mt-10 h-[500px] max-w-5xl md:h-[560px]">
+          <svg className="absolute inset-0 hidden h-full w-full md:block" viewBox="0 0 1000 560" fill="none" aria-hidden="true">
+            <path d="M200 120 C 210 330, 330 430, 440 440" stroke="#0003" />
+            <path d="M800 190 C 790 330, 700 420, 600 440" stroke="#0003" />
+          </svg>
+
+          {c.heroImageUrl ? (
+            <img src={c.heroImageUrl} alt="" className="absolute bottom-0 left-1/2 h-full -translate-x-1/2 object-contain object-bottom" />
+          ) : (
+            <div className="absolute bottom-0 left-1/2 grid h-[420px] w-[270px] -translate-x-1/2 place-items-center rounded-t-[999px] md:h-[500px] md:w-[360px]"
+              style={{ background: 'linear-gradient(180deg,#4F46E5 0%,#1A3C5E 85%)' }}>
+              <GraduationCap size={96} color="#fff" strokeWidth={1} style={{ opacity: .35 }} />
             </div>
-            <h1 className="hero-h1 lp-fade-up-1">{c.heroHeadline}<br /><span>{c.heroHeadlineHighlight}</span></h1>
-            <p className="hero-sub lp-fade-up-2">{c.heroSubtitle}</p>
-            <div className="hero-cta lp-fade-up-3">
-              <Link to="/register" className="btn-hero-primary">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 12l2 2 4-4"/></svg>
-                {c.heroPrimaryBtn || "Book a Demo"}
-              </Link>
-              <a href="#features" className="btn-hero-secondary">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>
-                See how it works
-              </a>
+          )}
+
+          {[
+            { title: 'Scores', description: 'Totals and grades, automatic.', Icon: ClipboardCheck, background: C.lime, position: 'left-2 top-[34%] md:left-[22%]', rotation: '-6deg' },
+            { title: 'Attendance', description: 'Marked daily, per class.', Icon: CalendarCheck, background: '#C7D2FE', position: 'right-2 top-[48%] md:right-[18%] md:top-[44%]', rotation: '5deg' },
+            { title: 'Reports', description: 'PDFs out to parents.', Icon: FileText, background: '#FDE68A', position: 'left-6 top-[66%] md:left-[30%] md:top-[62%]', rotation: '-3deg' },
+          ].map(({ title, description, Icon, background, position, rotation }) => (
+            <div key={title} className={`absolute flex items-center gap-3 rounded-2xl px-4 py-3 text-left ${position}`} style={{ ...glass, transform: `rotate(${rotation})` }}>
+              <span className="grid h-10 w-10 place-items-center rounded-xl" style={{ background: background }}><Icon size={18} /></span>
+              <span>
+                <span className="block text-[15px] font-medium">{title}</span>
+                <span className="block text-xs" style={{ color: C.mute }}>{description}</span>
+              </span>
             </div>
-            <div className="hero-trust lp-fade-up-4">
-              <div className="trust-avatars">
-                <div className="trust-avatar" style={{background:'#4F46E5'}}>AK</div>
-                <div className="trust-avatar" style={{background:'#10B981'}}>PM</div>
-                <div className="trust-avatar" style={{background:'#F59E0B'}}>ES</div>
-                <div className="trust-avatar" style={{background:'#EF4444'}}>NB</div>
-              </div>
-              {c.heroTrustText}
-            </div>
+          ))}
+
+          <div className="absolute left-0 top-4 hidden w-56 rounded-3xl p-5 text-left md:block" style={{ ...glass, transform: 'rotate(-5deg)' }}>
+            <Users size={18} />
+            <p className="mt-4 text-lg font-medium leading-tight">Turn marks into report cards.</p>
+            <p className="mt-1 text-sm" style={{ color: C.mute }}>Enter scores once. Reports build themselves.</p>
           </div>
-          <div className="hero-visual lp-slide-r">
-            <div style={{position: 'relative', padding: '24px'}}>
-              <div className="dashboard-card">
-                <div className="dash-header">
-                  <div className="dash-dot" style={{background:'#EF4444'}}></div>
-                  <div className="dash-dot" style={{background:'#F59E0B'}}></div>
-                  <div className="dash-dot" style={{background:'#10B981'}}></div>
-                  <span>Term 2 · 2025/2026</span>
-                </div>
-                <div className="dash-body">
-                  <div className="dash-stats">
-                    <div className="dash-stat">
-                      <div className="dash-stat-label">Students</div>
-                      <div className="dash-stat-value">847</div>
-                      <div className="dash-stat-sub">+12 this term</div>
-                    </div>
-                    <div className="dash-stat">
-                      <div className="dash-stat-label">Attendance</div>
-                      <div className="dash-stat-value">94%</div>
-                      <div className="dash-stat-sub">Above target</div>
-                    </div>
-                    <div className="dash-stat">
-                      <div className="dash-stat-label">Reports</div>
-                      <div className="dash-stat-value">312</div>
-                      <div className="dash-stat-sub">86 pending</div>
-                    </div>
-                  </div>
-                  <div className="dash-section-label">Recent submissions</div>
-                  <table className="dash-table">
-                    <tbody>
-                      <tr>
-                        <td>Kofi Mensah — JHS2A</td>
-                        <td><span className="dash-badge badge-green">Approved</span></td>
-                      </tr>
-                      <tr>
-                        <td>Ama Osei — JHS1B</td>
-                        <td><span className="dash-badge badge-amber">Pending</span></td>
-                      </tr>
-                      <tr>
-                        <td>Kweku Asante — JHS3A</td>
-                        <td><span className="dash-badge badge-blue">Released</span></td>
-                      </tr>
-                      <tr>
-                        <td>Efua Boateng — JHS1A</td>
-                        <td><span className="dash-badge badge-green">Approved</span></td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-              <div className="float-card float-card-left lp-float">
-                <div className="float-icon float-icon-green">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="#10B981" strokeWidth="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
-                </div>
-                <div>
-                  <div className="float-text-label">Reports released</div>
-                  <div className="float-text-value">226 / 312</div>
-                </div>
-              </div>
-              <div className="float-card float-card-right lp-float-slow">
-                <div className="float-icon float-icon-indigo">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="#4F46E5" strokeWidth="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-                </div>
-                <div>
-                  <div className="float-text-label">Active teachers</div>
-                  <div className="float-text-value">38 online</div>
-                </div>
-              </div>
+          <div className="absolute right-0 top-14 hidden w-56 rounded-3xl p-5 text-left md:block" style={{ ...glass, transform: 'rotate(5deg)' }}>
+            <div className="flex -space-x-2" aria-hidden="true">
+              {['AK', 'PM', 'ES'].map((initials) => (
+                <span key={initials} className="grid h-8 w-8 place-items-center rounded-full border-2 border-white text-[10px] font-medium" style={{ background: C.beige }}>{initials}</span>
+              ))}
             </div>
+            <p className="mt-4 text-lg font-medium leading-tight">Parents informed, same day.</p>
+            <p className="mt-1 text-sm" style={{ color: C.mute }}>Reports open on any phone.</p>
+          </div>
+
+          <div className="absolute bottom-2 left-0 hidden text-left text-sm md:block" style={{ color: C.mute }}>
+            <span className="mb-3 block h-px w-8 bg-black/30" />{c.heroTrustText}
+          </div>
+          <div className="absolute bottom-6 right-0 hidden text-left text-sm md:block" style={{ color: C.mute }}>
+            <Sparkle size={16} fill={C.black} color={C.black} className="mb-2" />Less chaos.<br />More clarity.
           </div>
         </div>
       </section>
+      </div>
 
       {/* LOGOS */}
       <div className="logos-section">
@@ -366,11 +390,11 @@ export default function LandingPage() {
 
       {/* FEATURES */}
       <section className="features-section" id="features">
-        <div className="section-label">Platform capabilities</div>
-        <h2 className="section-h2">Everything a school needs. Nothing it doesn't.</h2>
-        <p className="section-sub">From student admission to end-of-term report cards — every workflow is connected, every role has the right access.</p>
+        <div className="section-label lp-reveal">Platform capabilities</div>
+        <h2 className="section-h2 lp-reveal" style={{animationDelay:'0.05s'}}>Everything a school needs. Nothing it doesn't.</h2>
+        <p className="section-sub lp-reveal" style={{animationDelay:'0.1s'}}>From student admission to end-of-term report cards — every workflow is connected, every role has the right access.</p>
         <div className="features-grid">
-          <div className="feature-card lp-fade-up" style={{animationDelay:'0.05s'}}>
+          <div className="feature-card lp-reveal" style={{transitionDelay:'0.05s'}}>
             <div className="feature-icon">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/>
@@ -380,7 +404,7 @@ export default function LandingPage() {
             <div className="feature-title">Student management</div>
             <div className="feature-desc">Admit students with photos, bulk-import via CSV, track transfers and withdrawals. Full academic history per student.</div>
           </div>
-          <div className="feature-card lp-fade-up" style={{animationDelay:'0.12s'}}>
+          <div className="feature-card lp-reveal" style={{transitionDelay:'0.12s'}}>
             <div className="feature-icon">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
@@ -389,7 +413,7 @@ export default function LandingPage() {
             <div className="feature-title">Scores & grading</div>
             <div className="feature-desc">Teachers enter CA1, CA2, CA3, and exam scores. Totals and letter grades compute automatically with one click.</div>
           </div>
-          <div className="feature-card lp-fade-up" style={{animationDelay:'0.19s'}}>
+          <div className="feature-card lp-reveal" style={{transitionDelay:'0.19s'}}>
             <div className="feature-icon">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/>
@@ -399,7 +423,7 @@ export default function LandingPage() {
             <div className="feature-title">Daily attendance</div>
             <div className="feature-desc">Mark present, absent, or late for every student per class per day. Bulk mark, summary charts, and analytics all included.</div>
           </div>
-          <div className="feature-card lp-fade-up" style={{animationDelay:'0.26s'}}>
+          <div className="feature-card lp-reveal" style={{transitionDelay:'0.26s'}}>
             <div className="feature-icon">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
@@ -409,7 +433,7 @@ export default function LandingPage() {
             <div className="feature-title">Term report cards</div>
             <div className="feature-desc">Generate PDF report cards automatically. Approve, release, and email them to parents — or download the full class as a ZIP.</div>
           </div>
-          <div className="feature-card lp-fade-up" style={{animationDelay:'0.33s'}}>
+          <div className="feature-card lp-reveal" style={{transitionDelay:'0.33s'}}>
             <div className="feature-icon">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/>
@@ -419,7 +443,7 @@ export default function LandingPage() {
             <div className="feature-title">Multi-role access</div>
             <div className="feature-desc">School admins, class teachers, subject teachers, parents, and students each see only what they need. Role-based from the ground up.</div>
           </div>
-          <div className="feature-card lp-fade-up" style={{animationDelay:'0.40s'}}>
+          <div className="feature-card lp-reveal" style={{transitionDelay:'0.40s'}}>
             <div className="feature-icon">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/>
@@ -435,32 +459,32 @@ export default function LandingPage() {
       {/* HOW IT WORKS */}
       <section className="how-section" id="how">
         <div className="how-inner">
-          <div className="section-label">How it works</div>
-          <h2 className="section-h2">Up and running in under a day.</h2>
-          <p className="section-sub">No lengthy onboarding. No IT department required. Book a demo to set up your school and start the term.</p>
+          <div className="section-label lp-reveal">How it works</div>
+          <h2 className="section-h2 lp-reveal" style={{transitionDelay:'0.05s'}}>Up and running in under a day.</h2>
+          <p className="section-sub lp-reveal" style={{transitionDelay:'0.1s'}}>No lengthy onboarding. No IT department required. Book a demo to set up your school and start the term.</p>
           <div className="steps-grid">
-            <div className="step lp-fade-up" data-n="1" style={{animationDelay:'0.05s'}}>
+            <div className="step lp-reveal" data-n="1" style={{transitionDelay:'0.05s'}}>
               <div className="step-icon">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
               </div>
               <div className="step-title">Book a demo & onboard</div>
               <div className="step-desc">Set up your school profile, upload a logo, and configure your first academic term.</div>
             </div>
-            <div className="step lp-fade-up" data-n="2" style={{animationDelay:'0.15s'}}>
+            <div className="step lp-reveal" data-n="2" style={{transitionDelay:'0.15s'}}>
               <div className="step-icon">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
               </div>
               <div className="step-title">Add staff & students</div>
               <div className="step-desc">Create teacher accounts, bulk-import students from a spreadsheet, and link guardians.</div>
             </div>
-            <div className="step lp-fade-up" data-n="3" style={{animationDelay:'0.25s'}}>
+            <div className="step lp-reveal" data-n="3" style={{transitionDelay:'0.25s'}}>
               <div className="step-icon">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
               </div>
               <div className="step-title">Record scores & attendance</div>
               <div className="step-desc">Teachers enter CA scores and mark attendance daily. Grades compute automatically at term end.</div>
             </div>
-            <div className="step lp-fade-up" data-n="4" style={{animationDelay:'0.35s'}}>
+            <div className="step lp-reveal" data-n="4" style={{transitionDelay:'0.35s'}}>
               <div className="step-icon">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
               </div>
@@ -487,12 +511,12 @@ export default function LandingPage() {
       <section className="testimonials-section" id="testimonials">
         <div className="testimonials-inner">
           <div style={{textAlign:'center', marginBottom:'56px'}}>
-            <div className="section-label" style={{textAlign:'center'}}>What schools say</div>
-            <h2 className="section-h2" style={{maxWidth:'500px', margin:'0 auto'}}>Real feedback from real administrators</h2>
+            <div className="section-label lp-reveal" style={{textAlign:'center'}}>What schools say</div>
+            <h2 className="section-h2 lp-reveal" style={{maxWidth:'500px', margin:'0 auto', transitionDelay:'0.05s'}}>Real feedback from real administrators</h2>
           </div>
           <div className="testimonials-grid">
             {testimonials.map((t, index) => (
-              <div key={t.id || `testimonial-${index}`} className="testimonial-card lp-fade-up" style={{animationDelay:`${0.07 * index}s`}}>
+              <div key={t.id || `testimonial-${index}`} className="testimonial-card lp-reveal" style={{transitionDelay:`${0.08 * index}s`}}>
                 <div className="testimonial-stars">
                   {[1,2,3,4,5].map(n => (
                     <svg key={n} viewBox="0 0 24 24" fill="currentColor"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
@@ -515,16 +539,16 @@ export default function LandingPage() {
       {/* PRICING */}
       <section className="plans-section" id="plans">
         <div style={{textAlign:'center', marginBottom:'56px'}}>
-          <div className="section-label" style={{textAlign:'center'}}>Pricing</div>
-          <h2 className="section-h2" style={{maxWidth:'520px', margin:'0 auto'}}>
+          <div className="section-label lp-reveal" style={{textAlign:'center'}}>Pricing</div>
+          <h2 className="section-h2 lp-reveal" style={{maxWidth:'520px', margin:'0 auto', transitionDelay:'0.05s'}}>
             {pricing.headline}
           </h2>
-          <p className="section-sub" style={{maxWidth:'440px', margin:'16px auto 0'}}>
+          <p className="section-sub lp-reveal" style={{maxWidth:'440px', margin:'16px auto 0', transitionDelay:'0.1s'}}>
             {pricing.subheadline}
           </p>
         </div>
 
-        <div className="plans-grid" style={{gridTemplateColumns: '1fr', maxWidth: '640px', margin: '0 auto'}}>
+        <div className="plans-grid lp-reveal" style={{gridTemplateColumns: '1fr', maxWidth: '640px', margin: '0 auto', transitionDelay:'0.15s'}}>
           <div className="plan-card featured" style={{textAlign: 'center'}}>
             <div className="plan-badge">Simple pricing</div>
             <div className="plan-price" style={{fontSize:'56px', lineHeight:1}}>
