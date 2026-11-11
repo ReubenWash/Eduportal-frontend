@@ -755,8 +755,8 @@ export const broadcastNotification = async (data) => {
   return unwrapItem(res.data);
 };
 
-export const sendPushNotification = async ({ title, body, audience }) => {
-  const res = await api.post('/admin/notifications/push', { title, body, audience });
+export const sendPushNotification = async ({ title, body, audience, selectedSchools }) => {
+  const res = await api.post('/admin/notifications/push', { title, body, audience, selectedSchools });
   return unwrapItem(res.data);
 };
 

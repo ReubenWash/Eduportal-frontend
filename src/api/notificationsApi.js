@@ -24,6 +24,16 @@ export const deleteNotification = async (id) => {
   return unwrapItem(res.data);
 };
 
+export const registerDeviceToken = async (token, platform = 'web') => {
+  const res = await api.post('/notifications/device-token', { token, platform });
+  return unwrapItem(res.data);
+};
+
+export const removeDeviceToken = async (token) => {
+  const res = await api.delete('/notifications/device-token', { data: { token } });
+  return unwrapItem(res.data);
+};
+
 // POST /notifications/broadcast  (admin)
 export const broadcastNotification = async (data) => {
   const res = await api.post('/notifications/broadcast', data);

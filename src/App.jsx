@@ -3,6 +3,7 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import { ToastProvider } from './context/ToastContext';
 import { AuthProvider } from './context/AuthContext';
 import { SocketProvider } from './context/SocketContext';
+import FcmRuntime from './firebase/FcmRuntime';
 import ProtectedRoute, { roleHome } from './routes/ProtectedRoute';
 import { useAuth } from './context/AuthContext';
 import ToastContainer from './components/ui/Toast';
@@ -43,6 +44,7 @@ const ActivityLogs = lazy(() => import('./pages/activity/ActivityLogs'));
 const Notifications = lazy(() => import('./pages/notifications/Notifications'));
 const ParentPortal = lazy(() => import('./pages/parent/ParentPortal'));
 const StudentPortal = lazy(() => import('./pages/student/StudentPortal'));
+const StudyAssistant = lazy(() => import('./pages/StudyAssistant'));
 const SuperAdminDashboard = lazy(() => import('./pages/superadmin/SuperAdminDashboard'));
 const AdminSchools = lazy(() => import('./pages/superadmin/AdminSchools'));
 const AdminUsers = lazy(() => import('./pages/superadmin/AdminUsers'));
@@ -105,6 +107,7 @@ export default function App() {
       <SocketProvider>
         <ToastProvider>
           <ToastContainer />
+          <FcmRuntime />
           <TenantBrandingProvider>
             <AppRoutes />
           </TenantBrandingProvider>
@@ -232,6 +235,7 @@ function AppRoutes() {
           {/* Parent / Student read-only portals */}
           <Route path="/parent" element={<ProtectedRoute allowedRoles={['PARENT']}><ParentPortal /></ProtectedRoute>} />
           <Route path="/student" element={<ProtectedRoute allowedRoles={['STUDENT']}><StudentPortal /></ProtectedRoute>} />
+          <Route path="/study-assistant" element={<ProtectedRoute allowedRoles={['STUDENT', 'CLASS_TEACHER', 'SUBJECT_TEACHER']}><StudyAssistant /></ProtectedRoute>} />
 
           {/* Super Admin Only */}
           <Route path="/admin" element={<ProtectedRoute allowedRoles={['SUPER_ADMIN']}><SuperAdminDashboard /></ProtectedRoute>} />

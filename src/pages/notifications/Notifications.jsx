@@ -3,8 +3,15 @@ import PageHeader from '../../components/common/PageHeader';
 import Button from '../../components/ui/Button';
 import { useToast } from '../../context/ToastContext';
 import { useSocket } from '../../context/SocketContext';
-import { getNotifications, markNotificationRead } from '../../api/notificationsApi';
-import { Bell, BellOff, CheckCheck, AlertCircle, Info, CheckCircle2, XCircle } from 'lucide-react';
+import { useAuth } from '../../context/AuthContext';
+import { getNotifications, markNotificationRead, markAllNotificationsRead } from '../../api/notificationsApi';
+import {
+  disablePushNotifications,
+  enablePushNotifications,
+  isPushConfigured,
+} from '../../firebase/messaging';
+import { Bell, BellOff, CheckCheck, AlertCircle, Info, CheckCircle2, XCircle, MessageSquare, Send } from 'lucide-react';
+import { broadcastNotification } from '../../api/notificationsApi';
 
 const typeConfig = {
   success: { iconBg: 'bg-emerald-100', iconColor: 'text-emerald-600', icon: CheckCircle2 },
@@ -29,8 +36,98 @@ export default function Notifications() {
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
+  const [announcementTitle, setAnnouncementTitle] = useState('');
+  const [announcementMessage, setAnnouncementMessage] = useState('');
+  const [announcementAudience, setAnnouncementAudience] = useState('PARENTS');
+  const [announcementSms, setAnnouncementSms] = useState(false);
+  const [sendingAnnouncement, setSendingAnnouncement] = useState(false);
   const { addToast } = useToast();
+  const { accessToken, user } = useAuth();
   const { unreadCount, setUnreadCount, markAsRead: socketMarkAsRead, markAllAsRead } = useSocket();
+  const [pushState, setPushState] = useState({
+    permission: typeof Notification === 'undefined' ? 'unsupported' : Notification.permission,
+    enabled: false,
+    busy: false,
+    error: '',
+  });
+
+  useEffect(() => {
+    const permission = typeof Notification === 'undefined' ? 'unsupported' : Notification.permission;
+    setPushState({
+      permission,
+      enabled: permission === 'granted'
+        && localStorage.getItem('fcmPushDisabled') !== 'true'
+        && Boolean(localStorage.getItem('fcmDeviceToken')),
+      busy: false,
+      error: isPushConfigured() ? '' : 'Firebase web configuration is missing.',
+    });
+  }, [accessToken, user?.id]);
+
+  const handleEnablePush = async () => {
+    setPushState((current) => ({ ...current, busy: true, error: '' }));
+    try {
+      await enablePushNotifications();
+      window.dispatchEvent(new CustomEvent('goreb-fcm-permission-changed', { detail: { enabled: true } }));
+      setPushState({ permission: 'granted', enabled: true, busy: false, error: '' });
+      addToast('Push notifications enabled on this device.', 'success');
+    } catch (error) {
+      setPushState({
+        permission: typeof Notification === 'undefined' ? 'unsupported' : Notification.permission,
+        enabled: false,
+        busy: false,
+        error: error.message || 'Unable to enable push notifications.',
+      });
+    }
+  };
+
+  const handleDisablePush = async () => {
+    setPushState((current) => ({ ...current, busy: true, error: '' }));
+    try {
+      await disablePushNotifications(undefined, { forgetPreference: true });
+      window.dispatchEvent(new CustomEvent('goreb-fcm-permission-changed', { detail: { enabled: false } }));
+      setPushState((current) => ({ ...current, enabled: false, busy: false, error: '' }));
+      addToast('Push notifications disabled on this device.', 'success');
+    } catch (error) {
+      setPushState((current) => ({ ...current, busy: false, error: error.message || 'Unable to disable push notifications.' }));
+    }
+  };
+
+  const handleSendAnnouncement = async (event) => {
+    event.preventDefault();
+    if (!announcementTitle.trim() || !announcementMessage.trim()) {
+      addToast('Enter an announcement title and message.', 'error');
+      return;
+    }
+
+    setSendingAnnouncement(true);
+    try {
+      const result = await broadcastNotification({
+        title: announcementTitle.trim(),
+        message: announcementMessage.trim(),
+        audience: announcementAudience,
+        type: 'info',
+        channels: { sms: announcementSms },
+      });
+      if (announcementSms) {
+        const sms = result?.sms;
+        if (!sms?.configured || sms?.failed > 0) {
+          addToast(sms?.error || 'Arkesel SMS is not configured. Configure the backend SMS secrets to enable delivery.', 'warning');
+        } else if (sms?.noRecipients || sms?.attempted === 0) {
+          addToast('The announcement was saved, but no phone numbers were available for this audience.', 'warning');
+        } else {
+          addToast(`Announcement sent. SMS accepted by Arkesel for ${sms.accepted} recipient(s).`, 'success');
+        }
+      } else {
+        addToast('School announcement sent.', 'success');
+      }
+      setAnnouncementTitle('');
+      setAnnouncementMessage('');
+    } catch (error) {
+      addToast(error.response?.data?.message || error.message || 'Could not send announcement.', 'error');
+    } finally {
+      setSendingAnnouncement(false);
+    }
+  };
 
   const fetchNotifications = async () => {
     try {
@@ -82,8 +179,6 @@ export default function Notifications() {
   };
 
   const handleMarkAllRead = async () => {
-    const unreadIds = notifications.filter(n => !n.read).map(n => n.id);
-    
     // Optimistic update
     setNotifications(prev => prev.map(n => ({ ...n, read: true })));
     
@@ -96,7 +191,7 @@ export default function Notifications() {
     
     // Also call API
     try {
-      await Promise.all(unreadIds.map(id => markNotificationRead(id)));
+      await markAllNotificationsRead();
     } catch (err) {
       // Revert on error - refetch
       fetchNotifications();
@@ -138,6 +233,80 @@ export default function Notifications() {
           )
         }
       />
+
+      {user?.role === 'SCHOOL_ADMIN' && (
+        <form onSubmit={handleSendAnnouncement} className="mb-5 space-y-4 rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+          <div className="flex items-start gap-3">
+            <div className="rounded-lg bg-indigo-50 p-2 text-indigo-600"><MessageSquare className="h-5 w-5" /></div>
+            <div>
+              <h2 className="text-sm font-semibold text-gray-900">Send a school announcement</h2>
+              <p className="mt-1 text-sm text-gray-500">Share PTA notices with parents or reminders with teaching staff. In-app and push notifications are included; SMS is optional.</p>
+            </div>
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <label className="text-sm font-medium text-gray-700">
+              Audience
+              <select value={announcementAudience} onChange={(event) => setAnnouncementAudience(event.target.value)} className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm">
+                <option value="PARENTS">Parents &amp; guardians</option>
+                <option value="TEACHERS">Teaching staff</option>
+                <option value="ALL">All school users</option>
+              </select>
+            </label>
+            <label className="text-sm font-medium text-gray-700">
+              Title
+              <input value={announcementTitle} onChange={(event) => setAnnouncementTitle(event.target.value)} maxLength={160} className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm" required />
+            </label>
+          </div>
+          <label className="block text-sm font-medium text-gray-700">
+            Message
+            <textarea value={announcementMessage} onChange={(event) => setAnnouncementMessage(event.target.value)} rows={3} maxLength={2000} className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm" required />
+          </label>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <label className="inline-flex items-center gap-2 text-sm text-gray-700">
+              <input type="checkbox" checked={announcementSms} onChange={(event) => setAnnouncementSms(event.target.checked)} className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500" />
+              <span>Also send SMS using Arkesel</span>
+            </label>
+            <Button type="submit" icon={Send} loading={sendingAnnouncement}>Send announcement</Button>
+          </div>
+        </form>
+      )}
+
+      <section className="mb-5 flex flex-col gap-4 rounded-xl border border-gray-200 bg-white p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-start gap-3">
+          <div className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-indigo-50 text-indigo-600">
+            <Bell className="h-5 w-5" />
+          </div>
+          <div>
+            <h2 className="text-sm font-semibold text-gray-900">Push notifications</h2>
+            <p className="mt-1 text-sm text-gray-500">
+              {pushState.enabled
+                ? 'This device is registered to receive notifications, including when Goreb is in the background.'
+                : pushState.permission === 'denied'
+                  ? 'Notifications are blocked by your browser. Allow them in browser settings to enable push.'
+                  : pushState.permission === 'unsupported'
+                    ? 'This browser does not support web push notifications.'
+                    : pushState.error || 'Enable push notifications on this device to receive important updates.'}
+            </p>
+            {pushState.error && pushState.permission !== 'denied' && (
+              <p className="mt-1 text-xs text-amber-700">{pushState.error}</p>
+            )}
+          </div>
+        </div>
+        {pushState.enabled ? (
+          <Button variant="secondary" size="sm" loading={pushState.busy} onClick={handleDisablePush}>
+            Turn off on this device
+          </Button>
+        ) : (
+          <Button
+            size="sm"
+            loading={pushState.busy}
+            disabled={pushState.permission === 'denied' || pushState.permission === 'unsupported' || !isPushConfigured()}
+            onClick={handleEnablePush}
+          >
+            Enable on this device
+          </Button>
+        )}
+      </section>
 
       {loadError && (
         <div className="rounded-lg bg-amber-50 border border-amber-200 px-4 py-3 text-sm text-amber-800 mb-5">

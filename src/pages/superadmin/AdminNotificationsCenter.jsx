@@ -61,7 +61,7 @@ export default function AdminNotifications() {
         audience: audience, // Now using correct enum values
         type: 'info',
         channels: {
-          inApp: channels.some(c => c.id === 'in-app' && c.enabled),
+          inApp: channels.some(c => c.id === 'push' && c.enabled),
           email: channels.some(c => c.id === 'email' && c.enabled),
           push: channels.some(c => c.id === 'push' && c.enabled),
           sms: channels.some(c => c.id === 'sms' && c.enabled),
@@ -104,6 +104,25 @@ export default function AdminNotifications() {
             : `Notification sent to ${audienceLabel}!`,
           'success'
         );
+      }
+
+      if (channels.some(c => c.id === 'push' && c.enabled)) {
+        if (result?.push?.delivered) {
+          addToast(`Push notifications delivered to ${result.push.successCount} device(s).`, 'success');
+        } else {
+          addToast(result?.push?.note || 'No push notifications were delivered. Check Firebase setup and registered devices.', 'warning');
+        }
+      }
+
+      if (channels.some(c => c.id === 'sms' && c.enabled)) {
+        const sms = result?.sms;
+        if (!sms?.configured || sms?.failed > 0) {
+          addToast(sms?.error || 'Arkesel SMS is not configured. Configure the backend SMS secrets to enable delivery.', 'warning');
+        } else if (sms?.noRecipients || sms?.attempted === 0) {
+          addToast(`No phone numbers were available for ${audienceLabel}.`, 'warning');
+        } else {
+          addToast(`SMS accepted by Arkesel for ${sms.accepted} recipient(s).`, 'success');
+        }
       }
       
       setSubject('');
@@ -157,7 +176,7 @@ export default function AdminNotifications() {
                 })}
               </div>
               <p className="text-xs text-gray-400 mt-1.5">
-                <span className="text-emerald-600">●</span> Push sends real-time notifications via Socket.IO
+                <span className="text-emerald-600">●</span> Push uses Firebase Cloud Messaging for registered devices; users can enable it from Notifications.
               </p>
             </div>
             
