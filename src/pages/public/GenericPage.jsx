@@ -86,9 +86,9 @@ const PAGES = {
     icon: '📖', color: 'indigo',
     sections: [
       { heading: '🚀 Getting Started', items: [
-        'Step 1: Register your school through the Goreb portal.',
-        'Step 2: Wait for Super Admin approval (usually within 24 hours).',
-        'Step 3: Once approved, log in with your headmaster credentials.',
+        'Step 1: Book a demo with us on WhatsApp (0504686941) to set up your school.',
+        'Step 2: Complete the guided setup walkthrough with our team.',
+        'Step 3: Once approved, log in with your credentials.',
         'Step 4: Add your staff and assign roles (Class Teacher, Subject Teacher).',
         'Step 5: Create classes, enroll students, and begin taking attendance.',
       ]},
@@ -122,8 +122,8 @@ const PAGES = {
         'For urgent platform issues, mark your subject line as [URGENT].',
       ]},
       { heading: '📞 Phone & WhatsApp', items: [
-        'Phone: +233 24 000 0000',
-        'WhatsApp: +233 24 000 0000',
+        'Phone: 0504686941 / +233 50 468 6941',
+        'WhatsApp: 0504686941 / +233 50 468 6941',
         'Available Monday–Friday, 8:00 AM – 6:00 PM (GMT)',
       ]},
       { heading: '🏢 Office', items: [

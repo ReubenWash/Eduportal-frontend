@@ -1,386 +1,117 @@
 import { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
-import { useAuth } from '../../context/AuthContext';
-import { useToast } from '../../context/ToastContext';
+import { Link } from 'react-router-dom';
 import AuthLayout from '../../layouts/AuthLayout';
-import { Eye, EyeOff, AlertCircle, CheckCircle, MapPin, Building, Clock } from 'lucide-react';
+import {
+  MessageCircle,
+  Phone,
+  Copy,
+  Check,
+  Calendar,
+  ArrowRight,
+  CheckCircle2,
+} from 'lucide-react';
 
-const REGIONS = [
-  "Greater Accra", "Ashanti", "Western", "Eastern", "Central", 
-  "Northern", "Volta", "Bono", "Bono East", "Ahafo", 
-  "Savannah", "North East", "Upper East", "Upper West", "Oti", "Western North"
-];
+const RAW_PHONE = '0504686941';
+const WHATSAPP_URL =
+  'https://wa.me/233504686941?text=Hello%2C%20I%20would%20like%20to%20book%20a%20demo%20for%20my%20school%20on%20Goreb.';
 
 export default function RegisterPage() {
-  const { register } = useAuth();
-  const { addToast } = useToast();
-  const navigate = useNavigate();
-  const [formData, setFormData] = useState({
-    name: '',
-    email: '',
-    password: '',
-    confirmPassword: '',
-    schoolName: '',
-    region: '',
-    district: '',
-    address: '',
-    phone: '',
-    plan: 'BASIC'
-  });
-  const [showPassword, setShowPassword] = useState(false);
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [isSubmitted, setIsSubmitted] = useState(false);
-  const [portalUrl, setPortalUrl] = useState('');
+  const [copied, setCopied] = useState(false);
 
-  const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+  const handleCopyPhone = () => {
+    navigator.clipboard.writeText(RAW_PHONE);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
   };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setError('');
-
-    // Validation
-    if (!formData.schoolName.trim()) {
-      setError('School name is required');
-      return;
-    }
-
-    if (!formData.name.trim()) {
-      setError('Admin full name is required');
-      return;
-    }
-
-    if (!formData.email.trim()) {
-      setError('Email address is required');
-      return;
-    }
-
-    if (!formData.password) {
-      setError('Password is required');
-      return;
-    }
-
-    if (formData.password.length < 8) {
-      setError('Password must be at least 8 characters');
-      return;
-    }
-
-      if (!/[A-Z]/.test(formData.password) || !/[0-9]/.test(formData.password)) {
-        setError('Password must contain at least one uppercase letter and one number.');
-        return;
-      }
-
-    if (formData.password !== formData.confirmPassword) {
-      setError('Passwords do not match');
-      return;
-    }
-
-    if (!formData.region) {
-      setError('Please select a region');
-      return;
-    }
-
-    if (!formData.district.trim()) {
-      setError('District is required');
-      return;
-    }
-
-    setLoading(true);
-    try {
-      // The backend's `name` field is the SCHOOL's name, and it separately
-      // requires `headmasterName` for the admin's name. Our form fields are
-      // called `schoolName` and `name` respectively, so they get mapped here
-      // rather than renaming the form fields throughout the UI.
-      const payload = {
-        name: formData.schoolName,
-        headmasterName: formData.name,
-        email: formData.email,
-        password: formData.password,
-        region: formData.region,
-        district: formData.district,
-        address: formData.address,
-        phone: formData.phone || undefined,
-        plan: formData.plan
-      };
-
-      console.log('📝 Submitting registration:', payload);
-
-      const result = await register(payload);
-
-      console.log('✅ Registration successful:', result);
-
-      // Show success state
-      setPortalUrl(result?.portalUrl || '');
-      setIsSubmitted(true);
-      addToast('Registration submitted successfully!', 'success');
-      
-    } catch (err) {
-      console.error('❌ Registration error:', err);
-      
-      // Handle specific error cases
-      if (err.response?.status === 409) {
-        setError('An account with this email already exists. Please use a different email or login.');
-      } else if (err.response?.status === 422) {
-        const validationMessages = err.response?.data?.errors
-          ?.map(({ message }) => message)
-          .filter(Boolean);
-        setError(validationMessages?.length
-          ? validationMessages.join(' ')
-          : err.response?.data?.message || 'Please check your input and try again.');
-      } else if (err.response?.status === 500) {
-        setError('Server error. Please try again later.');
-      } else {
-        setError(err.response?.data?.message || 'Registration failed. Please try again.');
-      }
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  if (isSubmitted) {
-    return (
-      <AuthLayout>
-        <div className="w-full text-center space-y-6">
-          <div className="mx-auto h-20 w-20 bg-indigo-500/20 rounded-full flex items-center justify-center mb-6">
-            <Clock className="h-10 w-10 text-indigo-400" />
-          </div>
-          <div>
-            <h2 className="text-2xl font-bold text-white tracking-tight">Registration Under Review</h2>
-            <p className="mt-4 text-sm text-slate-300 leading-relaxed max-w-md mx-auto">
-              Thank you for registering <strong>{formData.schoolName}</strong>. Your application has been successfully submitted and is currently pending review by our administration team.
-            </p>
-          </div>
-          {portalUrl && (
-            <div className="rounded-xl border border-indigo-400/20 bg-indigo-500/10 p-4 text-left">
-              <p className="text-xs font-semibold uppercase tracking-wide text-indigo-200">Your school portal</p>
-              <a
-                href={portalUrl}
-                className="mt-1 block break-all text-sm font-medium text-white underline decoration-indigo-400 underline-offset-4"
-              >
-                {portalUrl}
-              </a>
-              <p className="mt-2 text-xs leading-5 text-slate-400">
-                The portal will be available after your school is approved and the wildcard domain is configured.
-              </p>
-            </div>
-          )}
-          <div className="bg-white/5 border border-white/10 rounded-xl p-5 text-left max-w-md mx-auto">
-            <h3 className="text-sm font-semibold text-white flex items-center gap-2 mb-2">
-              <CheckCircle className="h-4 w-4 text-emerald-400" /> What happens next?
-            </h3>
-            <ul className="text-sm text-slate-400 space-y-2 list-disc pl-5">
-              <li>A verification link has been sent to <strong>{formData.email}</strong>. Please check your inbox and verify your email.</li>
-              <li>Our team will review your school details shortly.</li>
-              <li>You will receive an email notification as soon as your account is approved and activated.</li>
-            </ul>
-          </div>
-          <div className="flex flex-col sm:flex-row gap-3 justify-center pt-4">
-            <Link
-              to="/verify-email"
-              className="w-full sm:w-auto inline-flex bg-indigo-600 hover:bg-indigo-500 text-white font-semibold py-2.5 px-8 rounded-lg text-sm transition-all items-center justify-center shadow-lg shadow-indigo-500/20"
-            >
-              Verify Email
-            </Link>
-            <Link
-              to="/login"
-              className="w-full sm:w-auto inline-flex bg-white/10 hover:bg-white/20 text-white font-semibold py-2.5 px-8 rounded-lg text-sm transition-all items-center justify-center border border-white/10"
-            >
-              Go to Login
-            </Link>
-          </div>
-        </div>
-      </AuthLayout>
-    );
-  }
 
   return (
     <AuthLayout>
-      <div className="space-y-7 w-full max-w-md lg:max-w-xl mx-auto">
-        {/* Header */}
+      <div className="space-y-6 w-full max-w-md">
+        {/* Heading */}
         <div>
-          <h2 className="text-2xl font-bold text-white tracking-tight">Register your school</h2>
-          <p className="mt-2 text-sm text-slate-400">Join Goreb and manage your school with ease.</p>
+          <h2 className="text-3xl font-bold text-white tracking-tight">
+            Get started with Goreb
+          </h2>
+          <p className="mt-2 text-sm text-slate-400 leading-relaxed">
+            We onboard new schools through a personalized demo and setup walkthrough. Connect with us on WhatsApp to get your school running right away.
+          </p>
         </div>
 
-        {/* Error banner */}
-        {error && (
-          <div className="flex items-center gap-2.5 rounded-lg bg-red-500/10 border border-red-500/20 px-4 py-3">
-            <AlertCircle className="h-4 w-4 text-red-400 flex-shrink-0" />
-            <p className="text-sm text-red-300">{error}</p>
-          </div>
-        )}
-
-        {/* Form */}
-        <form onSubmit={handleSubmit} className="space-y-6">
-          
-          {/* Section: School Basics */}
-          <div className="space-y-4">
-            <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-2">
-              <Building className="h-3.5 w-3.5" /> School Details
-            </h3>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-slate-300 mb-1.5">School name</label>
-                <input
-                  type="text"
-                  name="schoolName"
-                  value={formData.schoolName}
-                  onChange={handleChange}
-                  required
-                  placeholder=" "
-                  className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-300 mb-1.5">Admin Full name</label>
-                <input
-                  type="text"
-                  name="name"
-                  value={formData.name}
-                  onChange={handleChange}
-                  required
-                  placeholder=""
-                  className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Section: Location */}
-          <div className="space-y-4">
-            <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-2">
-              <MapPin className="h-3.5 w-3.5" /> Location Information
-            </h3>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-slate-300 mb-1.5">Region</label>
-                <select
-                  name="region"
-                  value={formData.region}
-                  onChange={handleChange}
-                  required
-                  className="w-full bg-slate-800/50 border border-white/10 rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
-                >
-                  <option value="" disabled>Select Region...</option>
-                  {REGIONS.map(r => <option key={r} value={r}>{r}</option>)}
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-300 mb-1.5">District</label>
-                <input
-                  type="text"
-                  name="district"
-                  value={formData.district}
-                  onChange={handleChange}
-                  required
-                  placeholder="e.g. Ayawaso West"
-                  className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
-                />
-              </div>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-slate-300 mb-1.5">Specific Location / Address</label>
-              <input
-                type="text"
-                name="address"
-                value={formData.address}
-                onChange={handleChange}
-                placeholder="Street address, landmark, P.O. Box..."
-                className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-slate-300 mb-1.5">Phone number</label>
-              <input
-                type="tel"
-                name="phone"
-                value={formData.phone}
-                onChange={handleChange}
-                placeholder="+233240000000"
-                className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
-              />
-              <p className="text-xs text-slate-500 mt-1">Include the country code, e.g. +233 for Ghana.</p>
-            </div>
-          </div>
-
-          {/* Section: Account Credentials */}
-          <div className="space-y-4 pt-2">
-            <div>
-              <label className="block text-sm font-medium text-slate-300 mb-1.5">Email address</label>
-              <input
-                type="email"
-                name="email"
-                value={formData.email}
-                onChange={handleChange}
-                required
-                placeholder="admin@school.com"
-                className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
-              />
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-slate-300 mb-1.5">Password</label>
-                <div className="relative">
-                  <input
-                    type={showPassword ? 'text' : 'password'}
-                    name="password"
-                    value={formData.password}
-                    onChange={handleChange}
-                    required
-                    placeholder="Strong password"
-                    className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 pr-10 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute inset-y-0 right-3 flex items-center text-slate-500 hover:text-slate-300 transition-colors"
-                  >
-                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                  </button>
-                </div>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-300 mb-1.5">Confirm password</label>
-                <input
-                  type={showPassword ? 'text' : 'password'}
-                  name="confirmPassword"
-                  value={formData.confirmPassword}
-                  onChange={handleChange}
-                  required
-                  placeholder="Confirm password"
-                  className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
-                />
-              </div>
-            </div>
-          </div>
-
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full bg-indigo-600 hover:bg-indigo-500 disabled:opacity-60 disabled:cursor-not-allowed text-white font-semibold py-3 px-4 rounded-lg text-sm transition-all flex items-center justify-center gap-2 shadow-lg shadow-indigo-500/20 mt-4"
+        {/* Primary WhatsApp Action */}
+        <div className="space-y-3">
+          <a
+            href={WHATSAPP_URL}
+            target="_blank"
+            rel="noreferrer"
+            className="group w-full bg-[#25D366] hover:bg-[#20bd5a] text-slate-950 font-bold py-3.5 px-5 rounded-2xl text-sm transition-all duration-200 flex items-center justify-center gap-2.5 shadow-lg shadow-emerald-500/25"
           >
-            {loading ? (
-              <>
-                <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                </svg>
-                Submitting Application…
-              </>
-            ) : (
-              'Submit Registration'
-            )}
-          </button>
-        </form>
+            <MessageCircle className="h-5 w-5 fill-current" />
+            <span>Book a Demo on WhatsApp ({RAW_PHONE})</span>
+            <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+          </a>
 
-        <p className="text-center text-sm text-slate-500 pb-4">
-          Already have an account?{' '}
-          <Link to="/login" className="font-medium text-indigo-400 hover:text-indigo-300 transition-colors">
-            Sign in
+          <div className="grid grid-cols-2 gap-2 text-xs">
+            <button
+              type="button"
+              onClick={handleCopyPhone}
+              className="flex items-center justify-center gap-1.5 rounded-xl border border-white/10 bg-white/5 py-2.5 px-3 text-slate-300 hover:bg-white/10 hover:text-white transition-colors"
+            >
+              {copied ? (
+                <>
+                  <Check className="h-3.5 w-3.5 text-emerald-400" />
+                  <span className="text-emerald-300 font-medium">Copied!</span>
+                </>
+              ) : (
+                <>
+                  <Copy className="h-3.5 w-3.5 text-slate-400" />
+                  <span>Copy number</span>
+                </>
+              )}
+            </button>
+
+            <a
+              href={`tel:${RAW_PHONE}`}
+              className="flex items-center justify-center gap-1.5 rounded-xl border border-white/10 bg-white/5 py-2.5 px-3 text-slate-300 hover:bg-white/10 hover:text-white transition-colors"
+            >
+              <Phone className="h-3.5 w-3.5 text-slate-400" />
+              <span>Direct Call</span>
+            </a>
+          </div>
+        </div>
+
+        {/* What to expect */}
+        <div className="rounded-2xl border border-white/10 bg-white/5 p-4 space-y-3">
+          <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-300 flex items-center gap-1.5">
+            <Calendar className="h-3.5 w-3.5 text-indigo-400" />
+            What to expect from your demo
+          </h3>
+          <ul className="space-y-2 text-xs text-slate-300">
+            <li className="flex items-start gap-2">
+              <CheckCircle2 className="h-4 w-4 text-emerald-400 flex-shrink-0 mt-0.5" />
+              <span>Full live walkthrough of administrator, teacher, and student portals.</span>
+            </li>
+            <li className="flex items-start gap-2">
+              <CheckCircle2 className="h-4 w-4 text-emerald-400 flex-shrink-0 mt-0.5" />
+              <span>Automated continuous assessment grading and instant report card generation.</span>
+            </li>
+            <li className="flex items-start gap-2">
+              <CheckCircle2 className="h-4 w-4 text-emerald-400 flex-shrink-0 mt-0.5" />
+              <span>Assisted onboarding with free student and staff bulk data import.</span>
+            </li>
+          </ul>
+        </div>
+
+        {/* Back to Login */}
+        <div className="border-t border-white/10 pt-5 text-center space-y-1">
+          <p className="text-xs text-slate-400">Already have an active school account?</p>
+          <Link
+            to="/login"
+            className="inline-flex items-center gap-1 text-sm font-semibold text-indigo-400 hover:text-indigo-300 transition-colors"
+          >
+            Sign in to your portal
+            <ArrowRight className="h-3.5 w-3.5" />
           </Link>
-        </p>
+        </div>
       </div>
     </AuthLayout>
   );

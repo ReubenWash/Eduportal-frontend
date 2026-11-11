@@ -150,7 +150,7 @@ function AppRoutes() {
         <Route path="/" element={school ? <Navigate to="/login" replace /> : <LandingPage />} />
         <Route path="/landing" element={<Navigate to="/" replace />} />
         <Route path="/login" element={<LoginPage />} />
-        <Route path="/login/:portal" element={<LoginPage />} />
+        <Route path="/login/:portal" element={<Navigate to="/login" replace />} />
         <Route path="/register" element={<RegisterPage />} />
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
         <Route path="/reset-password/:token" element={<ResetPasswordPage />} />

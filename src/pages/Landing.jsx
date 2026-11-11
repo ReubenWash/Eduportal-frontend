@@ -20,7 +20,7 @@ const DEFAULT_CONTENT = {
   heroHeadline: "Run your school.",
   heroHeadlineHighlight: "Not paperwork.",
   heroSubtitle: "Goreb gives school administrators, teachers, and parents one place to manage students, scores, attendance, and term reports — without the spreadsheets.",
-  heroPrimaryBtn: "Register your school",
+  heroPrimaryBtn: "Book a Demo",
   heroTrustText: "Trusted by 200+ schools across Ghana, Nigeria & Kenya",
   stats: [
     { id: 'stat-1', number: "200+", label: "Schools registered" },
@@ -238,7 +238,7 @@ export default function LandingPage() {
           <div className="nav-actions">
             <Link to="/login"><button className="btn-ghost">Sign in</button></Link>
             <Link to="/register" className="btn-primary">
-              Get started
+              Book a Demo
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="14" height="14"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
             </Link>
           </div>
@@ -249,23 +249,23 @@ export default function LandingPage() {
       <section>
         <div className="hero">
           <div className="hero-content">
-            <div className="hero-eyebrow">
+            <div className="hero-eyebrow lp-fade-up">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
               Built for African schools
             </div>
-            <h1 className="hero-h1">{c.heroHeadline}<br /><span>{c.heroHeadlineHighlight}</span></h1>
-            <p className="hero-sub">{c.heroSubtitle}</p>
-            <div className="hero-cta">
+            <h1 className="hero-h1 lp-fade-up-1">{c.heroHeadline}<br /><span>{c.heroHeadlineHighlight}</span></h1>
+            <p className="hero-sub lp-fade-up-2">{c.heroSubtitle}</p>
+            <div className="hero-cta lp-fade-up-3">
               <Link to="/register" className="btn-hero-primary">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 12l2 2 4-4"/></svg>
-                {c.heroPrimaryBtn || "Register your school"}
+                {c.heroPrimaryBtn || "Book a Demo"}
               </Link>
               <a href="#features" className="btn-hero-secondary">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>
                 See how it works
               </a>
             </div>
-            <div className="hero-trust">
+            <div className="hero-trust lp-fade-up-4">
               <div className="trust-avatars">
                 <div className="trust-avatar" style={{background:'#4F46E5'}}>AK</div>
                 <div className="trust-avatar" style={{background:'#10B981'}}>PM</div>
@@ -275,7 +275,7 @@ export default function LandingPage() {
               {c.heroTrustText}
             </div>
           </div>
-          <div className="hero-visual">
+          <div className="hero-visual lp-slide-r">
             <div style={{position: 'relative', padding: '24px'}}>
               <div className="dashboard-card">
                 <div className="dash-header">
@@ -325,7 +325,7 @@ export default function LandingPage() {
                   </table>
                 </div>
               </div>
-              <div className="float-card float-card-left">
+              <div className="float-card float-card-left lp-float">
                 <div className="float-icon float-icon-green">
                   <svg viewBox="0 0 24 24" fill="none" stroke="#10B981" strokeWidth="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
                 </div>
@@ -334,7 +334,7 @@ export default function LandingPage() {
                   <div className="float-text-value">226 / 312</div>
                 </div>
               </div>
-              <div className="float-card float-card-right">
+              <div className="float-card float-card-right lp-float-slow">
                 <div className="float-icon float-icon-indigo">
                   <svg viewBox="0 0 24 24" fill="none" stroke="#4F46E5" strokeWidth="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
                 </div>
@@ -352,12 +352,14 @@ export default function LandingPage() {
       <div className="logos-section">
         <div className="logos-inner">
           <p className="logos-label">Schools that run on Goreb</p>
-          <div className="logos-row">
-            {schools.map((s, index) => (
-              <div key={`school-${index}`} className="school-name-pill">
-                <span className="dot"></span>{s}
-              </div>
-            ))}
+          <div className="marquee-wrapper">
+            <div className="marquee-track">
+              {[...schools, ...schools].map((s, index) => (
+                <div key={`school-${index}`} className="school-name-pill" style={{flexShrink:0}}>
+                  <span className="dot"></span>{s}
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       </div>
@@ -368,7 +370,7 @@ export default function LandingPage() {
         <h2 className="section-h2">Everything a school needs. Nothing it doesn't.</h2>
         <p className="section-sub">From student admission to end-of-term report cards — every workflow is connected, every role has the right access.</p>
         <div className="features-grid">
-          <div className="feature-card">
+          <div className="feature-card lp-fade-up" style={{animationDelay:'0.05s'}}>
             <div className="feature-icon">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/>
@@ -378,7 +380,7 @@ export default function LandingPage() {
             <div className="feature-title">Student management</div>
             <div className="feature-desc">Admit students with photos, bulk-import via CSV, track transfers and withdrawals. Full academic history per student.</div>
           </div>
-          <div className="feature-card">
+          <div className="feature-card lp-fade-up" style={{animationDelay:'0.12s'}}>
             <div className="feature-icon">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
@@ -387,7 +389,7 @@ export default function LandingPage() {
             <div className="feature-title">Scores & grading</div>
             <div className="feature-desc">Teachers enter CA1, CA2, CA3, and exam scores. Totals and letter grades compute automatically with one click.</div>
           </div>
-          <div className="feature-card">
+          <div className="feature-card lp-fade-up" style={{animationDelay:'0.19s'}}>
             <div className="feature-icon">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/>
@@ -397,7 +399,7 @@ export default function LandingPage() {
             <div className="feature-title">Daily attendance</div>
             <div className="feature-desc">Mark present, absent, or late for every student per class per day. Bulk mark, summary charts, and analytics all included.</div>
           </div>
-          <div className="feature-card">
+          <div className="feature-card lp-fade-up" style={{animationDelay:'0.26s'}}>
             <div className="feature-icon">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
@@ -407,7 +409,7 @@ export default function LandingPage() {
             <div className="feature-title">Term report cards</div>
             <div className="feature-desc">Generate PDF report cards automatically. Approve, release, and email them to parents — or download the full class as a ZIP.</div>
           </div>
-          <div className="feature-card">
+          <div className="feature-card lp-fade-up" style={{animationDelay:'0.33s'}}>
             <div className="feature-icon">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/>
@@ -417,7 +419,7 @@ export default function LandingPage() {
             <div className="feature-title">Multi-role access</div>
             <div className="feature-desc">School admins, class teachers, subject teachers, parents, and students each see only what they need. Role-based from the ground up.</div>
           </div>
-          <div className="feature-card">
+          <div className="feature-card lp-fade-up" style={{animationDelay:'0.40s'}}>
             <div className="feature-icon">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/>
@@ -435,30 +437,30 @@ export default function LandingPage() {
         <div className="how-inner">
           <div className="section-label">How it works</div>
           <h2 className="section-h2">Up and running in under a day.</h2>
-          <p className="section-sub">No lengthy onboarding. No IT department required. Register your school and start the term.</p>
+          <p className="section-sub">No lengthy onboarding. No IT department required. Book a demo to set up your school and start the term.</p>
           <div className="steps-grid">
-            <div className="step" data-n="1">
+            <div className="step lp-fade-up" data-n="1" style={{animationDelay:'0.05s'}}>
               <div className="step-icon">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
               </div>
-              <div className="step-title">Register your school</div>
+              <div className="step-title">Book a demo & onboard</div>
               <div className="step-desc">Set up your school profile, upload a logo, and configure your first academic term.</div>
             </div>
-            <div className="step" data-n="2">
+            <div className="step lp-fade-up" data-n="2" style={{animationDelay:'0.15s'}}>
               <div className="step-icon">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
               </div>
               <div className="step-title">Add staff & students</div>
               <div className="step-desc">Create teacher accounts, bulk-import students from a spreadsheet, and link guardians.</div>
             </div>
-            <div className="step" data-n="3">
+            <div className="step lp-fade-up" data-n="3" style={{animationDelay:'0.25s'}}>
               <div className="step-icon">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
               </div>
               <div className="step-title">Record scores & attendance</div>
               <div className="step-desc">Teachers enter CA scores and mark attendance daily. Grades compute automatically at term end.</div>
             </div>
-            <div className="step" data-n="4">
+            <div className="step lp-fade-up" data-n="4" style={{animationDelay:'0.35s'}}>
               <div className="step-icon">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
               </div>
@@ -473,7 +475,7 @@ export default function LandingPage() {
       <div className="stats-band">
         <div className="stats-band-inner">
           {stats.map((s, index) => (
-            <div key={s.id || `stat-${index}`}>
+            <div key={s.id || `stat-${index}`} className="lp-count-up" style={{ animationDelay: `${index * 0.1}s` }}>
               <div className="stat-number">{s.number}</div>
               <div className="stat-label">{s.label}</div>
             </div>
@@ -490,7 +492,7 @@ export default function LandingPage() {
           </div>
           <div className="testimonials-grid">
             {testimonials.map((t, index) => (
-              <div key={t.id || `testimonial-${index}`} className="testimonial-card">
+              <div key={t.id || `testimonial-${index}`} className="testimonial-card lp-fade-up" style={{animationDelay:`${0.07 * index}s`}}>
                 <div className="testimonial-stars">
                   {[1,2,3,4,5].map(n => (
                     <svg key={n} viewBox="0 0 24 24" fill="currentColor"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
@@ -549,7 +551,7 @@ export default function LandingPage() {
               className="btn-plan btn-plan-solid"
               style={{textDecoration:'none', display:'block', textAlign:'center', marginTop:'20px'}}
             >
-              Register your school
+              Book a Demo
             </Link>
           </div>
         </div>
@@ -603,7 +605,7 @@ export default function LandingPage() {
           <div className="cta-buttons">
             <Link to="/register" className="btn-hero-primary">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 12l2 2 4-4"/></svg>
-              {c.heroPrimaryBtn || "Register your school"}
+              {c.heroPrimaryBtn || "Book a Demo"}
             </Link>
             <button type="button" onClick={() => setShowTalkToTeam(true)} className="btn-hero-secondary">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
@@ -792,23 +794,23 @@ export default function LandingPage() {
               <ContactOption
                 icon={MessageCircle}
                 title="Chat on WhatsApp"
-                desc="Get a quick response from our team."
-                cta="Chat with us on WhatsApp"
-                href="https://wa.me/233540473791?text=Hi%2C%20I%27d%20like%20to%20know%20more%20about%20Goreb"
+                desc="Get a quick response from our team directly on WhatsApp."
+                cta="Chat on WhatsApp"
+                href="https://wa.me/233504686941?text=Hi%2C%20I%27d%20like%20to%20know%20more%20about%20Goreb"
               />
               <ContactOption
                 icon={Calendar}
                 title="Book a Demo"
-                desc="Schedule a walkthrough of Goreb with our team."
+                desc="Schedule a live walkthrough of Goreb with our team via WhatsApp."
                 cta="Book a Demo"
-                href="mailto:support@eduportal.com?subject=Demo%20Request&body=Hi%20Goreb%20team%2C%0A%0AI'd%20like%20to%20book%20a%20demo.%20Here's%20a%20bit%20about%20my%20school%20and%20a%20few%20times%20that%20work%20for%20me%3A%0A%0ASchool%20name%3A%20%0APreferred%20date%2Ftime%3A%20"
+                href="https://wa.me/233504686941?text=Hi%20Goreb%20team%2C%20I%27d%20like%20to%20book%20a%20demo%20for%20my%20school."
               />
               <ContactOption
                 icon={Phone}
                 title="Call the Team"
-                desc="Speak directly with someone from Goreb."
+                desc="Speak directly with someone from Goreb (0504686941)."
                 cta="Call Us"
-                href="tel:+233598401983"
+                href="tel:0504686941"
               />
               <ContactOption
                 icon={Mail}
