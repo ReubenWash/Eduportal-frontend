@@ -1,18 +1,48 @@
-import { deleteToken, getMessaging, getToken, isSupported, onMessage } from 'firebase/messaging';
-import { getApps, initializeApp } from 'firebase/app';
 import { registerDeviceToken, removeDeviceToken } from '../api/notificationsApi';
 
-const firebaseConfig = {
+const FIREBASE_SDK_VERSION = '10.14.1';
+let firebaseSdkPromise;
+
+const firebaseConfig = Object.fromEntries(Object.entries({
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
   authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
   projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
   storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
   messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
   appId: import.meta.env.VITE_FIREBASE_APP_ID,
-};
+}).filter(([, value]) => value));
 
-const isConfigured = () => Object.values(firebaseConfig).every(Boolean)
+const isConfigured = () => ['apiKey', 'projectId', 'messagingSenderId', 'appId']
+  .every((key) => Boolean(firebaseConfig[key]))
   && Boolean(import.meta.env.VITE_FIREBASE_VAPID_KEY);
+
+const loadFirebaseSdk = () => {
+  if (firebaseSdkPromise) return firebaseSdkPromise;
+  firebaseSdkPromise = (async () => {
+    const scripts = [
+      `https://www.gstatic.com/firebasejs/${FIREBASE_SDK_VERSION}/firebase-app-compat.js`,
+      `https://www.gstatic.com/firebasejs/${FIREBASE_SDK_VERSION}/firebase-messaging-compat.js`,
+    ];
+    for (const src of scripts) {
+      if (src.endsWith('firebase-app-compat.js') && window.firebase?.initializeApp) continue;
+      if (src.endsWith('firebase-messaging-compat.js') && window.firebase?.messaging) continue;
+      await new Promise((resolve, reject) => {
+        const script = document.createElement('script');
+        script.src = src;
+        script.async = true;
+        script.onload = resolve;
+        script.onerror = () => reject(new Error('Firebase SDK could not be loaded.'));
+        document.head.appendChild(script);
+      });
+    }
+    if (!window.firebase?.messaging) throw new Error('Firebase Messaging SDK is unavailable.');
+    return window.firebase;
+  })().catch((error) => {
+    firebaseSdkPromise = undefined;
+    throw error;
+  });
+  return firebaseSdkPromise;
+};
 
 const getMessagingInstance = async () => {
   if (!isConfigured()) {
@@ -21,13 +51,14 @@ const getMessagingInstance = async () => {
   if (!('serviceWorker' in navigator) || !('Notification' in window)) {
     throw new Error('This browser does not support web push notifications.');
   }
-  if (!await isSupported()) {
+  const firebase = await loadFirebaseSdk();
+  if (!await firebase.messaging.isSupported()) {
     throw new Error('Firebase push notifications are not supported in this browser.');
   }
 
-  const app = getApps().find((firebaseApp) => firebaseApp.name === 'goreb-messaging')
-    || initializeApp(firebaseConfig, 'goreb-messaging');
-  return getMessaging(app);
+  const app = firebase.apps.find((firebaseApp) => firebaseApp.name === 'goreb-messaging')
+    || firebase.initializeApp(firebaseConfig, 'goreb-messaging');
+  return firebase.messaging(app);
 };
 
 const getMessagingServiceWorker = async () => {
@@ -38,10 +69,12 @@ const getMessagingServiceWorker = async () => {
 
   if (!registration.active && worker) {
     await new Promise((resolve, reject) => {
-      worker.addEventListener('statechange', () => {
+      const handleStateChange = () => {
         if (worker.state === 'activated') resolve();
         if (worker.state === 'redundant') reject(new Error('Firebase notification service worker failed to install.'));
-      });
+      };
+      worker.addEventListener('statechange', handleStateChange);
+      handleStateChange();
     });
   }
   if (!registration.active) {
@@ -67,7 +100,7 @@ export const enablePushNotifications = async () => {
     getMessagingInstance(),
     getMessagingServiceWorker(),
   ]);
-  const token = await getToken(messaging, {
+  const token = await messaging.getToken({
     vapidKey: import.meta.env.VITE_FIREBASE_VAPID_KEY,
     serviceWorkerRegistration,
   });
@@ -86,7 +119,7 @@ export const syncGrantedPushToken = async () => {
   }
   const messaging = await getMessagingInstance();
   const serviceWorkerRegistration = await getMessagingServiceWorker();
-  const token = await getToken(messaging, {
+  const token = await messaging.getToken({
     vapidKey: import.meta.env.VITE_FIREBASE_VAPID_KEY,
     serviceWorkerRegistration,
   });
@@ -106,24 +139,25 @@ export const disablePushNotifications = async (messaging, { forgetPreference = t
   if (forgetPreference) localStorage.setItem('fcmPushDisabled', 'true');
   else localStorage.removeItem('fcmPushDisabled');
   if (!messaging) {
-    const app = getApps().find((firebaseApp) => firebaseApp.name === 'goreb-messaging');
+    const firebase = await loadFirebaseSdk();
+    const app = firebase.apps.find((firebaseApp) => firebaseApp.name === 'goreb-messaging');
     if (!app) return;
-    messaging = getMessaging(app);
+    messaging = firebase.messaging(app);
   }
   if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
-    const token = await getToken(messaging, {
+    const token = await messaging.getToken({
       vapidKey: import.meta.env.VITE_FIREBASE_VAPID_KEY,
       serviceWorkerRegistration: await getMessagingServiceWorker(),
     });
     if (token && token !== registeredToken) await removeDeviceToken(token);
     if (token) localStorage.removeItem('fcmDeviceToken');
   }
-  await deleteToken(messaging);
+  await messaging.deleteToken();
 };
 
 export const subscribeToForegroundMessages = async (handler) => {
   if (localStorage.getItem('fcmPushDisabled') === 'true') return () => {};
   const messaging = await syncGrantedPushToken();
   if (!messaging) return () => {};
-  return onMessage(messaging, handler);
+  return messaging.onMessage(handler);
 };

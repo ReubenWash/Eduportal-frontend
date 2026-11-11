@@ -42,6 +42,7 @@ import {
   TrendingUp,
   Receipt,      // ← Phase 1
   ScrollText,   // ← Phase 1
+  Sparkles,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useSocket } from '../context/SocketContext';
@@ -162,6 +163,7 @@ const navGroups = [
       { path: '/attendance', icon: CheckSquare, label: 'Attendance', roles: ['SCHOOL_ADMIN', 'CLASS_TEACHER', 'SUBJECT_TEACHER'] },
       { path: '/reports', icon: FileText, label: 'Reports', roles: ['SCHOOL_ADMIN'] },
       { path: '/report-remarks', icon: MessageSquareText, label: 'Report Remarks', roles: ['SCHOOL_ADMIN', 'CLASS_TEACHER'] },
+      { path: '/study-assistant', icon: Sparkles, label: 'Study Assistant', roles: ['CLASS_TEACHER', 'SUBJECT_TEACHER'] },
     ],
   },
   {
@@ -170,7 +172,7 @@ const navGroups = [
       { path: '/analytics', icon: TrendingUp, label: 'Analytics', roles: ['SCHOOL_ADMIN'] },
       { path: '/billing', icon: CreditCard, label: 'Billing', roles: ['SCHOOL_ADMIN'] },
       { path: '/activity-logs', icon: FileText, label: 'Activity Log', roles: ['SCHOOL_ADMIN'] },
-      { path: '/notifications', icon: Bell, label: 'Notifications', roles: ['SCHOOL_ADMIN', 'CLASS_TEACHER', 'SUBJECT_TEACHER'] },
+      { path: '/notifications', icon: Bell, label: 'Notifications', roles: ['SCHOOL_ADMIN', 'ACCOUNTANT', 'CLASS_TEACHER', 'SUBJECT_TEACHER'] },
       { path: '/settings', icon: Settings, label: 'School Settings', roles: ['SCHOOL_ADMIN'] },
     ],
   },
@@ -206,6 +208,7 @@ const studentNav = [
       { path: '/student', icon: CheckSquare,   label: 'My Attendance',  roles: ['STUDENT'] },
       { path: '/student', icon: FileText,      label: 'My Reports',     roles: ['STUDENT'] },
       { path: '/student', icon: ClipboardCheck,label: 'My Profile',     roles: ['STUDENT'] },
+      { path: '/study-assistant', icon: Sparkles, label: 'Study Assistant', roles: ['STUDENT'] },
     ],
   },
   {

@@ -79,6 +79,17 @@ export default function AdminAnnouncements() {
         await sendPushNotification({ title, body: message, audience });
       }
 
+      if (channels.sms) {
+        const sms = result?.sms;
+        if (!sms?.configured || sms?.failed > 0) {
+          addToast(sms?.error || 'Arkesel SMS is not configured. Configure the backend SMS secrets to enable delivery.', 'warning');
+        } else if (sms?.noRecipients || sms?.attempted === 0) {
+          addToast('No phone numbers were available for this audience.', 'warning');
+        } else {
+          addToast(`SMS accepted by Arkesel for ${sms.accepted} recipient(s).`, 'success');
+        }
+      }
+
       if (channels.email) {
         const email = result?.email;
         if (email?.noRecipients || email?.attempted === 0) {

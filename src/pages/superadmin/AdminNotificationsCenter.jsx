@@ -113,6 +113,17 @@ export default function AdminNotifications() {
           addToast(result?.push?.note || 'No push notifications were delivered. Check Firebase setup and registered devices.', 'warning');
         }
       }
+
+      if (channels.some(c => c.id === 'sms' && c.enabled)) {
+        const sms = result?.sms;
+        if (!sms?.configured || sms?.failed > 0) {
+          addToast(sms?.error || 'Arkesel SMS is not configured. Configure the backend SMS secrets to enable delivery.', 'warning');
+        } else if (sms?.noRecipients || sms?.attempted === 0) {
+          addToast(`No phone numbers were available for ${audienceLabel}.`, 'warning');
+        } else {
+          addToast(`SMS accepted by Arkesel for ${sms.accepted} recipient(s).`, 'success');
+        }
+      }
       
       setSubject('');
       setBody('');

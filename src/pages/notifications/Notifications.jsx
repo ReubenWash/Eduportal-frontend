@@ -10,7 +10,8 @@ import {
   enablePushNotifications,
   isPushConfigured,
 } from '../../firebase/messaging';
-import { Bell, BellOff, CheckCheck, AlertCircle, Info, CheckCircle2, XCircle } from 'lucide-react';
+import { Bell, BellOff, CheckCheck, AlertCircle, Info, CheckCircle2, XCircle, MessageSquare, Send } from 'lucide-react';
+import { broadcastNotification } from '../../api/notificationsApi';
 
 const typeConfig = {
   success: { iconBg: 'bg-emerald-100', iconColor: 'text-emerald-600', icon: CheckCircle2 },
@@ -35,6 +36,11 @@ export default function Notifications() {
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
+  const [announcementTitle, setAnnouncementTitle] = useState('');
+  const [announcementMessage, setAnnouncementMessage] = useState('');
+  const [announcementAudience, setAnnouncementAudience] = useState('PARENTS');
+  const [announcementSms, setAnnouncementSms] = useState(false);
+  const [sendingAnnouncement, setSendingAnnouncement] = useState(false);
   const { addToast } = useToast();
   const { accessToken, user } = useAuth();
   const { unreadCount, setUnreadCount, markAsRead: socketMarkAsRead, markAllAsRead } = useSocket();
@@ -83,6 +89,43 @@ export default function Notifications() {
       addToast('Push notifications disabled on this device.', 'success');
     } catch (error) {
       setPushState((current) => ({ ...current, busy: false, error: error.message || 'Unable to disable push notifications.' }));
+    }
+  };
+
+  const handleSendAnnouncement = async (event) => {
+    event.preventDefault();
+    if (!announcementTitle.trim() || !announcementMessage.trim()) {
+      addToast('Enter an announcement title and message.', 'error');
+      return;
+    }
+
+    setSendingAnnouncement(true);
+    try {
+      const result = await broadcastNotification({
+        title: announcementTitle.trim(),
+        message: announcementMessage.trim(),
+        audience: announcementAudience,
+        type: 'info',
+        channels: { sms: announcementSms },
+      });
+      if (announcementSms) {
+        const sms = result?.sms;
+        if (!sms?.configured || sms?.failed > 0) {
+          addToast(sms?.error || 'Arkesel SMS is not configured. Configure the backend SMS secrets to enable delivery.', 'warning');
+        } else if (sms?.noRecipients || sms?.attempted === 0) {
+          addToast('The announcement was saved, but no phone numbers were available for this audience.', 'warning');
+        } else {
+          addToast(`Announcement sent. SMS accepted by Arkesel for ${sms.accepted} recipient(s).`, 'success');
+        }
+      } else {
+        addToast('School announcement sent.', 'success');
+      }
+      setAnnouncementTitle('');
+      setAnnouncementMessage('');
+    } catch (error) {
+      addToast(error.response?.data?.message || error.message || 'Could not send announcement.', 'error');
+    } finally {
+      setSendingAnnouncement(false);
     }
   };
 
@@ -190,6 +233,43 @@ export default function Notifications() {
           )
         }
       />
+
+      {user?.role === 'SCHOOL_ADMIN' && (
+        <form onSubmit={handleSendAnnouncement} className="mb-5 space-y-4 rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+          <div className="flex items-start gap-3">
+            <div className="rounded-lg bg-indigo-50 p-2 text-indigo-600"><MessageSquare className="h-5 w-5" /></div>
+            <div>
+              <h2 className="text-sm font-semibold text-gray-900">Send a school announcement</h2>
+              <p className="mt-1 text-sm text-gray-500">Share PTA notices with parents or reminders with teaching staff. In-app and push notifications are included; SMS is optional.</p>
+            </div>
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <label className="text-sm font-medium text-gray-700">
+              Audience
+              <select value={announcementAudience} onChange={(event) => setAnnouncementAudience(event.target.value)} className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm">
+                <option value="PARENTS">Parents &amp; guardians</option>
+                <option value="TEACHERS">Teaching staff</option>
+                <option value="ALL">All school users</option>
+              </select>
+            </label>
+            <label className="text-sm font-medium text-gray-700">
+              Title
+              <input value={announcementTitle} onChange={(event) => setAnnouncementTitle(event.target.value)} maxLength={160} className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm" required />
+            </label>
+          </div>
+          <label className="block text-sm font-medium text-gray-700">
+            Message
+            <textarea value={announcementMessage} onChange={(event) => setAnnouncementMessage(event.target.value)} rows={3} maxLength={2000} className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm" required />
+          </label>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <label className="inline-flex items-center gap-2 text-sm text-gray-700">
+              <input type="checkbox" checked={announcementSms} onChange={(event) => setAnnouncementSms(event.target.checked)} className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500" />
+              <span>Also send SMS using Arkesel</span>
+            </label>
+            <Button type="submit" icon={Send} loading={sendingAnnouncement}>Send announcement</Button>
+          </div>
+        </form>
+      )}
 
       <section className="mb-5 flex flex-col gap-4 rounded-xl border border-gray-200 bg-white p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-start gap-3">
