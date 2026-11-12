@@ -165,6 +165,13 @@ export const openReportPreview = async (id) => {
   }
 };
 
+export const fetchReportPreviewPDF = async (id) => {
+  const res = await api.get(`/reports/${id}/preview`, { responseType: 'blob' });
+  return new Blob([res.data], {
+    type: res.headers['content-type'] || 'application/pdf',
+  });
+};
+
 // The server names the file after the student, e.g. "Acquah Frederick - Term 3 2024-2025 Results.pdf".
 // This reads that name from the Content-Disposition header (falls back to `fallback`).
 export const fileNameFromHeaders = (headers, fallback) => {

@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
 import PageHeader from '../../components/common/PageHeader';
+import ReportCardPreview from '../../components/common/ReportCardPreview';
 import Badge from '../../components/ui/Badge';
 import Avatar from '../../components/ui/Avatar';
 import { getMyProfile, getMyReportCards, getMyGrades, getMyAttendance } from '../../api/studentselfApi';
-import { openReportPreview, downloadReportPDF } from '../../api/reportsApi';
+import { downloadReportPDF } from '../../api/reportsApi';
 import { getMyFinance } from '../../api/financeApi';
 import {
   LayoutDashboard, BarChart2, CheckSquare, FileText, User,
@@ -256,7 +257,7 @@ function MyAttendanceTab({ attendance }) {
 }
 
 function MyReportsTab({ reports }) {
-  const [previewId, setPreviewId] = useState(null);
+  const [previewReport, setPreviewReport] = useState(null);
   const released = (reports || []).filter(r => r.status === 'RELEASED');
 
   if (released.length === 0) {
@@ -285,7 +286,8 @@ function MyReportsTab({ reports }) {
           <Badge variant="success">{r.status}</Badge>
           <div className="flex items-center gap-2">
             <button
-              onClick={() => setPreviewId(r.id)}
+              type="button"
+              onClick={() => setPreviewReport(r)}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-indigo-600 bg-indigo-50 hover:bg-indigo-100 transition-colors"
             >
               <Eye className="h-3.5 w-3.5" /> View
@@ -300,33 +302,12 @@ function MyReportsTab({ reports }) {
           </div>
         </div>
       ))}
-      {previewId && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm" onClick={() => setPreviewId(null)}>
-          <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-lg w-full mx-4" onClick={e => e.stopPropagation()}>
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-base font-semibold text-gray-900">Report Card Preview</h3>
-              <button onClick={() => setPreviewId(null)} className="text-gray-400 hover:text-gray-600 transition-colors text-xl font-light">×</button>
-            </div>
-            <div className="bg-gray-50 rounded-xl border border-gray-200 p-12 text-center">
-              <FileText className="h-12 w-12 text-gray-300 mx-auto mb-3" />
-              <p className="text-sm text-gray-600 font-medium">Report Card</p>
-              <button
-                type="button"
-                onClick={() => openReportPreview(previewId)}
-                className="mt-4 inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white text-sm font-semibold rounded-lg hover:bg-indigo-500 transition-colors"
-              >
-                <Eye className="h-4 w-4" /> Open Preview
-              </button>
-              <button
-                type="button"
-                onClick={() => downloadReportPDF(previewId)}
-                className="mt-4 inline-flex items-center gap-2 px-4 py-2 bg-gray-900 text-white text-sm font-semibold rounded-lg hover:bg-gray-700 transition-colors"
-              >
-                <Download className="h-4 w-4" /> Download PDF
-              </button>
-            </div>
-          </div>
-        </div>
+      {previewReport && (
+        <ReportCardPreview
+          report={previewReport}
+          title={termLabel(previewReport.termName || previewReport.term) || 'Report Card'}
+          onClose={() => setPreviewReport(null)}
+        />
       )}
     </div>
   );
