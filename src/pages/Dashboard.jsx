@@ -12,7 +12,7 @@ import {
   ArrowRight, UserPlus, BookPlus, FileBarChart, TrendingUp,
   Clock, CheckCircle2, AlertCircle, Activity, BarChart2,
   ClipboardList, CheckSquare, MessageSquare, PenLine,
-  Loader2
+  Loader2, Sparkles
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
@@ -328,6 +328,7 @@ function ClassTeacherDashboard({ user, stats }) {
     { label: 'Mark Attendance', icon: CheckSquare, href: '/attendance', color: 'green' },
     { label: 'Enter Scores', icon: BarChart2, href: '/scores', color: 'amber' },
     { label: 'Add Remarks', icon: MessageSquare, href: '/students', color: 'emerald' },
+    { label: 'Goreb AI', icon: Sparkles, href: '/study-assistant', color: 'indigo' },
   ];
 
   return (
@@ -544,6 +545,7 @@ function SubjectTeacherDashboard({ user, stats }) {
               {[
                 { label: 'Enter Scores', icon: BarChart2, href: '/scores', color: 'indigo' },
                 { label: 'My Subjects', icon: BookOpen, href: '/subjects', color: 'blue' },
+                { label: 'Goreb AI', icon: Sparkles, href: '/study-assistant', color: 'indigo' },
                 { label: 'Notifications', icon: AlertCircle, href: '/notifications', color: 'amber' },
               ].map((link) => {
                 const c = colorMap[link.color] || colorMap.indigo;

@@ -150,7 +150,7 @@ export default function LoginPage() {
 
         {/* Student Reset Link */}
         <p className="text-center text-xs text-slate-600">
-          Student?{' '}
+          Lost access?{' '}
           <Link
             to="/student-reset-password"
             className="font-medium text-indigo-700 transition-colors hover:text-indigo-600"

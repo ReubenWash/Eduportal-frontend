@@ -163,7 +163,7 @@ const navGroups = [
       { path: '/attendance', icon: CheckSquare, label: 'Attendance', roles: ['SCHOOL_ADMIN', 'CLASS_TEACHER', 'SUBJECT_TEACHER'] },
       { path: '/reports', icon: FileText, label: 'Reports', roles: ['SCHOOL_ADMIN'] },
       { path: '/report-remarks', icon: MessageSquareText, label: 'Report Remarks', roles: ['SCHOOL_ADMIN', 'CLASS_TEACHER'] },
-      { path: '/study-assistant', icon: Sparkles, label: 'Study Assistant', roles: ['CLASS_TEACHER', 'SUBJECT_TEACHER'] },
+      { path: '/study-assistant', icon: Sparkles, label: 'Goreb AI', roles: ['CLASS_TEACHER', 'SUBJECT_TEACHER'] },
     ],
   },
   {
@@ -208,7 +208,7 @@ const studentNav = [
       { path: '/student', icon: CheckSquare,   label: 'My Attendance',  roles: ['STUDENT'] },
       { path: '/student', icon: FileText,      label: 'My Reports',     roles: ['STUDENT'] },
       { path: '/student', icon: ClipboardCheck,label: 'My Profile',     roles: ['STUDENT'] },
-      { path: '/study-assistant', icon: Sparkles, label: 'Study Assistant', roles: ['STUDENT'] },
+      { path: '/study-assistant', icon: Sparkles, label: 'Goreb AI', roles: ['STUDENT'] },
     ],
   },
   {

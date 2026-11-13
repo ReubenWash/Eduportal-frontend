@@ -37,7 +37,7 @@ export default function LandingAuthLayout({ children, page }) {
         }
       `}</style>
 
-      <header className="sticky top-0 z-30 px-5 pt-4">
+      <header className="sticky top-0 z-30 px-5 pt-4 safe-top-inset">
         <div className="mx-auto flex max-w-6xl items-center justify-between rounded-full border border-white/80 bg-white/70 px-4 py-3 shadow-sm backdrop-blur-xl sm:px-6">
           <Link to="/" className="flex items-center gap-2" aria-label={`${brandName} home`}>
             {school?.logoUrl ? (

@@ -269,7 +269,7 @@ export default function LandingPage() {
         `}</style>
 
       {/* NAV */}
-      <header className="sticky top-0 z-40 px-5 pt-4">
+      <header className="sticky top-0 z-40 px-5 pt-4 safe-top-inset">
         <div className="mx-auto flex max-w-6xl items-center justify-between">
           <Link to="/" className="flex items-center gap-2">
             <GraduationCap size={22} strokeWidth={2} />
