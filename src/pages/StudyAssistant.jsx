@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import {
   ArrowUp,
   BookOpen,
@@ -13,53 +13,71 @@ import {
   GraduationCap,
   Copy,
   Check,
+  Loader2,
+  Dices,
 } from 'lucide-react';
 import { askStudyAssistant } from '../api/studyAssistantApi';
 import { useAuth } from '../context/AuthContext';
 import { getMyProfile } from '../api/studentselfApi';
 
-// Sample quiz questions bank categorized by school level/class
+// Fallback pool of questions categorized by school level
 const QUIZ_BANK = {
   default: [
     {
       subject: 'Integrated Science',
       topic: 'Photosynthesis',
-      question: 'Which pigment in plants absorbs sunlight to drive photosynthesis?',
+      question: 'Which pigment in green plants absorbs sunlight to power photosynthesis?',
       options: ['Chlorophyll', 'Carotenoid', 'Hemoglobin', 'Anthocyanin'],
       correctIndex: 0,
-      explanation: 'Chlorophyll is the green pigment in chloroplasts that absorbs light energy required for photosynthesis.',
+      explanation: 'Chlorophyll is the green pigment in plant chloroplasts that traps light energy required for photosynthesis.',
     },
     {
       subject: 'Mathematics',
-      topic: 'Algebra & Equations',
-      question: 'Solve for x in the linear equation: 3x - 7 = 14',
+      topic: 'Algebra',
+      question: 'Solve for x: 3x - 7 = 14',
       options: ['x = 5', 'x = 7', 'x = 21', 'x = 3'],
       correctIndex: 1,
-      explanation: 'Adding 7 to both sides gives 3x = 21. Dividing both sides by 3 gives x = 7.',
+      explanation: 'Adding 7 to both sides gives 3x = 21. Dividing by 3 yields x = 7.',
     },
     {
       subject: 'English Language',
       topic: 'Parts of Speech',
-      question: 'Identify the adverb in the following sentence: "The students listened attentively to the teacher."',
+      question: 'Identify the adverb in: "The students listened attentively to the teacher."',
       options: ['students', 'listened', 'attentively', 'teacher'],
       correctIndex: 2,
-      explanation: '"Attentively" is an adverb because it modifies the verb "listened", describing how they listened.',
+      explanation: '"Attentively" is an adverb because it modifies the verb "listened", describing how the action was performed.',
     },
     {
       subject: 'Social Studies',
-      topic: 'Our Environment',
-      question: 'Which of the following human activities is the leading cause of soil degradation and deforestation?',
-      options: ['Crop rotation', 'Afforestation', 'Illegal surface mining (Galamsey)', 'Organic farming'],
+      topic: 'Environment & Natural Resources',
+      question: 'Which activity is a major cause of soil degradation and river pollution in mining communities?',
+      options: ['Crop rotation', 'Afforestation', 'Illegal surface mining (Galamsey)', 'Organic composting'],
       correctIndex: 2,
-      explanation: 'Illegal surface mining strips topsoil, destroys vegetative cover, and pollutes water bodies.',
+      explanation: 'Illegal surface mining strips the vegetative cover, causes severe erosion, and dumps heavy metals into water bodies.',
     },
     {
       subject: 'ICT / Computing',
       topic: 'Computer Hardware',
-      question: 'Which computer component is known as the "brain" of the computer that performs calculations?',
+      question: 'Which hardware component is considered the primary "brain" of the computer?',
       options: ['Hard Disk Drive', 'Central Processing Unit (CPU)', 'RAM', 'Power Supply Unit'],
       correctIndex: 1,
-      explanation: 'The CPU (Central Processing Unit) executes instructions and coordinates all processing tasks.',
+      explanation: 'The CPU (Central Processing Unit) executes programs and processes data instructions.',
+    },
+    {
+      subject: 'Mathematics',
+      topic: 'Geometry & Angles',
+      question: 'What is the sum of interior angles in any triangle?',
+      options: ['90°', '180°', '270°', '360°'],
+      correctIndex: 1,
+      explanation: 'The interior angles of any planar Euclidean triangle always add up to 180 degrees.',
+    },
+    {
+      subject: 'Integrated Science',
+      topic: 'States of Matter',
+      question: 'What is the physical process called when a gas transforms directly into a liquid?',
+      options: ['Evaporation', 'Sublimation', 'Condensation', 'Freezing'],
+      correctIndex: 2,
+      explanation: 'Condensation is the phase transition from gas to liquid (e.g., water vapor forming dew).',
     },
   ],
   JHS: [
@@ -69,7 +87,7 @@ const QUIZ_BANK = {
       question: 'What color does blue litmus paper turn when dipped into an acidic solution?',
       options: ['Blue', 'Red', 'Green', 'Yellow'],
       correctIndex: 1,
-      explanation: 'Acids turn blue litmus paper red, while alkalis turn red litmus paper blue.',
+      explanation: 'Acids turn blue litmus paper red, while alkaline solutions turn red litmus paper blue.',
     },
     {
       subject: 'Mathematics',
@@ -85,15 +103,31 @@ const QUIZ_BANK = {
       question: '"The wind whispered through the trees" is an example of which literary device?',
       options: ['Metaphor', 'Simile', 'Personification', 'Hyperbole'],
       correctIndex: 2,
-      explanation: 'Personification gives human qualities (whispering) to non-human things (the wind).',
+      explanation: 'Personification attributes human qualities (whispering) to non-human things (the wind).',
     },
     {
       subject: 'Social Studies',
-      topic: 'Governance & Citizenship',
-      question: 'Which organ of government is primarily responsible for making and amending laws in Ghana?',
+      topic: 'Governance & Constitution',
+      question: 'Which organ of government is primarily responsible for enacting and amending national laws?',
       options: ['The Judiciary', 'The Executive', 'The Legislature (Parliament)', 'The Council of State'],
       correctIndex: 2,
-      explanation: 'Parliament (the Legislature) has constitutional authority to introduce, debate, and pass laws.',
+      explanation: 'Parliament (the Legislature) possesses law-making powers under the Constitution.',
+    },
+    {
+      subject: 'Integrated Science',
+      topic: 'Circulatory System',
+      question: 'Which blood vessels carry oxygenated blood away from the heart to the rest of the body?',
+      options: ['Veins', 'Arteries', 'Capillaries', 'Venules'],
+      correctIndex: 1,
+      explanation: 'Arteries carry oxygenated blood away from the heart (with the pulmonary artery being the exception).',
+    },
+    {
+      subject: 'Mathematics',
+      topic: 'Simple Interest',
+      question: 'Calculate the simple interest on GHS 500 at 10% per annum for 2 years.',
+      options: ['GHS 50', 'GHS 100', 'GHS 150', 'GHS 200'],
+      correctIndex: 1,
+      explanation: 'Interest = (Principal * Rate * Time) / 100 = (500 * 10 * 2) / 100 = GHS 100.',
     },
   ],
   PRIMARY: [
@@ -116,10 +150,26 @@ const QUIZ_BANK = {
     {
       subject: 'English',
       topic: 'Punctuation',
-      question: 'Which punctuation mark belongs at the end of an interrogative sentence (a question)?',
+      question: 'Which punctuation mark belongs at the end of an interrogative question?',
       options: ['Period (.)', 'Question mark (?)', 'Comma (,)', 'Exclamation point (!)'],
       correctIndex: 1,
       explanation: 'Questions end with a question mark (?).',
+    },
+    {
+      subject: 'Our World and Our People',
+      topic: 'Family & Community',
+      question: 'A family made up of father, mother, and their children is known as a:',
+      options: ['Nuclear family', 'Extended family', 'Foster family', 'Clan'],
+      correctIndex: 0,
+      explanation: 'A nuclear family consists of parents and their immediate children.',
+    },
+    {
+      subject: 'Mathematics',
+      topic: 'Multiplication Tables',
+      question: 'What is 8 multiplied by 7?',
+      options: ['48', '54', '56', '64'],
+      correctIndex: 2,
+      explanation: '8 * 7 = 56.',
     },
   ],
   SHS: [
@@ -146,6 +196,22 @@ const QUIZ_BANK = {
       options: ['Price rises', 'Price falls to zero', 'Price stays completely unaffected', 'Demand disappears'],
       correctIndex: 0,
       explanation: 'When demand exceeds current supply, competition among buyers bids prices upward.',
+    },
+    {
+      subject: 'Chemistry',
+      topic: 'Atomic Structure & Bonding',
+      question: 'What type of chemical bond is formed by the sharing of electron pairs between atoms?',
+      options: ['Ionic bond', 'Covalent bond', 'Metallic bond', 'Hydrogen bond'],
+      correctIndex: 1,
+      explanation: 'Covalent bonding involves the sharing of valence electron pairs between nonmetal atoms.',
+    },
+    {
+      subject: 'Core Mathematics',
+      topic: 'Logarithms',
+      question: 'What is the value of log₁₀(1000)?',
+      options: ['2', '3', '10', '100'],
+      correctIndex: 1,
+      explanation: 'Since 10³ = 1000, log₁₀(1000) = 3.',
     },
   ],
 };
@@ -204,12 +270,45 @@ const starterQuestions = [
   'Can you summarize the process of photosynthesis?',
 ];
 
+// Helper: Fisher-Yates array shuffle
+function shuffleArray(arr) {
+  const copy = [...arr];
+  for (let i = copy.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [copy[i], copy[j]] = [copy[j], copy[i]];
+  }
+  return copy;
+}
+
+// Helper: parse AI generated quiz JSON cleanly
+function parseQuizJson(rawText) {
+  if (!rawText) return null;
+  try {
+    // Try clean direct parse
+    const direct = JSON.parse(rawText);
+    if (Array.isArray(direct) && direct.length > 0) return direct;
+    if (Array.isArray(direct.questions) && direct.questions.length > 0) return direct.questions;
+  } catch {
+    // Attempt extracting json array between markdown backticks or braces
+    const match = rawText.match(/\[\s*\{[\s\S]*\}\s*\]/);
+    if (match) {
+      try {
+        const parsed = JSON.parse(match[0]);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      } catch {
+        // Continue to fallback
+      }
+    }
+  }
+  return null;
+}
+
 export default function StudyAssistant() {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState('learn'); // 'learn' | 'quiz' | 'guide'
   const [studentProfile, setStudentProfile] = useState(null);
 
-  // --- Section 1: What are you learning today? (Chat) ---
+  // --- Section 1: Learn Today (Chat) ---
   const [question, setQuestion] = useState('');
   const [messages, setMessages] = useState([]);
   const [error, setError] = useState('');
@@ -217,7 +316,8 @@ export default function StudyAssistant() {
   const messagesEndRef = useRef(null);
 
   // --- Section 2: Quick Quiz based on class ---
-  const [selectedSubjectFilter, setSelectedSubjectFilter] = useState('ALL');
+  const [quizQuestions, setQuizQuestions] = useState([]);
+  const [generatingQuiz, setGeneratingQuiz] = useState(false);
   const [currentQuizIndex, setCurrentQuizIndex] = useState(0);
   const [selectedAnswers, setSelectedAnswers] = useState({});
   const [quizSubmitted, setQuizSubmitted] = useState(false);
@@ -231,9 +331,7 @@ export default function StudyAssistant() {
     if (user?.role === 'STUDENT') {
       getMyProfile()
         .then((profile) => setStudentProfile(profile))
-        .catch(() => {
-          // Fall back gracefully if not available
-        });
+        .catch(() => {});
     }
   }, [user]);
 
@@ -278,7 +376,7 @@ export default function StudyAssistant() {
     askQuestion();
   };
 
-  // Determine quiz list based on student's class name
+  // Determine class key from student's profile or account
   const className = studentProfile?.className || user?.className || '';
   const classKey = (() => {
     const upper = className.toUpperCase();
@@ -288,13 +386,74 @@ export default function StudyAssistant() {
     return 'default';
   })();
 
-  const rawQuizList = QUIZ_BANK[classKey] || QUIZ_BANK.default;
-  const filteredQuizList =
-    selectedSubjectFilter === 'ALL'
-      ? rawQuizList
-      : rawQuizList.filter((q) => q.subject.toLowerCase().includes(selectedSubjectFilter.toLowerCase()));
+  // Random fallback generator that picks randomized questions and shuffles options
+  const getRandomFallbackQuestions = useCallback(() => {
+    const pool = QUIZ_BANK[classKey] || QUIZ_BANK.default;
+    const shuffledPool = shuffleArray(pool).slice(0, 5);
+    return shuffledPool.map((q) => {
+      // Shuffle options and recalculate correct index
+      const originalCorrectOption = q.options[q.correctIndex];
+      const shuffledOptions = shuffleArray(q.options);
+      const newCorrectIndex = shuffledOptions.indexOf(originalCorrectOption);
+      return {
+        ...q,
+        options: shuffledOptions,
+        correctIndex: newCorrectIndex,
+      };
+    });
+  }, [classKey]);
 
-  const currentQuestion = filteredQuizList[currentQuizIndex] || filteredQuizList[0];
+  // AI-powered Quiz Generator based on student class
+  const generateNewQuizWithAI = useCallback(async () => {
+    setGeneratingQuiz(true);
+    setSelectedAnswers({});
+    setQuizSubmitted(false);
+    setCurrentQuizIndex(0);
+
+    const classLabel = className || (classKey === 'SHS' ? 'Senior High School' : classKey === 'JHS' ? 'Junior High School' : 'Primary School');
+    const prompt = `You are Goreb AI. Generate a fresh, non-repetitive 5-question multiple choice quiz for a student in ${classLabel}.
+Mix core subjects like Mathematics, Integrated Science, English, and Social Studies suitable strictly for this grade level.
+Return ONLY a valid JSON array of 5 objects, with no surrounding commentary or markdown backticks.
+Each object must have exactly these keys:
+- "subject": string (e.g. "Integrated Science")
+- "topic": string (e.g. "Photosynthesis")
+- "question": string
+- "options": array of 4 distinct strings
+- "correctIndex": integer (0, 1, 2, or 3 representing the correct option in "options")
+- "explanation": string (short 1-2 sentence explanation of why the correct answer is right)`;
+
+    try {
+      const response = await askStudyAssistant(prompt);
+      const parsed = parseQuizJson(response?.answer);
+      if (Array.isArray(parsed) && parsed.length >= 3) {
+        // Validate question structure
+        const validated = parsed.slice(0, 5).map((q) => ({
+          subject: q.subject || 'General Knowledge',
+          topic: q.topic || 'Revision',
+          question: q.question,
+          options: Array.isArray(q.options) && q.options.length === 4 ? q.options : ['A', 'B', 'C', 'D'],
+          correctIndex: typeof q.correctIndex === 'number' && q.correctIndex >= 0 && q.correctIndex <= 3 ? q.correctIndex : 0,
+          explanation: q.explanation || 'Great job testing your knowledge on this topic!',
+        }));
+        setQuizQuestions(validated);
+      } else {
+        // Fallback to randomized pool if AI output couldn't be parsed
+        setQuizQuestions(getRandomFallbackQuestions());
+      }
+    } catch {
+      setQuizQuestions(getRandomFallbackQuestions());
+    } finally {
+      setGeneratingQuiz(false);
+    }
+  }, [className, classKey, getRandomFallbackQuestions]);
+
+  // Initialize random quiz on mount or when class changes
+  useEffect(() => {
+    generateNewQuizWithAI();
+  }, [generateNewQuizWithAI]);
+
+  const activeQuizList = quizQuestions.length > 0 ? quizQuestions : getRandomFallbackQuestions();
+  const currentQuestion = activeQuizList[currentQuizIndex] || activeQuizList[0];
 
   const handleSelectOption = (optionIndex) => {
     if (quizSubmitted) return;
@@ -306,7 +465,7 @@ export default function StudyAssistant() {
 
   const calculateQuizScore = () => {
     let score = 0;
-    filteredQuizList.forEach((q, idx) => {
+    activeQuizList.forEach((q, idx) => {
       if (selectedAnswers[idx] === q.correctIndex) {
         score += 1;
       }
@@ -332,7 +491,7 @@ export default function StudyAssistant() {
       <header className="rounded-2xl bg-gradient-to-br from-indigo-700 via-indigo-800 to-indigo-950 p-6 text-white shadow-md sm:p-8">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-start gap-4">
-            <div className="rounded-2xl bg-white/10 p-3.5 backdrop-blur-sm border border-white/10">
+            <div className="rounded-2xl bg-white/10 p-3.5 backdrop-blur-sm border border-white/10 flex-shrink-0">
               <Sparkles className="h-7 w-7 text-amber-300" />
             </div>
             <div>
@@ -511,10 +670,10 @@ export default function StudyAssistant() {
                   }
                 }}
                 placeholder={
-                user?.role === 'STUDENT'
-                  ? "Ask Goreb AI anything about your subjects, e.g. 'Explain Newton's third law'..."
-                  : "Ask Goreb AI for lesson ideas, syllabus explanations, or student quiz suggestions..."
-              }
+                  user?.role === 'STUDENT'
+                    ? "Ask Goreb AI anything about your subjects, e.g. 'Explain Newton's third law'..."
+                    : "Ask Goreb AI for lesson ideas, syllabus explanations, or student quiz suggestions..."
+                }
                 className="max-h-40 min-h-12 flex-1 resize-y rounded-xl border border-gray-300 px-4 py-3 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-100 placeholder:text-gray-400"
               />
               <button
@@ -541,28 +700,49 @@ export default function StudyAssistant() {
               <div className="flex items-center gap-2">
                 <HelpCircle className="h-4 w-4 text-indigo-600" />
                 <h2 className="text-sm font-semibold text-gray-900">2. Quick Quiz</h2>
+                {generatingQuiz && (
+                  <span className="inline-flex items-center gap-1 rounded-md bg-indigo-100 px-2 py-0.5 text-[11px] font-semibold text-indigo-700">
+                    <Loader2 className="h-3 w-3 animate-spin" /> Generating fresh questions...
+                  </span>
+                )}
               </div>
               <p className="text-xs text-gray-500 mt-0.5">
-                Targeted practice questions customized for {className ? <strong>{className}</strong> : 'your class level'}
+                Dynamic, randomized questions generated by Goreb AI for {className ? <strong>{className}</strong> : 'your class level'}
               </p>
             </div>
 
             <div className="flex items-center gap-2">
               <button
                 type="button"
+                onClick={generateNewQuizWithAI}
+                disabled={generatingQuiz}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-1.5 text-xs font-semibold text-indigo-700 hover:bg-indigo-100 transition disabled:opacity-50"
+                title="Use Goreb AI to generate a brand new set of questions"
+              >
+                <Dices className="h-3.5 w-3.5 text-indigo-600" />
+                New AI Quiz
+              </button>
+              <button
+                type="button"
                 onClick={resetQuiz}
                 className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 transition"
               >
                 <RotateCcw className="h-3.5 w-3.5" />
-                Reset Quiz
+                Retake
               </button>
             </div>
           </div>
 
           <div className="p-6">
-            {filteredQuizList.length === 0 ? (
+            {generatingQuiz && activeQuizList.length === 0 ? (
+              <div className="py-16 text-center text-gray-500 space-y-3">
+                <Loader2 className="h-8 w-8 animate-spin mx-auto text-indigo-600" />
+                <p className="text-sm font-medium text-gray-800">Goreb AI is curating a randomized quiz for your class...</p>
+                <p className="text-xs text-gray-400">Selecting non-repetitive questions across science, math, and language.</p>
+              </div>
+            ) : activeQuizList.length === 0 ? (
               <div className="py-12 text-center text-gray-500">
-                <p>No quiz questions available for this selection.</p>
+                <p>No quiz questions available. Tap "New AI Quiz" to generate.</p>
               </div>
             ) : (
               <div className="space-y-6">
@@ -575,7 +755,7 @@ export default function StudyAssistant() {
                     <span className="text-xs text-gray-500">• {currentQuestion?.topic}</span>
                   </div>
                   <span className="text-xs font-medium text-gray-500">
-                    Question {currentQuizIndex + 1} of {filteredQuizList.length}
+                    Question {currentQuizIndex + 1} of {activeQuizList.length}
                   </span>
                 </div>
 
@@ -655,8 +835,8 @@ export default function StudyAssistant() {
                     </button>
                     <button
                       type="button"
-                      disabled={currentQuizIndex === filteredQuizList.length - 1}
-                      onClick={() => setCurrentQuizIndex((i) => Math.min(filteredQuizList.length - 1, i + 1))}
+                      disabled={currentQuizIndex === activeQuizList.length - 1}
+                      onClick={() => setCurrentQuizIndex((i) => Math.min(activeQuizList.length - 1, i + 1))}
                       className="flex-1 sm:flex-initial rounded-xl border border-gray-200 px-4 py-2 text-xs font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-40"
                     >
                       Next
@@ -676,7 +856,7 @@ export default function StudyAssistant() {
                     ) : (
                       <div className="flex items-center gap-3">
                         <span className="text-sm font-bold text-gray-900">
-                          Score: {calculateQuizScore()} / {filteredQuizList.length}
+                          Score: {calculateQuizScore()} / {activeQuizList.length}
                         </span>
                         <button
                           type="button"
@@ -687,7 +867,7 @@ export default function StudyAssistant() {
                           }}
                           className="rounded-xl bg-indigo-50 border border-indigo-200 px-4 py-2 text-xs font-semibold text-indigo-700 hover:bg-indigo-100 transition"
                         >
-                          Ask Goreb AI to Explain My Mistakes
+                          Explain My Mistakes
                         </button>
                       </div>
                     )}
