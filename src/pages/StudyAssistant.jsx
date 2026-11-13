@@ -16,7 +16,7 @@ import {
   Loader2,
   Dices,
 } from 'lucide-react';
-import { askStudyAssistant } from '../api/studyAssistantApi';
+import { askStudyAssistant, generateStudyQuiz } from '../api/studyAssistantApi';
 import { useAuth } from '../context/AuthContext';
 import { getMyProfile } from '../api/studentselfApi';
 
@@ -270,39 +270,6 @@ const starterQuestions = [
   'Can you summarize the process of photosynthesis?',
 ];
 
-// Helper: Fisher-Yates array shuffle
-function shuffleArray(arr) {
-  const copy = [...arr];
-  for (let i = copy.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [copy[i], copy[j]] = [copy[j], copy[i]];
-  }
-  return copy;
-}
-
-// Helper: parse AI generated quiz JSON cleanly
-function parseQuizJson(rawText) {
-  if (!rawText) return null;
-  try {
-    // Try clean direct parse
-    const direct = JSON.parse(rawText);
-    if (Array.isArray(direct) && direct.length > 0) return direct;
-    if (Array.isArray(direct.questions) && direct.questions.length > 0) return direct.questions;
-  } catch {
-    // Attempt extracting json array between markdown backticks or braces
-    const match = rawText.match(/\[\s*\{[\s\S]*\}\s*\]/);
-    if (match) {
-      try {
-        const parsed = JSON.parse(match[0]);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
-      } catch {
-        // Continue to fallback
-      }
-    }
-  }
-  return null;
-}
-
 export default function StudyAssistant() {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState('learn'); // 'learn' | 'quiz' | 'guide'
@@ -318,6 +285,7 @@ export default function StudyAssistant() {
   // --- Section 2: Quick Quiz based on class ---
   const [quizQuestions, setQuizQuestions] = useState([]);
   const [generatingQuiz, setGeneratingQuiz] = useState(false);
+  const [quizError, setQuizError] = useState('');
   const [currentQuizIndex, setCurrentQuizIndex] = useState(0);
   const [selectedAnswers, setSelectedAnswers] = useState({});
   const [quizSubmitted, setQuizSubmitted] = useState(false);
@@ -378,81 +346,37 @@ export default function StudyAssistant() {
 
   // Determine class key from student's profile or account
   const className = studentProfile?.className || user?.className || '';
-  const classKey = (() => {
-    const upper = className.toUpperCase();
-    if (upper.includes('SHS') || upper.includes('SENIOR') || upper.includes('FORM')) return 'SHS';
-    if (upper.includes('JHS') || upper.includes('BASIC 7') || upper.includes('BASIC 8') || upper.includes('BASIC 9')) return 'JHS';
-    if (upper.includes('PRIMARY') || upper.includes('BASIC 1') || upper.includes('BASIC 2') || upper.includes('BASIC 3') || upper.includes('BASIC 4') || upper.includes('BASIC 5') || upper.includes('BASIC 6')) return 'PRIMARY';
-    return 'default';
-  })();
-
-  // Random fallback generator that picks randomized questions and shuffles options
-  const getRandomFallbackQuestions = useCallback(() => {
-    const pool = QUIZ_BANK[classKey] || QUIZ_BANK.default;
-    const shuffledPool = shuffleArray(pool).slice(0, 5);
-    return shuffledPool.map((q) => {
-      // Shuffle options and recalculate correct index
-      const originalCorrectOption = q.options[q.correctIndex];
-      const shuffledOptions = shuffleArray(q.options);
-      const newCorrectIndex = shuffledOptions.indexOf(originalCorrectOption);
-      return {
-        ...q,
-        options: shuffledOptions,
-        correctIndex: newCorrectIndex,
-      };
-    });
-  }, [classKey]);
-
-  // AI-powered Quiz Generator based on student class
   const generateNewQuizWithAI = useCallback(async () => {
     setGeneratingQuiz(true);
+    setQuizError('');
+    setQuizQuestions([]);
     setSelectedAnswers({});
     setQuizSubmitted(false);
     setCurrentQuizIndex(0);
 
-    const classLabel = className || (classKey === 'SHS' ? 'Senior High School' : classKey === 'JHS' ? 'Junior High School' : 'Primary School');
-    const prompt = `You are Goreb AI. Generate a fresh, non-repetitive 5-question multiple choice quiz for a student in ${classLabel}.
-Mix core subjects like Mathematics, Integrated Science, English, and Social Studies suitable strictly for this grade level.
-Return ONLY a valid JSON array of 5 objects, with no surrounding commentary or markdown backticks.
-Each object must have exactly these keys:
-- "subject": string (e.g. "Integrated Science")
-- "topic": string (e.g. "Photosynthesis")
-- "question": string
-- "options": array of 4 distinct strings
-- "correctIndex": integer (0, 1, 2, or 3 representing the correct option in "options")
-- "explanation": string (short 1-2 sentence explanation of why the correct answer is right)`;
-
     try {
-      const response = await askStudyAssistant(prompt);
-      const parsed = parseQuizJson(response?.answer);
-      if (Array.isArray(parsed) && parsed.length >= 3) {
-        // Validate question structure
-        const validated = parsed.slice(0, 5).map((q) => ({
-          subject: q.subject || 'General Knowledge',
-          topic: q.topic || 'Revision',
-          question: q.question,
-          options: Array.isArray(q.options) && q.options.length === 4 ? q.options : ['A', 'B', 'C', 'D'],
-          correctIndex: typeof q.correctIndex === 'number' && q.correctIndex >= 0 && q.correctIndex <= 3 ? q.correctIndex : 0,
-          explanation: q.explanation || 'Great job testing your knowledge on this topic!',
-        }));
-        setQuizQuestions(validated);
-      } else {
-        // Fallback to randomized pool if AI output couldn't be parsed
-        setQuizQuestions(getRandomFallbackQuestions());
+      const questions = await generateStudyQuiz({ subject: 'ALL', count: 5 });
+      if (!Array.isArray(questions) || questions.length !== 5) {
+        throw new Error('The quiz service returned an incomplete quiz. Please try again.');
       }
-    } catch {
-      setQuizQuestions(getRandomFallbackQuestions());
+      setQuizQuestions(questions);
+    } catch (requestError) {
+      setQuizError(
+        requestError.response?.data?.message
+          || requestError.message
+          || 'Goreb AI could not generate a quiz at this moment. Please try again.'
+      );
     } finally {
       setGeneratingQuiz(false);
     }
-  }, [className, classKey, getRandomFallbackQuestions]);
+  }, []);
 
   // Initialize random quiz on mount or when class changes
   useEffect(() => {
     generateNewQuizWithAI();
   }, [generateNewQuizWithAI]);
 
-  const activeQuizList = quizQuestions.length > 0 ? quizQuestions : getRandomFallbackQuestions();
+  const activeQuizList = quizQuestions;
   const currentQuestion = activeQuizList[currentQuizIndex] || activeQuizList[0];
 
   const handleSelectOption = (optionIndex) => {
@@ -739,6 +663,10 @@ Each object must have exactly these keys:
                 <Loader2 className="h-8 w-8 animate-spin mx-auto text-indigo-600" />
                 <p className="text-sm font-medium text-gray-800">Goreb AI is curating a randomized quiz for your class...</p>
                 <p className="text-xs text-gray-400">Selecting non-repetitive questions across science, math, and language.</p>
+              </div>
+            ) : quizError ? (
+              <div role="alert" className="rounded-xl border border-red-200 bg-red-50 p-5 text-sm text-red-700">
+                {quizError}
               </div>
             ) : activeQuizList.length === 0 ? (
               <div className="py-12 text-center text-gray-500">

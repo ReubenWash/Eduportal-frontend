@@ -1,78 +1,84 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import PageHeader from '../../components/common/PageHeader';
-import Button from '../../components/ui/Button';
 import Badge from '../../components/ui/Badge';
-import { Clock3, Calendar, Download, BookOpen } from 'lucide-react';
+import { getTeacherTimetable } from '../../api/portalAcademicApi';
 
-const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
-const PERIODS = [
-  { time: '08:00 - 09:00', schedule: { Monday: 'JHS 1 (Math)', Tuesday: 'JHS 3 A (Math)', Wednesday: 'Free Period', Thursday: 'JHS 2 (Math)', Friday: 'JHS 1 (Math)' } },
-  { time: '09:00 - 10:00', schedule: { Monday: 'JHS 2 (Math)', Tuesday: 'JHS 2 (Math)', Wednesday: 'JHS 3 B (Math)', Thursday: 'Free Period', Friday: 'JHS 3 A (Math)' } },
-  { time: '10:00 - 10:30', isBreak: true, label: 'Morning Break' },
-  { time: '10:30 - 11:30', schedule: { Monday: 'Free Period', Tuesday: 'Department Meeting', Wednesday: 'JHS 1 (Math)', Thursday: 'JHS 3 A (Math)', Friday: 'Free Period' } },
-  { time: '11:30 - 12:30', schedule: { Monday: 'JHS 3 B (Math)', Tuesday: 'Free Period', Wednesday: 'JHS 2 (Math)', Thursday: 'JHS 1 (Math)', Friday: 'JHS 3 B (Math)' } },
-  { time: '12:30 - 01:30', isBreak: true, label: 'Lunch Break' },
-  { time: '01:30 - 02:30', schedule: { Monday: 'Office Hours', Tuesday: 'Remedial Prep', Wednesday: 'Free Period', Thursday: 'Remedial Prep', Friday: 'Staff Assembly' } },
+const DAYS = [
+  ['MONDAY', 'Monday'],
+  ['TUESDAY', 'Tuesday'],
+  ['WEDNESDAY', 'Wednesday'],
+  ['THURSDAY', 'Thursday'],
+  ['FRIDAY', 'Friday'],
 ];
 
 export default function TeacherTimetablePage() {
+  const [data, setData] = useState({ term: null, slots: [] });
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    let active = true;
+    getTeacherTimetable()
+      .then((result) => {
+        if (active) setData({ term: result.term, slots: Array.isArray(result.slots) ? result.slots : [] });
+      })
+      .catch((requestError) => {
+        if (active) setError(requestError.response?.data?.message || requestError.message || 'Could not load your timetable.');
+      })
+      .finally(() => { if (active) setLoading(false); });
+    return () => { active = false; };
+  }, []);
+
+  const periods = useMemo(() => [...new Set(data.slots.map((slot) => `${slot.startTime} - ${slot.endTime}`))], [data.slots]);
+  const label = data.term
+    ? `${data.term.academicYear} · ${String(data.term.termNumber || '').replace('TERM', 'Term ')}`
+    : 'No active term';
+
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <PageHeader
-          title="My Teaching Schedule"
-          subtitle="View assigned class periods, teaching rooms, and weekly schedule."
-        />
-        <div className="flex items-center gap-2">
-          <Button variant="outline" className="gap-2">
-            <Download className="h-4 w-4" /> Download Schedule PDF
-          </Button>
-        </div>
+      <PageHeader title="My Teaching Schedule" subtitle="View assigned class periods, teaching rooms, and weekly schedule." />
+
+      <div className="flex flex-col gap-3 rounded-xl border border-gray-200 bg-white p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between">
+        <p className="text-sm text-gray-600">Schedule for the current academic term</p>
+        <Badge variant={data.term ? 'info' : 'warning'}>{label}</Badge>
       </div>
+
+      {error && <p role="alert" className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</p>}
 
       <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white shadow-sm">
         <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50 text-xs font-semibold text-gray-600 uppercase">
+          <thead className="bg-gray-50 text-xs font-semibold uppercase text-gray-600">
             <tr>
-              <th className="py-3 px-4 text-left w-40">Period / Time</th>
-              {DAYS.map((d) => (
-                <th key={d} className="py-3 px-4 text-left">{d}</th>
-              ))}
+              <th className="w-40 px-4 py-3 text-left">Period / Time</th>
+              {DAYS.map(([, day]) => <th key={day} className="px-4 py-3 text-left">{day}</th>)}
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100 text-xs">
-            {PERIODS.map((slot, i) => {
-              if (slot.isBreak) {
-                return (
-                  <tr key={i} className="bg-amber-50/50">
-                    <td className="py-3 px-4 font-semibold text-amber-800">{slot.time}</td>
-                    <td colSpan={5} className="py-3 px-4 text-center font-bold text-amber-800 uppercase tracking-wider text-[11px]">
-                      {slot.label}
+            {periods.map((time) => (
+              <tr key={time} className="hover:bg-gray-50/60">
+                <td className="whitespace-nowrap px-4 py-3 font-semibold text-gray-700">{time}</td>
+                {DAYS.map(([key, day]) => {
+                  const slot = data.slots.find((item) => item.weekday === key && `${item.startTime} - ${item.endTime}` === time);
+                  return (
+                    <td key={day} className="px-4 py-3">
+                      {slot ? (
+                        <>
+                          <span className="block font-semibold text-indigo-900">
+                            {slot.class?.level} {slot.class?.section}{slot.subject?.name ? ` · ${slot.subject.name}` : ''}
+                          </span>
+                          {slot.room && <span className="text-gray-500">{slot.room}</span>}
+                        </>
+                      ) : <span className="text-gray-300">—</span>}
                     </td>
-                  </tr>
-                );
-              }
-              return (
-                <tr key={i} className="hover:bg-gray-50/60 transition">
-                  <td className="py-3 px-4 font-semibold text-gray-700 whitespace-nowrap">{slot.time}</td>
-                  {DAYS.map((day) => {
-                    const activity = slot.schedule[day] || '—';
-                    const isFree = activity === 'Free Period';
-                    return (
-                      <td key={day} className="py-3 px-4">
-                        <span className={`block font-semibold ${isFree ? 'text-gray-400 font-normal' : 'text-indigo-900'}`}>
-                          {activity}
-                        </span>
-                      </td>
-                    );
-                  })}
-                </tr>
-              );
-            })}
+                  );
+                })}
+              </tr>
+            ))}
+            {loading && <tr><td colSpan={6} className="px-4 py-12 text-center text-sm text-gray-500">Loading your timetable…</td></tr>}
+            {!loading && !error && periods.length === 0 && <tr><td colSpan={6} className="px-4 py-12 text-center text-sm text-gray-500">No timetable slots are assigned to you for this term.</td></tr>}
           </tbody>
         </table>
       </div>
     </div>
   );
 }
-

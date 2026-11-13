@@ -7,8 +7,10 @@ import Avatar from '../../components/ui/Avatar';
 import { getMyProfile, getMyReportCards, getMyGrades, getMyAttendance } from '../../api/studentselfApi';
 import { downloadReportPDF } from '../../api/reportsApi';
 import { getMyFinance } from '../../api/financeApi';
+import { getAssignments, submitAssignment } from '../../api/portalAcademicApi';
 import { getNotifications } from '../../api/notificationsApi';
 import { useAuth } from '../../context/AuthContext';
+import { useToast } from '../../context/ToastContext';
 import {
   LayoutDashboard, BarChart2, CheckSquare, FileText, User,
   GraduationCap, CalendarDays, TrendingUp, Download, Eye, Bell,
@@ -586,57 +588,73 @@ function TimetableTab({ profile }) {
   );
 }
 
-function AssignmentsTab({ profile }) {
-  const dummyHomework = [
-    {
-      subject: 'Mathematics',
-      title: 'Quadratic & Linear Equations Review',
-      dueDate: 'Friday',
-      status: 'PENDING',
-      details: 'Solve practice exercises 3.1 to 3.4 in the standard textbook. Submit working in homework book.',
-    },
-    {
-      subject: 'Integrated Science',
-      title: 'Diagram: Circulatory System in Mammals',
-      dueDate: 'Monday',
-      status: 'SUBMITTED',
-      details: 'Complete the double circulation chart with directional arrows representing oxygenated and deoxygenated blood flow.',
-    },
-    {
-      subject: 'English Language',
-      title: 'Formal Letter to School Head',
-      dueDate: 'Next Tuesday',
-      status: 'PENDING',
-      details: 'Write a 250-word formal application seeking permission to organize a peer science club.',
-    },
-  ];
+function AssignmentCard({ assignment, onSubmit }) {
+  const [answerUrl, setAnswerUrl] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const isPastDue = assignment.dueDate && new Date(assignment.dueDate) < new Date();
 
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+    setSubmitting(true);
+    try {
+      const submitted = await onSubmit(assignment.id, answerUrl);
+      if (submitted) setAnswerUrl('');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="space-y-3 rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <span className="rounded-md bg-indigo-100 px-2.5 py-0.5 text-xs font-bold text-indigo-800">{assignment.subjectName || 'General'}</span>
+        <span className={`rounded-full border px-2.5 py-0.5 text-xs font-semibold ${
+          assignment.studentSubmission?.status === 'GRADED'
+            ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
+            : assignment.studentSubmission?.status === 'SUBMITTED'
+              ? 'border-blue-200 bg-blue-50 text-blue-700'
+              : 'border-amber-200 bg-amber-50 text-amber-700'
+        }`}>
+          {assignment.studentSubmission?.status || 'PENDING'} · Due {assignment.dueDate ? new Date(assignment.dueDate).toLocaleDateString() : '—'}
+        </span>
+      </div>
+      <h4 className="text-base font-bold text-gray-900">{assignment.title}</h4>
+      {assignment.details && <p className="text-xs leading-relaxed text-gray-600">{assignment.details}</p>}
+      {assignment.studentSubmission?.score != null && <p className="text-sm font-semibold text-indigo-700">Score: {assignment.studentSubmission.score}</p>}
+      {assignment.studentSubmission?.feedback && <p className="text-xs text-gray-600">Teacher feedback: {assignment.studentSubmission.feedback}</p>}
+      {!isPastDue && assignment.status === 'ACTIVE' && (
+        <form onSubmit={handleSubmit} className="flex flex-col gap-2 border-t border-gray-100 pt-3 sm:flex-row">
+          <label className="sr-only" htmlFor={`answer-url-${assignment.id}`}>Work link (optional)</label>
+          <input
+            id={`answer-url-${assignment.id}`}
+            type="url"
+            value={answerUrl}
+            onChange={(event) => setAnswerUrl(event.target.value)}
+            placeholder="Paste a link to your work (optional)"
+            className="min-w-0 flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none"
+          />
+          <button type="submit" disabled={submitting} className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-50">
+            {submitting ? 'Submitting…' : assignment.studentSubmission ? 'Update submission' : 'Submit work'}
+          </button>
+        </form>
+      )}
+    </div>
+  );
+}
+
+function AssignmentsTab({ assignments, onSubmit }) {
   return (
     <div className="space-y-5">
       <div className="flex items-center justify-between">
         <p className="text-sm text-gray-600">Active homework and assignments assigned to your class.</p>
         <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-indigo-50 text-indigo-700">
-          Current Term
+          {assignments.length} {assignments.length === 1 ? 'Assignment' : 'Assignments'}
         </span>
       </div>
 
       <div className="grid gap-4">
-        {dummyHomework.map((hw, i) => (
-          <div key={i} className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm space-y-2">
-            <div className="flex items-center justify-between">
-              <span className="rounded-md bg-indigo-100 px-2.5 py-0.5 text-xs font-bold text-indigo-800">
-                {hw.subject}
-              </span>
-              <span className={`text-xs font-semibold px-2.5 py-0.5 rounded-full ${
-                hw.status === 'SUBMITTED' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-amber-50 text-amber-700 border border-amber-200'
-              }`}>
-                {hw.status} · Due {hw.dueDate}
-              </span>
-            </div>
-            <h4 className="text-base font-bold text-gray-900">{hw.title}</h4>
-            <p className="text-xs text-gray-600 leading-relaxed">{hw.details}</p>
-          </div>
-        ))}
+        {assignments.map((assignment) => <AssignmentCard key={assignment.id} assignment={assignment} onSubmit={onSubmit} />)}
+        {assignments.length === 0 && <div className="rounded-xl border border-gray-200 bg-white p-10 text-center text-sm text-gray-500">No assignments have been posted for your current class.</div>}
       </div>
     </div>
   );
@@ -772,6 +790,7 @@ const TABS = [
 
 export default function StudentPortal() {
   const { user, logout } = useAuth();
+  const { addToast } = useToast();
   const [searchParams, setSearchParams] = useSearchParams();
   const initialTab = searchParams.get('tab') || 'dashboard';
 
@@ -782,6 +801,7 @@ export default function StudentPortal() {
   const [reports, setReports] = useState([]);
   const [finance, setFinance] = useState(null);
   const [notifications, setNotifications] = useState([]);
+  const [assignments, setAssignments] = useState([]);
   const [loadErrors, setLoadErrors] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -809,7 +829,8 @@ export default function StudentPortal() {
       getMyAttendance(),
       getMyFinance(),
       getNotifications(),
-    ]).then(([profileRes, gradesRes, reportsRes, attendanceRes, financeRes, notifsRes]) => {
+      getAssignments(),
+    ]).then(([profileRes, gradesRes, reportsRes, attendanceRes, financeRes, notifsRes, assignmentsRes]) => {
       const failedSections = [];
       if (profileRes.status === 'fulfilled') setProfile(profileRes.value);
       else failedSections.push('profile');
@@ -825,9 +846,25 @@ export default function StudentPortal() {
         const list = Array.isArray(notifsRes.value) ? notifsRes.value : notifsRes.value?.items || [];
         setNotifications(list);
       }
+      if (assignmentsRes.status === 'fulfilled') setAssignments(Array.isArray(assignmentsRes.value) ? assignmentsRes.value : []);
+      else failedSections.push('assignments');
       setLoadErrors(failedSections);
     }).finally(() => setLoading(false));
   }, []);
+
+  const handleAssignmentSubmit = async (assignmentId, answerUrl) => {
+    try {
+      const submission = await submitAssignment(assignmentId, { answerUrl: answerUrl || undefined });
+      setAssignments((current) => current.map((assignment) => assignment.id === assignmentId
+        ? { ...assignment, studentSubmission: { ...assignment.studentSubmission, ...submission } }
+        : assignment));
+      addToast('Assignment submitted.', 'success');
+      return true;
+    } catch (error) {
+      addToast(error.response?.data?.message || error.message || 'Could not submit assignment.', 'error');
+      return false;
+    }
+  };
 
   if (loading) {
     return (
@@ -855,7 +892,7 @@ export default function StudentPortal() {
         {activeTab === 'scores'        && <MyScoresTab scores={scores} />}
         {activeTab === 'attendance'    && <MyAttendanceTab attendance={attendance} />}
         {activeTab === 'timetable'     && <TimetableTab profile={profile} />}
-        {activeTab === 'assignments'   && <AssignmentsTab profile={profile} />}
+        {activeTab === 'assignments'   && <AssignmentsTab assignments={assignments} onSubmit={handleAssignmentSubmit} />}
         {activeTab === 'materials'     && <LearningMaterialsTab />}
         {activeTab === 'announcements' && <AnnouncementsTab notifications={notifications} />}
         {activeTab === 'finance'       && <MyFinanceTab finance={finance} />}

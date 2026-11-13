@@ -5,6 +5,12 @@ import ReportCardPreview from '../../components/common/ReportCardPreview';
 import Badge from '../../components/ui/Badge';
 import Avatar from '../../components/ui/Avatar';
 import { getMyChildren, getChildReportCards, getChildGrades, getChildAttendance } from '../../api/parentApi';
+import {
+  getChildAssignments,
+  getChildConductLog,
+  getChildTeacherContact,
+  getChildTimetable,
+} from '../../api/portalAcademicApi';
 import { getChildFinance } from '../../api/financeApi';
 import { downloadReportPDF } from '../../api/reportsApi';
 import { getNotifications } from '../../api/notificationsApi';
@@ -374,17 +380,10 @@ function FinanceTab({ finance }) {
 }
 
 /* ─── 5. Timetable Tab ─── */
-function TimetableTab({ child }) {
+function TimetableTab({ child, timetable }) {
   const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
-  const PERIODS = [
-    { time: '08:00 - 09:00', title: 'Mathematics', teacher: 'Class Teacher' },
-    { time: '09:00 - 10:00', title: 'English Language', teacher: 'Subject Teacher' },
-    { time: '10:00 - 10:30', title: 'Break / Snack', teacher: 'Supervised' },
-    { time: '10:30 - 11:30', title: 'Integrated Science', teacher: 'Science Department' },
-    { time: '11:30 - 12:30', title: 'Social Studies', teacher: 'Social Sciences' },
-    { time: '12:30 - 01:30', title: 'Lunch Break', teacher: 'Dining Hall' },
-    { time: '01:30 - 02:30', title: 'ICT / Computing', teacher: 'ICT Lab' },
-  ];
+  const schedule = timetable?.schedule || [];
+  const periods = [...new Set(schedule.flatMap((day) => day.periods || []).map((period) => period.time))];
 
   return (
     <div className="space-y-5">
@@ -392,12 +391,14 @@ function TimetableTab({ child }) {
         <div>
           <h3 className="text-base font-bold text-gray-900">Class Weekly Schedule</h3>
           <p className="text-xs text-gray-500 mt-0.5">
-            Class: <strong>{child?.className || 'Assigned Class'}</strong> · Regular School Hours: 08:00 AM - 02:30 PM
+            Class: <strong>{timetable?.className || child?.className || 'Assigned Class'}</strong>
           </p>
         </div>
-        <span className="self-start sm:self-auto rounded-full bg-indigo-50 border border-indigo-200 px-3 py-1 text-xs font-semibold text-indigo-700">
-          Term Schedule Active
-        </span>
+        {timetable?.term && (
+          <span className="self-start sm:self-auto rounded-full bg-indigo-50 border border-indigo-200 px-3 py-1 text-xs font-semibold text-indigo-700">
+            {formatTermLabel(timetable.term)}
+          </span>
+        )}
       </div>
 
       <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white shadow-sm">
@@ -409,50 +410,39 @@ function TimetableTab({ child }) {
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100 text-xs">
-            {PERIODS.map((period, idx) => (
-              <tr key={idx} className={period.title.includes('Break') ? 'bg-amber-50/40 font-medium' : 'hover:bg-gray-50/50'}>
-                <td className="py-3 px-4 font-semibold text-gray-800 whitespace-nowrap">{period.time}</td>
-                {DAYS.map(day => (
+            {periods.map((time) => (
+              <tr key={time} className="hover:bg-gray-50/50">
+                <td className="py-3 px-4 font-semibold text-gray-800 whitespace-nowrap">{time}</td>
+                {DAYS.map((day) => {
+                  const period = schedule.find((entry) => entry.day.toLowerCase() === day.toLowerCase())
+                    ?.periods?.find((entry) => entry.time === time);
+                  return (
                   <td key={day} className="py-3 px-4">
-                    <span className="font-semibold text-gray-900 block">{period.title}</span>
-                    <span className="text-[10px] text-gray-500">{period.teacher}</span>
+                    {period ? (
+                      <>
+                        <span className="font-semibold text-gray-900 block">{period.subject}</span>
+                        <span className="text-[10px] text-gray-500">{period.teacher || period.room || ''}</span>
+                      </>
+                    ) : <span className="text-gray-300">—</span>}
                   </td>
-                ))}
+                  );
+                })}
               </tr>
             ))}
           </tbody>
         </table>
       </div>
+      {periods.length === 0 && (
+        <div className="rounded-xl border border-gray-200 bg-white p-8 text-center text-sm text-gray-500">
+          No timetable has been published for this class yet.
+        </div>
+      )}
     </div>
   );
 }
 
 /* ─── 6. Assignments & Homework Tab ─── */
-function AssignmentsTab({ child }) {
-  const dummyHomework = [
-    {
-      subject: 'Mathematics',
-      title: 'Linear Equations & Word Problems',
-      dueDate: 'Friday',
-      status: 'PENDING',
-      details: 'Complete exercise 4.2 in the workbook, questions 1 through 10. Show all calculation steps.',
-    },
-    {
-      subject: 'Integrated Science',
-      title: 'Plant Photosynthesis Diagram',
-      dueDate: 'Monday',
-      status: 'SUBMITTED',
-      details: 'Draw, color, and label the internal structure of a leaf chloroplast in your science notebook.',
-    },
-    {
-      subject: 'English Language',
-      title: 'Persuasive Essay Outline',
-      dueDate: 'Next Tuesday',
-      status: 'PENDING',
-      details: 'Draft an outline on: "Why Technology in Schools Improves Student Learning".',
-    },
-  ];
-
+function AssignmentsTab({ child, assignments }) {
   return (
     <div className="space-y-5">
       <div className="flex items-center justify-between">
@@ -463,8 +453,8 @@ function AssignmentsTab({ child }) {
       </div>
 
       <div className="grid gap-4">
-        {dummyHomework.map((hw, i) => (
-          <div key={i} className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm space-y-2">
+        {assignments.map((hw) => (
+          <div key={hw.id} className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm space-y-2">
             <div className="flex items-center justify-between">
               <span className="rounded-md bg-indigo-100 px-2 py-0.5 text-xs font-bold text-indigo-800">
                 {hw.subject}
@@ -472,13 +462,20 @@ function AssignmentsTab({ child }) {
               <span className={`text-xs font-semibold px-2.5 py-0.5 rounded-full ${
                 hw.status === 'SUBMITTED' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-amber-50 text-amber-700 border border-amber-200'
               }`}>
-                {hw.status} · Due {hw.dueDate}
+                {hw.status} · Due {hw.dueDate ? new Date(hw.dueDate).toLocaleDateString() : '—'}
               </span>
             </div>
             <h4 className="text-base font-bold text-gray-900">{hw.title}</h4>
             <p className="text-xs text-gray-600 leading-relaxed">{hw.details}</p>
+            {hw.score != null && <p className="text-xs font-semibold text-indigo-700">Score: {hw.score}</p>}
+            {hw.feedback && <p className="text-xs text-gray-600">Teacher feedback: {hw.feedback}</p>}
           </div>
         ))}
+        {assignments.length === 0 && (
+          <div className="rounded-xl border border-gray-200 bg-white p-8 text-center text-sm text-gray-500">
+            No assignments have been posted for this child’s current class.
+          </div>
+        )}
       </div>
     </div>
   );
@@ -524,7 +521,7 @@ function AnnouncementsTab({ notifications }) {
 }
 
 /* ─── 8. Messages & Communication Tab ─── */
-function MessagesTab({ child }) {
+function MessagesTab({ child, teacherContact }) {
   return (
     <div className="space-y-5 max-w-2xl">
       <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm space-y-4">
@@ -540,13 +537,13 @@ function MessagesTab({ child }) {
 
         <div className="rounded-xl border border-indigo-100 bg-indigo-50/50 p-4 space-y-2">
           <p className="text-xs font-semibold text-indigo-900">Assigned Form Teacher:</p>
-          <p className="text-sm font-bold text-gray-900">{child?.className || 'Assigned Class'} Form Teacher</p>
-          {child?.classTeacherEmail ? (
+          <p className="text-sm font-bold text-gray-900">{teacherContact?.classTeacherName || `${child?.className || 'Assigned Class'} Form Teacher`}</p>
+          {teacherContact?.classTeacherEmail ? (
             <a
-              href={`mailto:${child.classTeacherEmail}?subject=Inquiry regarding ${child.name}`}
+              href={`mailto:${teacherContact.classTeacherEmail}?subject=Inquiry regarding ${child.name}`}
               className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-xs font-semibold text-white shadow hover:bg-indigo-700 transition"
             >
-              <Mail className="h-3.5 w-3.5" /> Email Form Teacher ({child.classTeacherEmail})
+              <Mail className="h-3.5 w-3.5" /> Email Form Teacher ({teacherContact.classTeacherEmail})
             </a>
           ) : (
             <p className="text-xs text-gray-600">
@@ -560,7 +557,9 @@ function MessagesTab({ child }) {
           <p className="text-xs text-gray-600">Operating hours: Monday to Friday (07:30 AM - 04:30 PM)</p>
           <div className="flex items-center gap-3 pt-2 text-xs text-gray-800">
             <Phone className="h-4 w-4 text-indigo-600" />
-            <span>School Desk: 0504686941 / Admin Office</span>
+            {teacherContact?.classTeacherPhone && <span>Teacher: {teacherContact.classTeacherPhone}</span>}
+            {teacherContact?.schoolPhone && <span>School Desk: {teacherContact.schoolPhone}</span>}
+            {!teacherContact?.classTeacherPhone && !teacherContact?.schoolPhone && <span>Contact details are not available.</span>}
           </div>
         </div>
       </div>
@@ -569,12 +568,7 @@ function MessagesTab({ child }) {
 }
 
 /* ─── 9. Behaviour & Achievements Tab ─── */
-function BehaviourTab({ child }) {
-  const dummyAchievements = [
-    { type: 'ACHIEVEMENT', title: 'Punctuality & Neatness Commendation', date: 'This Term', note: 'Recognized for 100% on-time morning arrival and exemplary school uniform turnout.' },
-    { type: 'CONDUCT', title: 'Class Participation & Collaboration', date: 'Recent', note: 'Actively assists group peers during practical science sessions.' },
-  ];
-
+function BehaviourTab({ incidents }) {
   return (
     <div className="space-y-5">
       <div className="flex items-center justify-between">
@@ -585,19 +579,24 @@ function BehaviourTab({ child }) {
       </div>
 
       <div className="grid gap-4">
-        {dummyAchievements.map((item, idx) => (
-          <div key={idx} className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm space-y-2">
+        {incidents.map((item) => (
+          <div key={item.id} className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm space-y-2">
             <div className="flex items-center justify-between">
               <span className="inline-flex items-center gap-1.5 rounded-md bg-amber-50 px-2 py-0.5 text-xs font-bold text-amber-800 border border-amber-200">
                 <Award className="h-3.5 w-3.5 text-amber-600" />
                 {item.type}
               </span>
-              <span className="text-xs text-gray-400">{item.date}</span>
+              <span className="text-xs text-gray-400">{item.date ? new Date(item.date).toLocaleDateString() : '—'}</span>
             </div>
             <h4 className="text-base font-bold text-gray-900">{item.title}</h4>
             <p className="text-xs text-gray-600 leading-relaxed">{item.note}</p>
           </div>
         ))}
+        {incidents.length === 0 && (
+          <div className="rounded-xl border border-gray-200 bg-white p-8 text-center text-sm text-gray-500">
+            No conduct or achievement records are available.
+          </div>
+        )}
       </div>
     </div>
   );
@@ -754,25 +753,55 @@ export default function ParentPortal() {
   const activeChild = children.find(c => c.id === selectedChild);
 
   // Per-child data state
-  const [childData, setChildData] = useState({ scores: [], attendance: null, reports: [], finance: null });
+  const [childData, setChildData] = useState({
+    scores: [],
+    attendance: null,
+    reports: [],
+    finance: null,
+    timetable: null,
+    assignments: [],
+    teacherContact: null,
+    conduct: [],
+  });
+  const [childDataErrors, setChildDataErrors] = useState({});
   const [childLoading, setChildLoading] = useState(false);
 
   useEffect(() => {
     if (!selectedChild) return;
+    let active = true;
     setChildLoading(true);
     Promise.allSettled([
       getChildGrades(selectedChild),
       getChildAttendance(selectedChild),
       getChildReportCards(selectedChild),
       getChildFinance(selectedChild),
-    ]).then(([gradesRes, attendanceRes, reportsRes, financeRes]) => {
+      getChildTimetable(selectedChild),
+      getChildAssignments(selectedChild),
+      getChildTeacherContact(selectedChild),
+      getChildConductLog(selectedChild),
+    ]).then((results) => {
+      if (!active) return;
+      const [gradesRes, attendanceRes, reportsRes, financeRes, timetableRes, assignmentsRes, teacherRes, conductRes] = results;
       setChildData({
         scores: gradesRes.status === 'fulfilled' && Array.isArray(gradesRes.value) ? gradesRes.value : [],
         attendance: attendanceRes.status === 'fulfilled' ? attendanceRes.value : null,
         reports: reportsRes.status === 'fulfilled' && Array.isArray(reportsRes.value) ? reportsRes.value : [],
         finance: financeRes.status === 'fulfilled' ? financeRes.value : null,
+        timetable: timetableRes.status === 'fulfilled' ? timetableRes.value : null,
+        assignments: assignmentsRes.status === 'fulfilled' && Array.isArray(assignmentsRes.value) ? assignmentsRes.value : [],
+        teacherContact: teacherRes.status === 'fulfilled' ? teacherRes.value : null,
+        conduct: conductRes.status === 'fulfilled' && Array.isArray(conductRes.value) ? conductRes.value : [],
       });
-    }).finally(() => setChildLoading(false));
+      setChildDataErrors({
+        timetable: timetableRes.status === 'rejected' ? (timetableRes.reason.response?.data?.message || 'Could not load the timetable.') : '',
+        assignments: assignmentsRes.status === 'rejected' ? (assignmentsRes.reason.response?.data?.message || 'Could not load assignments.') : '',
+        messages: teacherRes.status === 'rejected' ? (teacherRes.reason.response?.data?.message || 'Could not load teacher contact details.') : '',
+        behaviour: conductRes.status === 'rejected' ? (conductRes.reason.response?.data?.message || 'Could not load conduct records.') : '',
+      });
+    }).finally(() => {
+      if (active) setChildLoading(false);
+    });
+    return () => { active = false; };
   }, [selectedChild]);
 
   const { scores, attendance, reports, finance } = childData;
@@ -851,11 +880,11 @@ export default function ParentPortal() {
           {activeTab === 'scores'        && <AcademicResultsTab scores={scores} />}
           {activeTab === 'attendance'    && <AttendanceTab attendance={attendance} />}
           {activeTab === 'finance'       && <FinanceTab finance={finance} />}
-          {activeTab === 'timetable'     && <TimetableTab child={activeChild} />}
-          {activeTab === 'assignments'   && <AssignmentsTab child={activeChild} />}
+          {activeTab === 'timetable'     && (childDataErrors.timetable ? <div role="alert" className="rounded-xl border border-red-200 bg-red-50 p-5 text-sm text-red-700">{childDataErrors.timetable}</div> : <TimetableTab child={activeChild} timetable={childData.timetable} />)}
+          {activeTab === 'assignments'   && (childDataErrors.assignments ? <div role="alert" className="rounded-xl border border-red-200 bg-red-50 p-5 text-sm text-red-700">{childDataErrors.assignments}</div> : <AssignmentsTab child={activeChild} assignments={childData.assignments} />)}
           {activeTab === 'announcements' && <AnnouncementsTab notifications={notifications} />}
-          {activeTab === 'messages'      && <MessagesTab child={activeChild} />}
-          {activeTab === 'behaviour'     && <BehaviourTab child={activeChild} />}
+          {activeTab === 'messages'      && (childDataErrors.messages ? <div role="alert" className="rounded-xl border border-red-200 bg-red-50 p-5 text-sm text-red-700">{childDataErrors.messages}</div> : <MessagesTab child={activeChild} teacherContact={childData.teacherContact} />)}
+          {activeTab === 'behaviour'     && (childDataErrors.behaviour ? <div role="alert" className="rounded-xl border border-red-200 bg-red-50 p-5 text-sm text-red-700">{childDataErrors.behaviour}</div> : <BehaviourTab incidents={childData.conduct} />)}
           {activeTab === 'reports'       && <ReportsTab reports={reports} />}
           {activeTab === 'profile'       && <MyProfileTab user={user} guardian={activeChild} />}
         </div>

@@ -117,6 +117,8 @@ const AppLoadingScreen = () => (
 const ADMIN_ROLES = ['SUPER_ADMIN', 'SCHOOL_ADMIN'];
 const FINANCE_ROLES = ['SUPER_ADMIN', 'SCHOOL_ADMIN', 'ACCOUNTANT'];
 const STAFF_ROLES = ['SUPER_ADMIN', 'SCHOOL_ADMIN', 'CLASS_TEACHER', 'SUBJECT_TEACHER'];
+const SCHOOL_STAFF_ROLES = ['SCHOOL_ADMIN', 'CLASS_TEACHER', 'SUBJECT_TEACHER'];
+const TEACHER_ROLES = ['CLASS_TEACHER', 'SUBJECT_TEACHER'];
 const CLASS_TEACHER_ROLES = ['SUPER_ADMIN', 'SCHOOL_ADMIN', 'CLASS_TEACHER'];
 
 export default function App() {
@@ -241,8 +243,8 @@ function AppRoutes() {
           <Route path="/enrollments" element={<ProtectedRoute allowedRoles={CLASS_TEACHER_ROLES}><Enrollments /></ProtectedRoute>} />
 
           {/* Timetable & Academic Materials */}
-          <Route path="/academics/timetable" element={<ProtectedRoute allowedRoles={STAFF_ROLES}><TimetablePage /></ProtectedRoute>} />
-          <Route path="/academics/assignments" element={<ProtectedRoute allowedRoles={STAFF_ROLES}><AssignmentsMaterialsPage /></ProtectedRoute>} />
+          <Route path="/academics/timetable" element={<ProtectedRoute allowedRoles={SCHOOL_STAFF_ROLES}><TimetablePage /></ProtectedRoute>} />
+          <Route path="/academics/assignments" element={<ProtectedRoute allowedRoles={SCHOOL_STAFF_ROLES}><AssignmentsMaterialsPage /></ProtectedRoute>} />
 
           {/* Score entry is a teacher function */}
           <Route path="/scores" element={<ProtectedRoute allowedRoles={STAFF_ROLES}><Scores /></ProtectedRoute>} />
@@ -251,7 +253,7 @@ function AppRoutes() {
           {/* School Operations */}
           <Route path="/operations/library" element={<ProtectedRoute allowedRoles={STAFF_ROLES}><LibraryPage /></ProtectedRoute>} />
           <Route path="/operations/transport" element={<ProtectedRoute allowedRoles={ADMIN_ROLES}><TransportPage /></ProtectedRoute>} />
-          <Route path="/operations/discipline" element={<ProtectedRoute allowedRoles={STAFF_ROLES}><DisciplinePage /></ProtectedRoute>} />
+          <Route path="/operations/discipline" element={<ProtectedRoute allowedRoles={SCHOOL_STAFF_ROLES}><DisciplinePage /></ProtectedRoute>} />
           <Route path="/operations/messages" element={<ProtectedRoute allowedRoles={ADMIN_ROLES}><MessagesPage /></ProtectedRoute>} />
 
           {/* Reports & Analytics */}
@@ -265,9 +267,9 @@ function AppRoutes() {
           <Route path="/settings/backup" element={<ProtectedRoute allowedRoles={ADMIN_ROLES}><BackupRestorePage /></ProtectedRoute>} />
 
           {/* Dedicated Teacher Portal Routes */}
-          <Route path="/teacher/assignments" element={<ProtectedRoute allowedRoles={STAFF_ROLES}><TeacherAssignmentsPage /></ProtectedRoute>} />
+          <Route path="/teacher/assignments" element={<ProtectedRoute allowedRoles={SCHOOL_STAFF_ROLES}><TeacherAssignmentsPage /></ProtectedRoute>} />
           <Route path="/teacher/materials" element={<ProtectedRoute allowedRoles={STAFF_ROLES}><TeacherMaterialsPage /></ProtectedRoute>} />
-          <Route path="/teacher/timetable" element={<ProtectedRoute allowedRoles={STAFF_ROLES}><TeacherTimetablePage /></ProtectedRoute>} />
+          <Route path="/teacher/timetable" element={<ProtectedRoute allowedRoles={TEACHER_ROLES}><TeacherTimetablePage /></ProtectedRoute>} />
           <Route path="/teacher/messages" element={<ProtectedRoute allowedRoles={STAFF_ROLES}><TeacherMessagesPage /></ProtectedRoute>} />
           <Route path="/teacher/profile" element={<ProtectedRoute allowedRoles={STAFF_ROLES}><TeacherProfilePage /></ProtectedRoute>} />
 
@@ -276,7 +278,7 @@ function AppRoutes() {
           {/* Parent / Student read-only portals */}
           <Route path="/parent" element={<ProtectedRoute allowedRoles={['PARENT']}><ParentPortal /></ProtectedRoute>} />
           <Route path="/student" element={<ProtectedRoute allowedRoles={['STUDENT']}><StudentPortal /></ProtectedRoute>} />
-          <Route path="/study-assistant" element={<ProtectedRoute allowedRoles={['STUDENT', 'CLASS_TEACHER', 'SUBJECT_TEACHER', 'SCHOOL_ADMIN', 'SUPER_ADMIN']}><StudyAssistant /></ProtectedRoute>} />
+          <Route path="/study-assistant" element={<ProtectedRoute allowedRoles={['STUDENT', 'CLASS_TEACHER', 'SUBJECT_TEACHER']}><StudyAssistant /></ProtectedRoute>} />
 
           {/* Super Admin Only */}
           <Route path="/admin" element={<ProtectedRoute allowedRoles={['SUPER_ADMIN']}><SuperAdminDashboard /></ProtectedRoute>} />
