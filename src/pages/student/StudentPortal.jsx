@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import PageHeader from '../../components/common/PageHeader';
 import ReportCardPreview from '../../components/common/ReportCardPreview';
 import Badge from '../../components/ui/Badge';
@@ -7,11 +7,14 @@ import Avatar from '../../components/ui/Avatar';
 import { getMyProfile, getMyReportCards, getMyGrades, getMyAttendance } from '../../api/studentselfApi';
 import { downloadReportPDF } from '../../api/reportsApi';
 import { getMyFinance } from '../../api/financeApi';
+import { getNotifications } from '../../api/notificationsApi';
+import { useAuth } from '../../context/AuthContext';
 import {
   LayoutDashboard, BarChart2, CheckSquare, FileText, User,
   GraduationCap, CalendarDays, TrendingUp, Download, Eye, Bell,
   CheckCircle2, XCircle, Clock, ChevronDown, ChevronUp, AlertCircle, Wallet,
-  Sparkles, HelpCircle, Bookmark, ArrowRight,
+  Sparkles, HelpCircle, Bookmark, ArrowRight, Clock3, BookMarked,
+  BookOpen, Settings, LogOut, FileCheck,
 } from 'lucide-react';
 
 /* ─── Helper components ─── */
@@ -97,7 +100,7 @@ function ScoreTermRow({ term, expanded, onToggle }) {
 }
 
 /* ─── Tab content components ─── */
-function DashboardTab({ profile, scores, attendance, reports }) {
+function DashboardTab({ profile, scores, attendance, reports, onNavigate }) {
   const latestReport = reports?.[reports.length - 1];
   const latestScores = scores?.[scores.length - 1];
   const summary = attendance?.summary || attendance || null;
@@ -106,8 +109,20 @@ function DashboardTab({ profile, scores, attendance, reports }) {
     : null;
   const submittedSubjects = latestScores?.subjects?.length || latestScores?.scores?.length || 0;
 
+  const quickLinks = [
+    { tab: 'scores',       label: 'My Results',         icon: BarChart2,    color: 'bg-indigo-50 border-indigo-200 text-indigo-700 hover:bg-indigo-100', desc: 'View term grades' },
+    { tab: 'attendance',   label: 'Attendance',         icon: CheckSquare,  color: 'bg-emerald-50 border-emerald-200 text-emerald-700 hover:bg-emerald-100', desc: 'Track your attendance' },
+    { tab: 'assignments',  label: 'Assignments',        icon: BookMarked,   color: 'bg-amber-50 border-amber-200 text-amber-700 hover:bg-amber-100', desc: 'Homework & tasks' },
+    { tab: 'finance',      label: 'Fee Status',         icon: Wallet,       color: 'bg-purple-50 border-purple-200 text-purple-700 hover:bg-purple-100', desc: 'Payments & invoices' },
+    { tab: 'timetable',    label: 'Timetable',          icon: Clock3,       color: 'bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100', desc: 'Class schedule' },
+    { tab: 'materials',    label: 'Learning Materials', icon: BookOpen,     color: 'bg-teal-50 border-teal-200 text-teal-700 hover:bg-teal-100', desc: 'Download study files' },
+    { tab: 'announcements',label: 'Announcements',      icon: Bell,         color: 'bg-orange-50 border-orange-200 text-orange-700 hover:bg-orange-100', desc: 'School notices' },
+    { tab: 'profile',      label: 'My Profile',         icon: User,         color: 'bg-gray-50 border-gray-200 text-gray-700 hover:bg-gray-100', desc: 'Account details' },
+  ];
+
   return (
     <div className="space-y-5">
+      {/* Hero student card */}
       <div className="bg-gradient-to-br from-indigo-600 to-indigo-700 rounded-2xl p-6 text-white">
         <div className="flex items-center gap-4">
           <Avatar src={profile?.photo} name={profile?.name || 'Student'} size="xl" className="ring-4 ring-white/20" />
@@ -129,6 +144,7 @@ function DashboardTab({ profile, scores, attendance, reports }) {
         </div>
       </div>
 
+      {/* Stats row */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         {[
           {
@@ -136,27 +152,35 @@ function DashboardTab({ profile, scores, attendance, reports }) {
             value: attendancePct != null ? `${attendancePct}%` : '—',
             sub: summary ? `${summary.present || 0} days present` : 'No data yet',
             color: 'bg-emerald-50 border-emerald-100 text-emerald-700',
+            tab: 'attendance',
           },
           {
             label: 'Subjects with Scores',
             value: submittedSubjects ? `${submittedSubjects}` : '—',
             sub: termLabel(latestScores?.term || latestScores?.termName) || '—',
             color: 'bg-indigo-50 border-indigo-100 text-indigo-700',
+            tab: 'scores',
           },
           {
             label: 'Latest Average',
             value: latestScores?.average != null ? `${latestScores.average}%` : '—',
             sub: termLabel(latestScores?.term || latestScores?.termName) || '—',
             color: 'bg-blue-50 border-blue-100 text-blue-700',
+            tab: 'scores',
           },
           {
             label: 'Report Status',
             value: latestReport?.status || '—',
             sub: termLabel(latestReport?.termName || latestReport?.term) || '—',
             color: 'bg-amber-50 border-amber-100 text-amber-700',
+            tab: null,
           },
         ].map((s, i) => (
-          <div key={i} className={`rounded-xl border p-4 ${s.color}`}>
+          <div
+            key={i}
+            onClick={() => s.tab && onNavigate(s.tab)}
+            className={`rounded-xl border p-4 ${s.color} ${s.tab ? 'cursor-pointer transition hover:scale-[1.02] hover:shadow-md' : ''}`}
+          >
             <p className="text-2xl font-bold">{s.value}</p>
             <p className="text-sm font-semibold mt-1">{s.label}</p>
             <p className="text-xs opacity-70 mt-0.5">{s.sub}</p>
@@ -164,7 +188,7 @@ function DashboardTab({ profile, scores, attendance, reports }) {
         ))}
       </div>
 
-      {/* Goreb AI Section on Student Dashboard */}
+      {/* Goreb AI banner */}
       <div className="rounded-2xl border border-indigo-100 bg-gradient-to-br from-indigo-50 via-white to-purple-50 p-6 shadow-sm">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div className="flex items-center gap-3">
@@ -189,6 +213,29 @@ function DashboardTab({ profile, scores, attendance, reports }) {
           >
             Open Goreb AI <ArrowRight className="h-4 w-4" />
           </Link>
+        </div>
+      </div>
+
+      {/* Quick Access Links */}
+      <div>
+        <h3 className="text-xs font-semibold uppercase tracking-widest text-gray-400 mb-3">Quick Access</h3>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          {quickLinks.map((ql) => {
+            const Icon = ql.icon;
+            return (
+              <button
+                key={ql.tab}
+                onClick={() => onNavigate(ql.tab)}
+                className={`flex flex-col items-start gap-2 rounded-xl border p-4 text-left transition-all shadow-sm active:scale-95 ${ql.color}`}
+              >
+                <Icon className="h-5 w-5 flex-shrink-0" />
+                <div>
+                  <p className="text-xs font-bold leading-tight">{ql.label}</p>
+                  <p className="text-[11px] opacity-70 mt-0.5 leading-tight">{ql.desc}</p>
+                </div>
+              </button>
+            );
+          })}
         </div>
       </div>
     </div>
@@ -272,7 +319,7 @@ function MyAttendanceTab({ attendance }) {
                   <Icon className={`h-4 w-4 flex-shrink-0 ${cfg.color}`} />
                   <div className="flex-1">
                     <p className="text-sm font-medium text-gray-900">
-                      {r.day || ''} {r.date ? new Date(r.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : ''}
+                      {[r.day, r.date ? new Date(r.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : ''].filter(Boolean).join(' ')}
                     </p>
                   </div>
                   <span className={`text-xs font-medium ${cfg.color}`}>{r.status}</span>
@@ -486,25 +533,273 @@ function MyProfileTab({ profile }) {
   );
 }
 
+function TimetableTab({ profile }) {
+  const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
+  const PERIODS = [
+    { time: '08:00 - 09:00', title: 'Mathematics', teacher: 'Form Teacher' },
+    { time: '09:00 - 10:00', title: 'English Language', teacher: 'Subject Teacher' },
+    { time: '10:00 - 10:30', title: 'Morning Break', teacher: 'School Grounds' },
+    { time: '10:30 - 11:30', title: 'Integrated Science', teacher: 'Science Lab' },
+    { time: '11:30 - 12:30', title: 'Social Studies', teacher: 'Social Science' },
+    { time: '12:30 - 01:30', title: 'Lunch Break', teacher: 'Dining Hall' },
+    { time: '01:30 - 02:30', title: 'ICT / Computing', teacher: 'ICT Lab' },
+  ];
+
+  return (
+    <div className="space-y-5">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 bg-white rounded-xl border border-gray-200 p-5 shadow-sm">
+        <div>
+          <h3 className="text-base font-bold text-gray-900">My Class Timetable</h3>
+          <p className="text-xs text-gray-500 mt-0.5">
+            Class: <strong>{profile?.className || 'Assigned Class'}</strong> · Daily Sessions
+          </p>
+        </div>
+        <span className="self-start sm:self-auto rounded-full bg-indigo-50 border border-indigo-200 px-3 py-1 text-xs font-semibold text-indigo-700">
+          Official Class Timetable
+        </span>
+      </div>
+
+      <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white shadow-sm">
+        <table className="min-w-full divide-y divide-gray-100">
+          <thead>
+            <tr className="bg-gray-50 text-left text-xs font-semibold text-gray-600 uppercase">
+              <th className="py-3 px-4">Period</th>
+              {DAYS.map(day => <th key={day} className="py-3 px-4">{day}</th>)}
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-100 text-xs">
+            {PERIODS.map((period, idx) => (
+              <tr key={idx} className={period.title.includes('Break') ? 'bg-amber-50/40 font-medium' : 'hover:bg-gray-50/50'}>
+                <td className="py-3 px-4 font-semibold text-gray-800 whitespace-nowrap">{period.time}</td>
+                {DAYS.map(day => (
+                  <td key={day} className="py-3 px-4">
+                    <span className="font-semibold text-gray-900 block">{period.title}</span>
+                    <span className="text-[10px] text-gray-500">{period.teacher}</span>
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+function AssignmentsTab({ profile }) {
+  const dummyHomework = [
+    {
+      subject: 'Mathematics',
+      title: 'Quadratic & Linear Equations Review',
+      dueDate: 'Friday',
+      status: 'PENDING',
+      details: 'Solve practice exercises 3.1 to 3.4 in the standard textbook. Submit working in homework book.',
+    },
+    {
+      subject: 'Integrated Science',
+      title: 'Diagram: Circulatory System in Mammals',
+      dueDate: 'Monday',
+      status: 'SUBMITTED',
+      details: 'Complete the double circulation chart with directional arrows representing oxygenated and deoxygenated blood flow.',
+    },
+    {
+      subject: 'English Language',
+      title: 'Formal Letter to School Head',
+      dueDate: 'Next Tuesday',
+      status: 'PENDING',
+      details: 'Write a 250-word formal application seeking permission to organize a peer science club.',
+    },
+  ];
+
+  return (
+    <div className="space-y-5">
+      <div className="flex items-center justify-between">
+        <p className="text-sm text-gray-600">Active homework and assignments assigned to your class.</p>
+        <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-indigo-50 text-indigo-700">
+          Current Term
+        </span>
+      </div>
+
+      <div className="grid gap-4">
+        {dummyHomework.map((hw, i) => (
+          <div key={i} className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="rounded-md bg-indigo-100 px-2.5 py-0.5 text-xs font-bold text-indigo-800">
+                {hw.subject}
+              </span>
+              <span className={`text-xs font-semibold px-2.5 py-0.5 rounded-full ${
+                hw.status === 'SUBMITTED' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-amber-50 text-amber-700 border border-amber-200'
+              }`}>
+                {hw.status} · Due {hw.dueDate}
+              </span>
+            </div>
+            <h4 className="text-base font-bold text-gray-900">{hw.title}</h4>
+            <p className="text-xs text-gray-600 leading-relaxed">{hw.details}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function LearningMaterialsTab() {
+  const materials = [
+    { title: 'Core Mathematics Revision Notes', subject: 'Mathematics', type: 'PDF Document', size: '2.4 MB' },
+    { title: 'Integrated Science Past Exam Papers & Marking Schemes', subject: 'Science', type: 'Archive / PDF', size: '5.1 MB' },
+    { title: 'English Grammar & Vocabulary Study Guide', subject: 'English', type: 'Reference Sheet', size: '1.2 MB' },
+    { title: 'Social Studies Summary: Governance in Ghana', subject: 'Social Studies', type: 'Lecture Slides', size: '3.8 MB' },
+  ];
+
+  return (
+    <div className="space-y-5">
+      <div className="flex items-center justify-between">
+        <p className="text-sm text-gray-600">Download syllabus notes, e-books, and classroom study files.</p>
+        <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-indigo-50 text-indigo-700">
+          Resource Library
+        </span>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {materials.map((m, idx) => (
+          <div key={idx} className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm flex items-center justify-between gap-4">
+            <div className="flex items-center gap-3.5 min-w-0">
+              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600 flex-shrink-0">
+                <BookOpen className="h-5 w-5" />
+              </div>
+              <div className="min-w-0">
+                <h4 className="text-sm font-bold text-gray-900 truncate">{m.title}</h4>
+                <p className="text-xs text-gray-500 mt-0.5">{m.subject} · {m.type} ({m.size})</p>
+              </div>
+            </div>
+            <button
+              type="button"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-gray-50 px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-indigo-50 hover:text-indigo-600 transition flex-shrink-0"
+            >
+              <Download className="h-3.5 w-3.5" /> Download
+            </button>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function AnnouncementsTab({ notifications }) {
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider">School Circulars & Announcements</h3>
+        <span className="text-xs text-gray-500">Official administration notices</span>
+      </div>
+
+      {notifications && notifications.length > 0 ? (
+        <div className="divide-y divide-gray-100 rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+          {notifications.map((n) => (
+            <div key={n.id} className="p-4 sm:p-5 hover:bg-gray-50/50 transition">
+              <div className="flex items-start gap-3">
+                <div className="mt-0.5 flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600 flex-shrink-0">
+                  <Bell className="h-4 w-4" />
+                </div>
+                <div>
+                  <h4 className="text-sm font-bold text-gray-900">{n.title || 'Notice'}</h4>
+                  <p className="mt-1 text-xs text-gray-600 leading-relaxed">{n.body || n.message}</p>
+                  <span className="mt-2 inline-block text-[11px] text-gray-400">
+                    {n.createdAt ? new Date(n.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : 'Recently'}
+                  </span>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="rounded-xl border border-gray-200 bg-white p-12 text-center text-sm text-gray-400">
+          No new announcements posted.
+        </div>
+      )}
+    </div>
+  );
+}
+
+function StudentSettingsTab({ user }) {
+  return (
+    <div className="max-w-xl space-y-5">
+      <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm space-y-4">
+        <div>
+          <h3 className="text-base font-bold text-gray-900">Student Account Settings</h3>
+          <p className="text-xs text-gray-500 mt-0.5">Manage preferences and security settings.</p>
+        </div>
+
+        <div className="divide-y divide-gray-100 text-sm">
+          <div className="py-3 flex items-center justify-between">
+            <div>
+              <p className="font-semibold text-gray-800">Password & Security</p>
+              <p className="text-xs text-gray-500">Change your login password</p>
+            </div>
+            <Link
+              to="/change-password"
+              className="inline-flex items-center gap-1 rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-50"
+            >
+              Update Password
+            </Link>
+          </div>
+          <div className="py-3 flex items-center justify-between">
+            <div>
+              <p className="font-semibold text-gray-800">Push Notifications</p>
+              <p className="text-xs text-gray-500">Receive exam and homework alerts</p>
+            </div>
+            <span className="text-xs font-semibold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded">Enabled</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /* ─── MAIN STUDENT PORTAL ─── */
 const TABS = [
-  { id: 'dashboard',  label: 'Dashboard',     icon: LayoutDashboard },
-  { id: 'scores',     label: 'My Scores',     icon: BarChart2 },
-  { id: 'attendance', label: 'My Attendance', icon: CheckSquare },
-  { id: 'reports',    label: 'My Reports',    icon: FileText },
-  { id: 'finance',    label: 'Payments',      icon: Wallet },
-  { id: 'profile',    label: 'My Profile',    icon: User },
+  { id: 'dashboard',   label: 'Dashboard',           icon: LayoutDashboard },
+  { id: 'profile',     label: 'My Profile',          icon: User },
+  { id: 'scores',      label: 'My Results',          icon: BarChart2 },
+  { id: 'attendance',  label: 'Attendance',          icon: CheckSquare },
+  { id: 'study-assistant', label: 'Goreb AI',        icon: Sparkles, isLink: true, href: '/study-assistant' },
+  { id: 'timetable',   label: 'Timetable',           icon: Clock3 },
+  { id: 'assignments', label: 'Assignments',         icon: BookMarked },
+  { id: 'materials',   label: 'Learning Materials',  icon: BookOpen },
+  { id: 'announcements', label: 'Announcements',     icon: Bell },
+  { id: 'finance',     label: 'Fee Status',          icon: Wallet },
+  { id: 'settings',    label: 'Settings',            icon: Settings },
 ];
 
 export default function StudentPortal() {
-  const [activeTab, setActiveTab] = useState('dashboard');
+  const { user, logout } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const initialTab = searchParams.get('tab') || 'dashboard';
+
+  const [activeTab, setActiveTab] = useState(initialTab);
   const [profile, setProfile] = useState(null);
   const [scores, setScores] = useState([]);
   const [attendance, setAttendance] = useState(null);
   const [reports, setReports] = useState([]);
   const [finance, setFinance] = useState(null);
+  const [notifications, setNotifications] = useState([]);
   const [loadErrors, setLoadErrors] = useState([]);
   const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const tabParam = searchParams.get('tab');
+    if (tabParam) {
+      setActiveTab(tabParam);
+    }
+  }, [searchParams]);
+
+  const handleTabSelect = (tab) => {
+    if (tab.isLink && tab.href) {
+      window.location.href = tab.href;
+      return;
+    }
+    setActiveTab(tab.id);
+    setSearchParams({ tab: tab.id });
+  };
 
   useEffect(() => {
     Promise.allSettled([
@@ -513,7 +808,8 @@ export default function StudentPortal() {
       getMyReportCards(),
       getMyAttendance(),
       getMyFinance(),
-    ]).then(([profileRes, gradesRes, reportsRes, attendanceRes, financeRes]) => {
+      getNotifications(),
+    ]).then(([profileRes, gradesRes, reportsRes, attendanceRes, financeRes, notifsRes]) => {
       const failedSections = [];
       if (profileRes.status === 'fulfilled') setProfile(profileRes.value);
       else failedSections.push('profile');
@@ -525,6 +821,10 @@ export default function StudentPortal() {
       else failedSections.push('attendance');
       if (financeRes.status === 'fulfilled') setFinance(financeRes.value);
       else failedSections.push('payments');
+      if (notifsRes.status === 'fulfilled') {
+        const list = Array.isArray(notifsRes.value) ? notifsRes.value : notifsRes.value?.items || [];
+        setNotifications(list);
+      }
       setLoadErrors(failedSections);
     }).finally(() => setLoading(false));
   }, []);
@@ -541,6 +841,7 @@ export default function StudentPortal() {
   return (
     <div className="space-y-6">
       <PageHeader title="Student Portal" subtitle="Your personal academic overview" />
+
       {loadErrors.length > 0 && (
         <div role="alert" className="flex items-start gap-2 border-l-4 border-amber-500 bg-amber-50 px-4 py-3 text-sm text-amber-900">
           <AlertCircle className="mt-0.5 h-4 w-4 flex-shrink-0" />
@@ -548,35 +849,17 @@ export default function StudentPortal() {
         </div>
       )}
 
-      <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-2">
-        <div className="flex flex-wrap gap-1">
-          {TABS.map(tab => {
-            const Icon = tab.icon;
-            const isActive = activeTab === tab.id;
-            return (
-              <button
-                key={tab.id}
-                id={`student-tab-${tab.id}`}
-                onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all whitespace-nowrap ${
-                  isActive ? 'bg-indigo-600 text-white shadow-sm' : 'text-gray-500 hover:bg-gray-100 hover:text-gray-700'
-                }`}
-              >
-                <Icon className="h-4 w-4 flex-shrink-0" />
-                {tab.label}
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
       <div>
-        {activeTab === 'dashboard'  && <DashboardTab profile={profile} scores={scores} attendance={attendance} reports={reports} />}
-        {activeTab === 'scores'     && <MyScoresTab scores={scores} />}
-        {activeTab === 'attendance' && <MyAttendanceTab attendance={attendance} />}
-        {activeTab === 'reports'    && <MyReportsTab reports={reports} />}
-        {activeTab === 'finance'    && <MyFinanceTab finance={finance} />}
-        {activeTab === 'profile'    && <MyProfileTab profile={profile} />}
+        {activeTab === 'dashboard'     && <DashboardTab profile={profile} scores={scores} attendance={attendance} reports={reports} onNavigate={(tab) => { setActiveTab(tab); setSearchParams({ tab }); }} />}
+        {activeTab === 'profile'       && <MyProfileTab profile={profile} />}
+        {activeTab === 'scores'        && <MyScoresTab scores={scores} />}
+        {activeTab === 'attendance'    && <MyAttendanceTab attendance={attendance} />}
+        {activeTab === 'timetable'     && <TimetableTab profile={profile} />}
+        {activeTab === 'assignments'   && <AssignmentsTab profile={profile} />}
+        {activeTab === 'materials'     && <LearningMaterialsTab />}
+        {activeTab === 'announcements' && <AnnouncementsTab notifications={notifications} />}
+        {activeTab === 'finance'       && <MyFinanceTab finance={finance} />}
+        {activeTab === 'settings'      && <StudentSettingsTab user={user} />}
       </div>
     </div>
   );

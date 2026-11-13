@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { NavLink, Outlet, Link, useNavigate } from 'react-router-dom';
+import { NavLink, Outlet, Link, useNavigate, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard,
   BookOpen,
@@ -43,6 +43,13 @@ import {
   Receipt,      // ← Phase 1
   ScrollText,   // ← Phase 1
   Sparkles,
+  BookMarked,
+  Award,
+  Clock3,
+  Bus,
+  DollarSign,
+  MessageSquare,
+  User,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useSocket } from '../context/SocketContext';
@@ -120,101 +127,174 @@ const superAdminNav = [
   },
 ];
 
-// Staff/admin nav — School Admin, Class Teacher, Subject Teacher, Accountant.
-const navGroups = [
+// School Management – Administrator Portal Navigation
+const schoolAdminNav = [
   {
     label: 'Overview',
     items: [
-      { path: '/dashboard', icon: LayoutDashboard, label: 'Dashboard', roles: ['SCHOOL_ADMIN', 'CLASS_TEACHER', 'SUBJECT_TEACHER'] },
+      { path: '/dashboard', icon: LayoutDashboard, label: 'Dashboard', roles: ['SCHOOL_ADMIN'] },
     ],
   },
   {
-    label: 'Academic',
+    label: 'SCHOOL MANAGEMENT',
     items: [
-      { path: '/classes', icon: BookOpen, label: 'Classes', roles: ['SCHOOL_ADMIN', 'CLASS_TEACHER'] },
-      { path: '/subjects', icon: Library, label: 'Subjects', roles: ['SCHOOL_ADMIN', 'CLASS_TEACHER', 'SUBJECT_TEACHER'] },
-      { path: '/enrollments', icon: ClipboardList, label: 'Enrollments', roles: ['SCHOOL_ADMIN', 'CLASS_TEACHER'] },
-      { path: '/terms', icon: CalendarDays, label: 'Terms', roles: ['SCHOOL_ADMIN', 'CLASS_TEACHER', 'SUBJECT_TEACHER'] },
+      { path: '/students',           icon: GraduationCap, label: 'Students',            roles: ['SCHOOL_ADMIN'] },
+      { path: '/staff?role=teacher', icon: Users,         label: 'Teachers',            roles: ['SCHOOL_ADMIN'] },
+      { path: '/guardians',          icon: UserCheck,     label: 'Parents & Guardians', roles: ['SCHOOL_ADMIN'] },
+      { path: '/admissions',         icon: ClipboardList, label: 'Admissions',          roles: ['SCHOOL_ADMIN'] },
+      { path: '/staff',              icon: Users,         label: 'Staff Management',    roles: ['SCHOOL_ADMIN'] },
     ],
   },
   {
-    label: 'People',
+    label: 'ACADEMICS',
     items: [
-      { path: '/staff', icon: Users, label: 'Staff', roles: ['SCHOOL_ADMIN'] },
-      { path: '/students', icon: GraduationCap, label: 'Students', roles: ['SCHOOL_ADMIN', 'CLASS_TEACHER'] },
-      { path: '/guardians', icon: UserCheck, label: 'Guardians', roles: ['SCHOOL_ADMIN'] },
-      { path: '/documents', icon: Paperclip, label: 'Documents', roles: ['SCHOOL_ADMIN'] },
+      { path: '/classes',               icon: BookOpen,     label: 'Classes & Sections',      roles: ['SCHOOL_ADMIN'] },
+      { path: '/subjects',              icon: Library,      label: 'Subjects',                roles: ['SCHOOL_ADMIN'] },
+      { path: '/terms',                 icon: CalendarDays, label: 'Academic Years & Terms',  roles: ['SCHOOL_ADMIN'] },
+      { path: '/scores',                icon: BarChart2,    label: 'Examinations & Results',  roles: ['SCHOOL_ADMIN'] },
+      { path: '/academics/timetable',   icon: Clock3,       label: 'Timetable',               roles: ['SCHOOL_ADMIN'] },
+      { path: '/attendance',            icon: CheckSquare,  label: 'Attendance',              roles: ['SCHOOL_ADMIN'] },
+      { path: '/academics/assignments', icon: BookMarked,   label: 'Assignments & Materials', roles: ['SCHOOL_ADMIN'] },
     ],
   },
   {
-    // Finance, fee invoices, expenses, and the ledger daybook.
-    label: 'Finance',
+    label: 'FINANCE',
     items: [
-      { path: '/finance',            icon: Wallet,     label: 'Finance',   roles: ['SCHOOL_ADMIN', 'ACCOUNTANT'] },
-      { path: '/finance/fees',       icon: FileText,   label: 'Fees & Invoices', roles: ['SCHOOL_ADMIN', 'ACCOUNTANT'] },
-      { path: '/finance/expenses',   icon: Receipt,    label: 'Expenses',  roles: ['SCHOOL_ADMIN', 'ACCOUNTANT'] },
-      { path: '/finance/daybook',    icon: ScrollText, label: 'Daybook',   roles: ['SCHOOL_ADMIN', 'ACCOUNTANT'] },
+      { path: '/finance/fees',     icon: FileText,   label: 'School Fees',                  roles: ['SCHOOL_ADMIN', 'ACCOUNTANT'] },
+      { path: '/finance',          icon: Wallet,     label: 'Payments & Receipts',          roles: ['SCHOOL_ADMIN', 'ACCOUNTANT'] },
+      { path: '/finance/expenses', icon: Receipt,    label: 'Expenses & Financial Reports', roles: ['SCHOOL_ADMIN', 'ACCOUNTANT'] },
+      { path: '/finance/payroll',  icon: DollarSign, label: 'Payroll',                      roles: ['SCHOOL_ADMIN', 'ACCOUNTANT'] },
     ],
   },
   {
-    label: 'Assessment',
+    label: 'SCHOOL OPERATIONS',
     items: [
-      { path: '/scores', icon: BarChart2, label: 'Scores', roles: ['SCHOOL_ADMIN', 'CLASS_TEACHER', 'SUBJECT_TEACHER'] },
-      { path: '/attendance', icon: CheckSquare, label: 'Attendance', roles: ['SCHOOL_ADMIN', 'CLASS_TEACHER', 'SUBJECT_TEACHER'] },
-      { path: '/reports', icon: FileText, label: 'Reports', roles: ['SCHOOL_ADMIN'] },
-      { path: '/report-remarks', icon: MessageSquareText, label: 'Report Remarks', roles: ['SCHOOL_ADMIN', 'CLASS_TEACHER'] },
-      { path: '/study-assistant', icon: Sparkles, label: 'Goreb AI', roles: ['CLASS_TEACHER', 'SUBJECT_TEACHER'] },
+      { path: '/operations/library',    icon: Library,     label: 'Library',       roles: ['SCHOOL_ADMIN'] },
+      { path: '/operations/transport',  icon: Bus,         label: 'Transport',     roles: ['SCHOOL_ADMIN'] },
+      { path: '/operations/discipline', icon: ShieldAlert, label: 'Discipline',    roles: ['SCHOOL_ADMIN'] },
+      { path: '/notifications',         icon: Bell,        label: 'Announcements', roles: ['SCHOOL_ADMIN'] },
+      { path: '/operations/messages',   icon: Mail,        label: 'Messages',      roles: ['SCHOOL_ADMIN'] },
     ],
   },
   {
-    label: 'System',
+    label: 'REPORTS & SETTINGS',
     items: [
-      { path: '/analytics', icon: TrendingUp, label: 'Analytics', roles: ['SCHOOL_ADMIN'] },
-      { path: '/billing', icon: CreditCard, label: 'Billing', roles: ['SCHOOL_ADMIN'] },
-      { path: '/activity-logs', icon: FileText, label: 'Activity Log', roles: ['SCHOOL_ADMIN'] },
-      { path: '/notifications', icon: Bell, label: 'Notifications', roles: ['SCHOOL_ADMIN', 'ACCOUNTANT', 'CLASS_TEACHER', 'SUBJECT_TEACHER'] },
-      { path: '/settings', icon: Settings, label: 'School Settings', roles: ['SCHOOL_ADMIN'] },
+      { path: '/reports',         icon: BarChart2,   label: 'Reports & Analytics',      roles: ['SCHOOL_ADMIN'] },
+      { path: '/settings/roles',  icon: ShieldCheck, label: 'User Roles & Permissions', roles: ['SCHOOL_ADMIN'] },
+      { path: '/settings',        icon: Settings,    label: 'System Settings',          roles: ['SCHOOL_ADMIN'] },
+      { path: '/activity-logs',   icon: FileText,    label: 'Audit Logs',               roles: ['SCHOOL_ADMIN'] },
+      { path: '/settings/backup', icon: Database,    label: 'Backup & Restore',         roles: ['SCHOOL_ADMIN'] },
     ],
   },
 ];
 
-// Parent — read-only per section 5, Role 6
+// Dedicated Teacher Portal Navigation
+const teacherNav = [
+  {
+    label: 'Teacher Portal',
+    items: [
+      { path: '/dashboard',           icon: LayoutDashboard, label: 'Dashboard',              roles: ['CLASS_TEACHER', 'SUBJECT_TEACHER'] },
+      { path: '/study-assistant',     icon: Sparkles,        label: 'Goreb AI',               roles: ['CLASS_TEACHER', 'SUBJECT_TEACHER'] },
+      { path: '/classes',             icon: BookOpen,        label: 'My Classes',             roles: ['CLASS_TEACHER', 'SUBJECT_TEACHER'] },
+      { path: '/students',            icon: GraduationCap,   label: 'Students',               roles: ['CLASS_TEACHER', 'SUBJECT_TEACHER'] },
+      { path: '/attendance',          icon: CheckSquare,     label: 'Attendance Management',  roles: ['CLASS_TEACHER', 'SUBJECT_TEACHER'] },
+      { path: '/scores',              icon: BarChart2,       label: 'Results & Examinations', roles: ['CLASS_TEACHER', 'SUBJECT_TEACHER'] },
+      { path: '/teacher/assignments', icon: BookMarked,      label: 'Assignments & Homework', roles: ['CLASS_TEACHER', 'SUBJECT_TEACHER'] },
+      { path: '/teacher/materials',   icon: Library,         label: 'Learning Materials',     roles: ['CLASS_TEACHER', 'SUBJECT_TEACHER'] },
+      { path: '/teacher/timetable',   icon: Clock3,          label: 'My Timetable',           roles: ['CLASS_TEACHER', 'SUBJECT_TEACHER'] },
+      { path: '/teacher/messages',    icon: MessageSquare,   label: 'Messages',               roles: ['CLASS_TEACHER', 'SUBJECT_TEACHER'] },
+      { path: '/analytics',           icon: TrendingUp,      label: 'Reports & Analytics',    roles: ['CLASS_TEACHER', 'SUBJECT_TEACHER'] },
+      { path: '/notifications',       icon: Bell,            label: 'Announcements',          roles: ['CLASS_TEACHER', 'SUBJECT_TEACHER'] },
+      { path: '/teacher/profile',     icon: User,            label: 'My Profile',             roles: ['CLASS_TEACHER', 'SUBJECT_TEACHER'] },
+      { path: '/settings',            icon: Settings,        label: 'Settings',               roles: ['CLASS_TEACHER', 'SUBJECT_TEACHER'] },
+      { path: '__logout__',           icon: LogOut,          label: 'Logout',                 roles: ['CLASS_TEACHER', 'SUBJECT_TEACHER'] },
+    ],
+  },
+];
+
+// Dedicated Accountant Navigation
+const accountantNav = [
+  {
+    label: 'Overview',
+    items: [
+      { path: '/dashboard', icon: LayoutDashboard, label: 'Dashboard', roles: ['ACCOUNTANT'] },
+    ],
+  },
+  {
+    label: 'FINANCE',
+    items: [
+      { path: '/finance/fees',     icon: FileText,   label: 'School Fees',                  roles: ['ACCOUNTANT'] },
+      { path: '/finance',          icon: Wallet,     label: 'Payments & Receipts',          roles: ['ACCOUNTANT'] },
+      { path: '/finance/expenses', icon: Receipt,    label: 'Expenses & Financial Reports', roles: ['ACCOUNTANT'] },
+      { path: '/finance/payroll',  icon: DollarSign, label: 'Payroll',                      roles: ['ACCOUNTANT'] },
+    ],
+  },
+  {
+    label: 'Alerts',
+    items: [
+      { path: '/notifications', icon: Bell, label: 'Announcements', roles: ['ACCOUNTANT'] },
+    ],
+  },
+];
+
+// Parent — Family Portal Navigation
 const parentNav = [
   {
-    label: 'My Family Portal',
+    label: 'My Children',
     items: [
-      { path: '/parent', icon: Home,          label: 'Dashboard',      roles: ['PARENT'] },
-      { path: '/parent', icon: BarChart2,     label: 'Scores',         roles: ['PARENT'] },
-      { path: '/parent', icon: CheckSquare,   label: 'Attendance',     roles: ['PARENT'] },
-      { path: '/parent', icon: FileText,      label: 'Report Cards',   roles: ['PARENT'] },
-      { path: '/parent', icon: ClipboardCheck,label: 'My Profile',     roles: ['PARENT'] },
+      { path: '/parent?tab=children', icon: Users, label: 'My Children', roles: ['PARENT'] },
     ],
   },
   {
-    label: 'Alerts',
+    label: 'Academics & Attendance',
     items: [
-      { path: '/notifications', icon: Bell, label: 'Notifications', roles: ['PARENT'] },
+      { path: '/parent?tab=scores', icon: BarChart2, label: 'Academic Results', roles: ['PARENT'] },
+      { path: '/parent?tab=attendance', icon: CheckSquare, label: 'Attendance', roles: ['PARENT'] },
+      { path: '/parent?tab=timetable', icon: Clock3, label: 'Timetable', roles: ['PARENT'] },
+      { path: '/parent?tab=assignments', icon: BookMarked, label: 'Assignments & Homework', roles: ['PARENT'] },
+      { path: '/parent?tab=reports', icon: FileText, label: 'Reports', roles: ['PARENT'] },
+    ],
+  },
+  {
+    label: 'Finance & Payments',
+    items: [
+      { path: '/parent?tab=finance', icon: Wallet, label: 'School Fees & Payments', roles: ['PARENT'] },
+    ],
+  },
+  {
+    label: 'Communication & Wellbeing',
+    items: [
+      { path: '/parent?tab=announcements', icon: Bell, label: 'Announcements', roles: ['PARENT'] },
+      { path: '/parent?tab=messages', icon: Mail, label: 'Messages & Communication', roles: ['PARENT'] },
+      { path: '/parent?tab=behaviour', icon: Award, label: 'Behaviour & Achievements', roles: ['PARENT'] },
+    ],
+  },
+  {
+    label: 'Account',
+    items: [
+      { path: '/parent?tab=profile', icon: ClipboardCheck, label: 'My Profile', roles: ['PARENT'] },
+      { path: '__logout__', icon: LogOut, label: 'Logout', roles: ['PARENT'] },
     ],
   },
 ];
 
-// Student — read-only per section 5, Role 5
+// Student Portal Navigation
 const studentNav = [
   {
-    label: 'My Student Portal',
+    label: 'Student Portal',
     items: [
-      { path: '/student', icon: Home,          label: 'Dashboard',      roles: ['STUDENT'] },
-      { path: '/student', icon: BarChart2,     label: 'My Scores',      roles: ['STUDENT'] },
-      { path: '/student', icon: CheckSquare,   label: 'My Attendance',  roles: ['STUDENT'] },
-      { path: '/student', icon: FileText,      label: 'My Reports',     roles: ['STUDENT'] },
-      { path: '/student', icon: ClipboardCheck,label: 'My Profile',     roles: ['STUDENT'] },
-      { path: '/study-assistant', icon: Sparkles, label: 'Goreb AI', roles: ['STUDENT'] },
-    ],
-  },
-  {
-    label: 'Alerts',
-    items: [
-      { path: '/notifications', icon: Bell, label: 'Notifications', roles: ['STUDENT'] },
+      { path: '/student?tab=dashboard',     icon: LayoutDashboard, label: 'Dashboard',           roles: ['STUDENT'] },
+      { path: '/student?tab=profile',       icon: User,            label: 'My Profile',          roles: ['STUDENT'] },
+      { path: '/student?tab=scores',        icon: BarChart2,       label: 'My Results',          roles: ['STUDENT'] },
+      { path: '/student?tab=attendance',    icon: CheckSquare,     label: 'Attendance',          roles: ['STUDENT'] },
+      { path: '/study-assistant',           icon: Sparkles,        label: 'Goreb AI',            roles: ['STUDENT'] },
+      { path: '/student?tab=timetable',     icon: Clock3,          label: 'Timetable',           roles: ['STUDENT'] },
+      { path: '/student?tab=assignments',   icon: BookMarked,      label: 'Assignments',         roles: ['STUDENT'] },
+      { path: '/student?tab=materials',     icon: BookOpen,        label: 'Learning Materials',  roles: ['STUDENT'] },
+      { path: '/student?tab=announcements', icon: Bell,            label: 'Announcements',       roles: ['STUDENT'] },
+      { path: '/student?tab=finance',       icon: Wallet,          label: 'Fee Status',          roles: ['STUDENT'] },
+      { path: '/student?tab=settings',      icon: Settings,        label: 'Settings',            roles: ['STUDENT'] },
+      { path: '__logout__',                 icon: LogOut,          label: 'Logout',              roles: ['STUDENT'] },
     ],
   },
 ];
@@ -235,6 +315,7 @@ export default function AppLayout() {
   const { user, logout } = useAuth();
   const { unreadCount } = useSocket();
   const navigate = useNavigate();
+  const location = useLocation();
 
   const userRole = user?.role;
 
@@ -242,7 +323,9 @@ export default function AppLayout() {
     userRole === 'SUPER_ADMIN' ? superAdminNav :
     userRole === 'PARENT' ? parentNav :
     userRole === 'STUDENT' ? studentNav :
-    navGroups;
+    (userRole === 'CLASS_TEACHER' || userRole === 'SUBJECT_TEACHER') ? teacherNav :
+    userRole === 'ACCOUNTANT' ? accountantNav :
+    schoolAdminNav;
 
   const filteredNav = baseNav
     .map((group) => ({
@@ -316,24 +399,63 @@ export default function AppLayout() {
                 {group.label}
               </p>
               <div className="space-y-0.5">
-                {group.items.map((item) => (
-                  <NavLink
-                    key={item.path}
-                    to={item.path}
-                    end={item.path === '/finance'}   // ← Phase 1: prevents /finance from being "active" on /finance/expenses
-                    onClick={() => setSidebarOpen(false)}
-                    className={({ isActive }) =>
-                      `flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-150 ${
-                        isActive
-                          ? 'bg-indigo-600 text-white shadow-sm shadow-indigo-500/30'
-                          : 'text-gray-400 hover:text-white hover:bg-white/5'
-                      }`
-                    }
-                  >
-                    <item.icon className="h-4 w-4 flex-shrink-0" />
-                    {item.label}
-                  </NavLink>
-                ))}
+                {group.items.map((item) => {
+                  if (item.path === '__logout__') {
+                    return (
+                      <button
+                        key={item.label}
+                        type="button"
+                        onClick={() => {
+                          setSidebarOpen(false);
+                          handleLogout();
+                        }}
+                        className="flex items-center gap-3 w-full px-3 py-2 rounded-lg text-sm font-medium text-red-400 hover:text-white hover:bg-red-500/10 transition-all duration-150 text-left"
+                      >
+                        <item.icon className="h-4 w-4 flex-shrink-0" />
+                        {item.label}
+                      </button>
+                    );
+                  }
+
+                  const itemHasQuery = item.path.includes('?');
+                  let isCustomActive = false;
+                  if (itemHasQuery) {
+                    const [itemPath, itemQuery] = item.path.split('?');
+                    const currentQuery = location.search ? location.search.slice(1) : (
+                      itemPath === '/parent' ? 'tab=children' :
+                      itemPath === '/student' ? 'tab=dashboard' : ''
+                    );
+                    isCustomActive = location.pathname === itemPath && currentQuery === itemQuery;
+                  } else if (item.path === '/parent') {
+                    isCustomActive = location.pathname === '/parent' && (!location.search || location.search === '?tab=children');
+                  } else if (item.path === '/student') {
+                    isCustomActive = location.pathname === '/student' && (!location.search || location.search === '?tab=dashboard');
+                  } else if (item.path === '/staff') {
+                    isCustomActive = location.pathname === '/staff' && !location.search;
+                  }
+
+                  return (
+                    <NavLink
+                      key={item.path + item.label}
+                      to={item.path}
+                      end={item.path === '/finance' || item.path === '/staff'}
+                      onClick={() => setSidebarOpen(false)}
+                      className={({ isActive }) => {
+                        const activeState = (itemHasQuery || item.path === '/parent' || item.path === '/student' || item.path === '/staff')
+                          ? isCustomActive
+                          : isActive;
+                        return `flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-150 ${
+                          activeState
+                            ? 'bg-indigo-600 text-white shadow-sm shadow-indigo-500/30'
+                            : 'text-gray-400 hover:text-white hover:bg-white/5'
+                        }`;
+                      }}
+                    >
+                      <item.icon className="h-4 w-4 flex-shrink-0" />
+                      {item.label}
+                    </NavLink>
+                  );
+                })}
               </div>
             </div>
           ))}

@@ -71,6 +71,24 @@ const AdminDeveloperTools = lazy(() => import('./pages/superadmin/AdminDeveloper
 const AdminLegal = lazy(() => import('./pages/superadmin/AdminLegal'));
 const AdminAnnouncements = lazy(() => import('./pages/superadmin/AdminAnnouncements'));
 
+// School Management, Academics, Operations & Teacher Portals
+const AdmissionsPage = lazy(() => import('./pages/students/AdmissionsPage'));
+const TimetablePage = lazy(() => import('./pages/academics/TimetablePage'));
+const AssignmentsMaterialsPage = lazy(() => import('./pages/academics/AssignmentsMaterialsPage'));
+const PayrollPage = lazy(() => import('./pages/finance/PayrollPage'));
+const LibraryPage = lazy(() => import('./pages/operations/LibraryPage'));
+const TransportPage = lazy(() => import('./pages/operations/TransportPage'));
+const DisciplinePage = lazy(() => import('./pages/operations/DisciplinePage'));
+const MessagesPage = lazy(() => import('./pages/operations/MessagesPage'));
+const RolesPermissionsPage = lazy(() => import('./pages/settings/RolesPermissionsPage'));
+const BackupRestorePage = lazy(() => import('./pages/settings/BackupRestorePage'));
+
+const TeacherAssignmentsPage = lazy(() => import('./pages/teacher/TeacherAssignmentsPage'));
+const TeacherMaterialsPage = lazy(() => import('./pages/teacher/TeacherMaterialsPage'));
+const TeacherTimetablePage = lazy(() => import('./pages/teacher/TeacherTimetablePage'));
+const TeacherMessagesPage = lazy(() => import('./pages/teacher/TeacherMessagesPage'));
+const TeacherProfilePage = lazy(() => import('./pages/teacher/TeacherProfilePage'));
+
 // Kept for backward compatibility with lazy imports elsewhere
 import AppLayout from './layouts/AppLayout';
 
@@ -198,44 +216,67 @@ function AppRoutes() {
           <Route path="/terms" element={<ProtectedRoute allowedRoles={STAFF_ROLES}><Terms /></ProtectedRoute>} />
           <Route path="/staff" element={<ProtectedRoute allowedRoles={ADMIN_ROLES}><Staff /></ProtectedRoute>} />
 
-          {/* Student profiles: Class Teacher can view/edit their class; only admins admit/delete (enforced in-page too) */}
-          <Route path="/students" element={<ProtectedRoute allowedRoles={CLASS_TEACHER_ROLES}><Students /></ProtectedRoute>} />
-          <Route path="/students/:id" element={<ProtectedRoute allowedRoles={CLASS_TEACHER_ROLES}><StudentDetail /></ProtectedRoute>} />
+          {/* Student profiles: Class Teacher & Subject Teacher can view; only admins admit/delete */}
+          <Route path="/students" element={<ProtectedRoute allowedRoles={STAFF_ROLES}><Students /></ProtectedRoute>} />
+          <Route path="/students/:id" element={<ProtectedRoute allowedRoles={STAFF_ROLES}><StudentDetail /></ProtectedRoute>} />
 
-          {/* Guardian directory management is an admin function, not the parent's own view */}
+          {/* Admissions */}
+          <Route path="/admissions" element={<ProtectedRoute allowedRoles={ADMIN_ROLES}><AdmissionsPage /></ProtectedRoute>} />
+
+          {/* Guardian directory management is an admin function */}
           <Route path="/guardians" element={<ProtectedRoute allowedRoles={ADMIN_ROLES}><Guardians /></ProtectedRoute>} />
 
-          {/* Student/staff/guardian file attachments — admin-only, same as Guardians above */}
+          {/* Student/staff/guardian file attachments */}
           <Route path="/documents" element={<ProtectedRoute allowedRoles={ADMIN_ROLES}><Documents /></ProtectedRoute>} />
 
           {/* ── Finance ── */}
           <Route path="/finance" element={<ProtectedRoute allowedRoles={FINANCE_ROLES}><Finance /></ProtectedRoute>} />
           <Route path="/finance/fees" element={<ProtectedRoute allowedRoles={FINANCE_ROLES}><FeeManagement /></ProtectedRoute>} />
-          {/* Phase 1: Expenses + Daybook — same FINANCE_ROLES so accountants get access */}
           <Route path="/finance/expenses" element={<ProtectedRoute allowedRoles={FINANCE_ROLES}><Expenses /></ProtectedRoute>} />
           <Route path="/finance/daybook"  element={<ProtectedRoute allowedRoles={FINANCE_ROLES}><Daybook /></ProtectedRoute>} />
+          <Route path="/finance/payroll"  element={<ProtectedRoute allowedRoles={FINANCE_ROLES}><PayrollPage /></ProtectedRoute>} />
 
-          <Route path="/classes" element={<ProtectedRoute allowedRoles={CLASS_TEACHER_ROLES}><Classes /></ProtectedRoute>} />
+          <Route path="/classes" element={<ProtectedRoute allowedRoles={STAFF_ROLES}><Classes /></ProtectedRoute>} />
           <Route path="/subjects" element={<ProtectedRoute allowedRoles={STAFF_ROLES}><Subjects /></ProtectedRoute>} />
           <Route path="/enrollments" element={<ProtectedRoute allowedRoles={CLASS_TEACHER_ROLES}><Enrollments /></ProtectedRoute>} />
 
-          {/* Score entry is a teacher function, not a parent-facing one */}
+          {/* Timetable & Academic Materials */}
+          <Route path="/academics/timetable" element={<ProtectedRoute allowedRoles={STAFF_ROLES}><TimetablePage /></ProtectedRoute>} />
+          <Route path="/academics/assignments" element={<ProtectedRoute allowedRoles={STAFF_ROLES}><AssignmentsMaterialsPage /></ProtectedRoute>} />
+
+          {/* Score entry is a teacher function */}
           <Route path="/scores" element={<ProtectedRoute allowedRoles={STAFF_ROLES}><Scores /></ProtectedRoute>} />
           <Route path="/attendance" element={<ProtectedRoute allowedRoles={STAFF_ROLES}><Attendance /></ProtectedRoute>} />
 
-          {/* Report approval/generation is admin-only per doc 5.2 */}
+          {/* School Operations */}
+          <Route path="/operations/library" element={<ProtectedRoute allowedRoles={STAFF_ROLES}><LibraryPage /></ProtectedRoute>} />
+          <Route path="/operations/transport" element={<ProtectedRoute allowedRoles={ADMIN_ROLES}><TransportPage /></ProtectedRoute>} />
+          <Route path="/operations/discipline" element={<ProtectedRoute allowedRoles={STAFF_ROLES}><DisciplinePage /></ProtectedRoute>} />
+          <Route path="/operations/messages" element={<ProtectedRoute allowedRoles={ADMIN_ROLES}><MessagesPage /></ProtectedRoute>} />
+
+          {/* Reports & Analytics */}
           <Route path="/reports" element={<ProtectedRoute allowedRoles={ADMIN_ROLES}><Reports /></ProtectedRoute>} />
-          {/* Class teachers write remarks / attitude / conduct / interest for their own class */}
           <Route path="/report-remarks" element={<ProtectedRoute allowedRoles={CLASS_TEACHER_ROLES}><ReportRemarks /></ProtectedRoute>} />
-          <Route path="/analytics" element={<ProtectedRoute allowedRoles={ADMIN_ROLES}><Analytics /></ProtectedRoute>} />
+          <Route path="/analytics" element={<ProtectedRoute allowedRoles={STAFF_ROLES}><Analytics /></ProtectedRoute>} />
           <Route path="/activity-logs" element={<ProtectedRoute allowedRoles={['SCHOOL_ADMIN']}><ActivityLogs /></ProtectedRoute>} />
+
+          {/* Roles & Permissions, Backup */}
+          <Route path="/settings/roles" element={<ProtectedRoute allowedRoles={ADMIN_ROLES}><RolesPermissionsPage /></ProtectedRoute>} />
+          <Route path="/settings/backup" element={<ProtectedRoute allowedRoles={ADMIN_ROLES}><BackupRestorePage /></ProtectedRoute>} />
+
+          {/* Dedicated Teacher Portal Routes */}
+          <Route path="/teacher/assignments" element={<ProtectedRoute allowedRoles={STAFF_ROLES}><TeacherAssignmentsPage /></ProtectedRoute>} />
+          <Route path="/teacher/materials" element={<ProtectedRoute allowedRoles={STAFF_ROLES}><TeacherMaterialsPage /></ProtectedRoute>} />
+          <Route path="/teacher/timetable" element={<ProtectedRoute allowedRoles={STAFF_ROLES}><TeacherTimetablePage /></ProtectedRoute>} />
+          <Route path="/teacher/messages" element={<ProtectedRoute allowedRoles={STAFF_ROLES}><TeacherMessagesPage /></ProtectedRoute>} />
+          <Route path="/teacher/profile" element={<ProtectedRoute allowedRoles={STAFF_ROLES}><TeacherProfilePage /></ProtectedRoute>} />
 
           <Route path="/notifications" element={<Notifications />} />
 
           {/* Parent / Student read-only portals */}
           <Route path="/parent" element={<ProtectedRoute allowedRoles={['PARENT']}><ParentPortal /></ProtectedRoute>} />
           <Route path="/student" element={<ProtectedRoute allowedRoles={['STUDENT']}><StudentPortal /></ProtectedRoute>} />
-          <Route path="/study-assistant" element={<ProtectedRoute allowedRoles={['STUDENT', 'CLASS_TEACHER', 'SUBJECT_TEACHER']}><StudyAssistant /></ProtectedRoute>} />
+          <Route path="/study-assistant" element={<ProtectedRoute allowedRoles={['STUDENT', 'CLASS_TEACHER', 'SUBJECT_TEACHER', 'SCHOOL_ADMIN', 'SUPER_ADMIN']}><StudyAssistant /></ProtectedRoute>} />
 
           {/* Super Admin Only */}
           <Route path="/admin" element={<ProtectedRoute allowedRoles={['SUPER_ADMIN']}><SuperAdminDashboard /></ProtectedRoute>} />
