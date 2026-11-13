@@ -336,16 +336,14 @@ export default function StudyAssistant() {
               <Sparkles className="h-7 w-7 text-amber-300" />
             </div>
             <div>
-              <div className="flex items-center gap-2">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-1.5 sm:gap-2">
                 <h1 className="text-2xl font-bold tracking-tight">Goreb AI</h1>
-                <span className="rounded-full bg-indigo-500/30 px-2.5 py-0.5 text-xs font-semibold uppercase tracking-wider text-indigo-200 border border-indigo-400/20">
+                <span className="self-start sm:self-auto rounded-full bg-indigo-500/30 px-2.5 py-0.5 text-xs font-semibold uppercase tracking-wider text-indigo-200 border border-indigo-400/20">
                   {user?.role === 'STUDENT' ? 'Smart Study Companion' : 'AI Teaching & Study Assistant'}
                 </span>
               </div>
               <p className="mt-1.5 max-w-2xl text-sm leading-6 text-indigo-100">
-                {user?.role === 'STUDENT'
-                  ? 'Your intelligent study partner for school subjects, step-by-step problem solving, class-level quizzes, and curated revision guides.'
-                  : 'Your AI assistant for lesson planning, explaining topics with real-world examples, classroom quizzes, and study guidance.'}
+                Your intelligent study partner for step-by-step learning, quizzes, problem-solving, and revision guides.
               </p>
               {className && (
                 <div className="mt-3 inline-flex items-center gap-2 rounded-lg bg-indigo-900/60 px-3 py-1 text-xs text-indigo-200 border border-indigo-700/50">
@@ -371,7 +369,7 @@ export default function StudyAssistant() {
             <BookOpen className={`h-5 w-5 ${activeTab === 'learn' ? 'text-indigo-600' : 'text-indigo-200'}`} />
             <div>
               <div className="text-xs uppercase tracking-wider opacity-80">Section 1</div>
-              <div className="font-bold">{user?.role === 'STUDENT' ? 'What are you learning today?' : 'Teaching & Study Q&A'}</div>
+              <div className="font-bold">Learn Today</div>
             </div>
           </button>
 
@@ -387,7 +385,7 @@ export default function StudyAssistant() {
             <HelpCircle className={`h-5 w-5 ${activeTab === 'quiz' ? 'text-indigo-600' : 'text-indigo-200'}`} />
             <div>
               <div className="text-xs uppercase tracking-wider opacity-80">Section 2</div>
-              <div className="font-bold">Take a Quick Quiz</div>
+              <div className="font-bold">Quick Quiz</div>
             </div>
           </button>
 
@@ -409,14 +407,14 @@ export default function StudyAssistant() {
         </div>
       </header>
 
-      {/* SECTION 1: WHAT ARE YOU LEARNING TODAY? */}
+      {/* SECTION 1: LEARN TODAY */}
       {activeTab === 'learn' && (
         <section className="flex flex-1 flex-col rounded-2xl border border-gray-200 bg-white shadow-sm overflow-hidden">
           <div className="border-b border-gray-100 bg-gray-50/70 px-6 py-3.5 flex items-center justify-between">
             <div className="flex items-center gap-2">
               <BookOpen className="h-4 w-4 text-indigo-600" />
               <span className="text-sm font-semibold text-gray-800">
-                1. {user?.role === 'STUDENT' ? 'What are you learning today?' : 'Ask Goreb AI (Lesson & Study Assistance)'}
+                1. Learn Today
               </span>
             </div>
             <span className="text-xs text-gray-500">
@@ -430,7 +428,7 @@ export default function StudyAssistant() {
                 <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-600">
                   <Sparkles className="h-7 w-7" />
                 </div>
-                <h2 className="mt-4 text-lg font-bold text-gray-900">What are you learning today?</h2>
+                <h2 className="mt-4 text-lg font-bold text-gray-900">Learn Today</h2>
                 <p className="mt-1.5 text-sm text-gray-500">
                   Ask Goreb AI to explain topics, walk you through homework problems, or summarize key lessons.
                 </p>
@@ -535,17 +533,17 @@ export default function StudyAssistant() {
         </section>
       )}
 
-      {/* SECTION 2: QUICK QUIZ BASED ON CLASS */}
+      {/* SECTION 2: QUICK QUIZ */}
       {activeTab === 'quiz' && (
         <section className="rounded-2xl border border-gray-200 bg-white shadow-sm overflow-hidden">
           <div className="border-b border-gray-100 bg-gray-50/70 px-6 py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div>
               <div className="flex items-center gap-2">
                 <HelpCircle className="h-4 w-4 text-indigo-600" />
-                <h2 className="text-sm font-semibold text-gray-900">2. Quick Quiz Based on Your Class</h2>
+                <h2 className="text-sm font-semibold text-gray-900">2. Quick Quiz</h2>
               </div>
               <p className="text-xs text-gray-500 mt-0.5">
-                Targeted practice questions customized for {className ? <strong>{className}</strong> : 'your academic level'}
+                Targeted practice questions customized for {className ? <strong>{className}</strong> : 'your class level'}
               </p>
             </div>
 
@@ -708,7 +706,7 @@ export default function StudyAssistant() {
             <div>
               <div className="flex items-center gap-2">
                 <Bookmark className="h-4 w-4 text-indigo-600" />
-                <h2 className="text-sm font-semibold text-gray-900">3. Study Guide & Revision Frameworks</h2>
+                <h2 className="text-sm font-semibold text-gray-900">3. Study Guide</h2>
               </div>
               <p className="text-xs text-gray-500 mt-0.5">
                 Curated study methodologies, subject cheat sheets, and revision frameworks
