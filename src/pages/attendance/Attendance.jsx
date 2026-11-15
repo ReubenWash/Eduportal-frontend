@@ -339,7 +339,7 @@ export default function Attendance() {
           day: entry.day ? new Date(entry.day).toLocaleDateString('en-US', { weekday: 'short' }) : 'Day',
           rate: entry.total > 0 ? Math.round((entry.present / entry.total) * 100) : 0,
         }))
-    : summaryData;
+    : [];
 
   return (
     <div>
@@ -502,11 +502,15 @@ export default function Attendance() {
             <h3 className="text-sm font-semibold text-gray-900">Attendance Trend</h3>
           </div>
           <p className="text-xs text-gray-500 mb-4">
-            {attendanceStats.length > 0 ? 'Recent attendance records' : 'Past 8 days average %'}
+            {attendanceStats.length > 0 ? 'Recent attendance records' : 'Attendance records for the selected class and term'}
           </p>
           {loadingStats ? (
             <div className="flex items-center justify-center h-[200px]">
               <Loader2 className="h-6 w-6 text-indigo-500 animate-spin" />
+          ) : chartData.length === 0 ? (
+            <div className="flex h-[200px] items-center justify-center text-center text-sm text-gray-500">
+              No attendance records are available for this class and term yet.
+            </div>
             </div>
           ) : (
             <ResponsiveContainer width="100%" height={200}>
@@ -618,10 +622,3 @@ export default function Attendance() {
     </div>
   );
 }
-
-// Fallback mock data for chart
-const summaryData = [
-  { day: 'Mon', rate: 94 }, { day: 'Tue', rate: 91 }, { day: 'Wed', rate: 96 },
-  { day: 'Thu', rate: 88 }, { day: 'Fri', rate: 93 }, { day: 'Sat', rate: 95 },
-  { day: 'Sun', rate: 92 }, { day: 'Mon', rate: 90 },
-];

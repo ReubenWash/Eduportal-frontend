@@ -309,9 +309,9 @@ export default function Settings() {
         </div>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 gap-6">
         {/* Form */}
-        <div className="lg:col-span-2 space-y-5">
+        <div className="space-y-5">
           {/* Logo & Plan card */}
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
             <h2 className="text-sm font-semibold text-gray-900 mb-4">School Identity</h2>
@@ -617,27 +617,6 @@ export default function Settings() {
                 Save Score Labels
               </Button>
             </div>
-          </div>
-        </div>
-
-        {/* Right sidebar */}
-        <div className="space-y-5">
-          {/* Danger zone */}
-          <div className="bg-white rounded-xl shadow-sm border border-red-200 p-5">
-            <h3 className="text-sm font-semibold text-red-700 mb-1">Danger Zone</h3>
-            <p className="text-xs text-gray-500 mb-4">These actions are irreversible. Proceed with caution.</p>
-            <Button 
-              variant="danger" 
-              size="sm" 
-              className="w-full"
-              onClick={() => {
-                if (window.confirm('Are you sure you want to delete your school account? This action cannot be undone.')) {
-                  addToast('This feature is disabled in demo mode', 'warning');
-                }
-              }}
-            >
-              Delete School Account
-            </Button>
           </div>
         </div>
       </div>

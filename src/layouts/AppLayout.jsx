@@ -183,7 +183,7 @@ const schoolAdminNav = [
       { path: '/settings/roles',  icon: ShieldCheck, label: 'User Roles & Permissions', roles: ['SCHOOL_ADMIN'] },
       { path: '/settings',        icon: Settings,    label: 'System Settings',          roles: ['SCHOOL_ADMIN'] },
       { path: '/activity-logs',   icon: FileText,    label: 'Audit Logs',               roles: ['SCHOOL_ADMIN'] },
-      { path: '/settings/backup', icon: Database,    label: 'Backup & Restore',         roles: ['SCHOOL_ADMIN'] },
+      { path: '/settings/backup', icon: Database,    label: 'School Data Export',       roles: ['SCHOOL_ADMIN'] },
     ],
   },
 ];
