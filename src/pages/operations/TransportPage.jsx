@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Bus, MapPin, Plus, Search, X } from 'lucide-react';
+import { Bus, MapPin, Plus, RefreshCw, Search, X } from 'lucide-react';
 import PageHeader from '../../components/common/PageHeader';
 import Button from '../../components/ui/Button';
 import Input from '../../components/ui/Input';
@@ -122,9 +122,14 @@ export default function TransportPage() {
     <div className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <PageHeader title="Transport & Bus Routes" subtitle="Maintain this school's vehicles, drivers, route stops, and capacity." />
-        <Button variant="primary" className="gap-2" onClick={openNewRoute}>
-          <Plus className="h-4 w-4" /> Add Route
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="secondary" className="gap-2" onClick={loadRoutes} disabled={loading}>
+            <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} /> Refresh
+          </Button>
+          <Button variant="primary" className="gap-2" onClick={openNewRoute}>
+            <Plus className="h-4 w-4" /> Add Route
+          </Button>
+        </div>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-3">

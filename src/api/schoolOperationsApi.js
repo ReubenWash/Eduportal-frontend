@@ -21,7 +21,10 @@ export const deleteLibraryBook = async (id) => {
 };
 
 export const getTransportRoutes = async (params) => {
-  const res = await api.get('/school-operations/transport-routes', { params });
+  const res = await api.get('/school-operations/transport-routes', {
+    params,
+    headers: { 'Cache-Control': 'no-cache' },
+  });
   return unwrapList(res.data);
 };
 
